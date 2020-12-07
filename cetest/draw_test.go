@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/qw4990/OptimizerTester/cetest"
+	"github.com/qw4990/OptimizerTester/tidb"
 )
 
 func randEstResult(n int) []cetest.EstResult {
@@ -22,8 +23,30 @@ func randEstResult(n int) []cetest.EstResult {
 	return rs
 }
 
-func TestDrawBiasBoxPlot(t *testing.T) {
-	dsNames := []string{"imdb", "zipfx", "tpcc"}
-	estResults := [][]cetest.EstResult{randEstResult(20), randEstResult(20), randEstResult(20)}
-	fmt.Println(cetest.DrawBiasBoxPlot(dsNames, estResults, "multi-cols-point-query", "./test"))
+func TestDrawBiasBoxPlotGroupByQueryType(t *testing.T) {
+	opt := cetest.Option{
+		QueryTypes: []string{"multi-cols-point-query"},
+		Datasets: []cetest.DatasetOpt{
+			{"imdb", "imdb"},
+			{"zipfx", "zipfx"},
+			{"tpcc", "tpcc"},
+		},
+		Instances: []tidb.Option{
+			{Label: "v3.0"},
+			{Label: "v4.0"},
+			{Label: "no-CMSketch"},
+		},
+		ReportDir: "./test",
+	}
+
+	collector := cetest.NewEstResultCollector(3, 3, 1)
+	for insIdx := 0; insIdx < 3; insIdx++ {
+		for dsIdx := 0; dsIdx < 3; dsIdx++ {
+			rs := randEstResult(100)
+			for _, r := range rs {
+				collector.AddEstResult(insIdx, dsIdx, 0, r)
+			}
+		}
+	}
+	fmt.Println(cetest.DrawBiasBoxPlotGroupByQueryType(opt, collector, 0))
 }

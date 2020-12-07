@@ -34,7 +34,7 @@ type DatasetOpt struct {
 type Option struct {
 	QueryTypes []string      `toml:"query-types"`
 	Datasets   []DatasetOpt  `toml:"datasets"`
-	Databases  []tidb.Option `toml:"databases"`
+	Instances  []tidb.Option `toml:"instances"`
 	ReportDir  string        `toml:"report-dir"`
 }
 
@@ -59,7 +59,7 @@ func RunCETestWithConfig(confPath string) error {
 		return err
 	}
 
-	instances, err := tidb.ConnectToInstances(opt.Databases)
+	instances, err := tidb.ConnectToInstances(opt.Instances)
 	if err != nil {
 		return errors.Trace(err)
 	}

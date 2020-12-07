@@ -16,25 +16,29 @@ func DrawBiasBoxPlotGroupByQueryType(opt Option, collector EstResultCollector, q
 	if err != nil {
 		return "", errors.Trace(err)
 	}
-	p.Title.Text = "Bias Box Plot: " + queryType
+	p.Title.Text = "Bias Box Plot: " + opt.QueryTypes[qtIdx]
 	p.Y.Label.Text = "Bias Values"
-	boxes := make([]plot.Plotter, len(datasetNames))
-	for i := range datasetNames {
-		results := estResults[i]
-		biases := make(plotter.ValueLabels, len(results))
-		for i, r := range results {
-			biases[i].Value = r.Bias()
-			biases[i].Label = fmt.Sprintf("%4.4f", r.Bias())
+	boxes := make([]plot.Plotter, 0, len(opt.Datasets)*len(opt.Instances))
+	picNames := make([]string, 0, len(opt.Datasets)*len(opt.Instances))
+	for dsIdx, ds := range opt.Datasets {
+		for insIdx, ins := range opt.Instances {
+			rs := collector.EstResults(insIdx, dsIdx, qtIdx)
+			biases := make(plotter.ValueLabels, len(rs))
+			for i, r := range rs {
+				biases[i].Value = r.Bias()
+				biases[i].Label = fmt.Sprintf("%4.4f", r.Bias())
+			}
+			box, err := plotter.NewBoxPlot(vg.Points(20), float64(len(boxes)), biases)
+			if err != nil {
+				return "", errors.Trace(err)
+			}
+			boxes = append(boxes, box)
+			picNames = append(picNames, fmt.Sprintf("%v:%v", ds.Name, ins.Label))
 		}
-		box, err := plotter.NewBoxPlot(vg.Points(20), float64(i), biases)
-		if err != nil {
-			return "", errors.Trace(err)
-		}
-		boxes[i] = box
 	}
 	p.Add(boxes...)
-	p.NominalX(datasetNames...)
+	p.NominalX(picNames...)
 
-	pngPath := path.Join(dir, fmt.Sprintf("%v-box-plot.png", queryType))
-	return pngPath, errors.Trace(p.Save(vg.Length(80*len(datasetNames)), 200, pngPath))
+	pngPath := path.Join(opt.ReportDir, fmt.Sprintf("%v-box-plot.png", opt.QueryTypes[qtIdx]))
+	return pngPath, errors.Trace(p.Save(vg.Length(80*len(opt.Datasets)*len(opt.Instances)), 200, pngPath))
 }
