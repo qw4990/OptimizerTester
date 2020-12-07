@@ -3,23 +3,23 @@ package tidb
 import (
 	"database/sql"
 	"fmt"
-	
+
 	"github.com/pingcap/errors"
 )
 
 type Option struct {
-	addr       string
-	statusPort string
-	port       string
-	user       string
-	password   string
-	version    string
-	defaultDB  string
+	Addr     string `toml:"addr"`
+	Port     string `toml:"port"`
+	User     string `toml:"user"`
+	Password string `toml:"password"`
+	Label    string `toml:"label"`
 }
 
 type Instance interface {
 	Exec(sql string) error
 	Query(query string) (*sql.Rows, error)
+	Opt() Option
+	Close() error
 }
 
 type instance struct {
@@ -37,10 +37,38 @@ func (ins *instance) Query(query string) (*sql.Rows, error) {
 	return rows, errors.Trace(err)
 }
 
+func (ins *instance) Opt() Option {
+	return ins.opt
+}
+
+func (ins *instance) Close() error {
+	return ins.db.Close()
+}
+
+func ConnectToInstances(opts []Option) (xs []Instance, err error) {
+	xs = make([]Instance, 0, len(opts))
+	defer func() {
+		if err != nil {
+			for _, x := range xs {
+				x.Close()
+			}
+		}
+	}()
+	for _, opt := range opts {
+		var ins Instance
+		ins, err = ConnectTo(opt)
+		if err != nil {
+			return
+		}
+		xs = append(xs, ins)
+	}
+	return
+}
+
 func ConnectTo(opt Option) (Instance, error) {
-	dns := fmt.Sprintf("%s:%s@tcp(%s:%s)/%v", opt.user, opt.password, opt.addr, opt.port, opt.defaultDB)
-	if opt.password == "" {
-		dns = fmt.Sprintf("%s@tcp(%s:%s)/%v", opt.user, opt.addr, opt.port, opt.defaultDB)
+	dns := fmt.Sprintf("%s:%s@tcp(%s:%s)/%v", opt.User, opt.Password, opt.Addr, opt.Port, "mysql")
+	if opt.Password == "" {
+		dns = fmt.Sprintf("%s@tcp(%s:%s)/%v", opt.User, opt.Addr, opt.Port, "mysql")
 	}
 	db, err := sql.Open("mysql", dns)
 	if err != nil {

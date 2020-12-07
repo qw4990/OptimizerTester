@@ -2,6 +2,9 @@ package cetest
 
 import (
 	"database/sql"
+	"github.com/BurntSushi/toml"
+	"io/ioutil"
+
 	"github.com/pingcap/errors"
 	"github.com/qw4990/OptimizerTester/tidb"
 )
@@ -20,6 +23,17 @@ const (
 	QTGroup                          QueryType = "group"                               // group by c
 )
 
+type DatasetOpt struct {
+	Name string `toml:"name"`
+	DB   string `toml:"db"`
+}
+
+type Option struct {
+	QueryTypes []string      `toml:"query-types"`
+	Datasets   []DatasetOpt  `toml:"datasets"`
+	Databases  []tidb.Option `toml:"databases"`
+}
+
 // Dataset ...
 type Dataset interface {
 	// Name returns the name of the dataset
@@ -35,39 +49,38 @@ var datasetMap = map[string]Dataset{ // read-only
 	"tpcc": new(datasetTPCC),
 }
 
-type EstResult struct {
-	Query    string  // the original query used to test
-	EstCard  float64 // estimated cardinality
-	TrueCard float64 // true cardinality
-}
+func RunCETestWithConfig(confPath string) error {
+	opt, err := parseConfig(confPath)
+	if err != nil {
+		return err
+	}
 
-type EstResults map[string]map[string][]EstResult // dataset -> query-type -> results
-
-func RunCETests(tidbOpt tidb.Option, datasetNames, queryTypes []string, reportDir string) error {
-	ins, err := tidb.ConnectTo(tidbOpt)
+	instances, err := tidb.ConnectToInstances(opt.Databases)
 	if err != nil {
 		return errors.Trace(err)
 	}
 
-	// TODO: check datasetNames and queryTypes
-	results := make(EstResults)
-	for _, dsName := range datasetNames {
-		// TODO: parallelize this loop
-		ds := datasetMap[dsName]
-		if _, ok := results[dsName]; !ok {
-			results[dsName] = make(map[string][]EstResult)
-		}
-		for _, qt := range queryTypes {
-			qs := ds.GenCases(QueryType(qt))
-			for _, q := range qs {
-				estResult, err := runOneEstCase(ins, q)
-				if err != nil {
-					return err
+	collector := NewEstResultCollector(len(instances), len(opt.Datasets), len(opt.QueryTypes))
+	// TODO: parallelize this loop
+	for insIdx, ins := range instances {
+		for dsIdx, dataset := range opt.Datasets {
+			ds := datasetMap[dataset.Name]
+			if err := ins.Exec("use " + dataset.DB); err != nil {
+				return err
+			}
+			for qtIdx, qt := range opt.QueryTypes {
+				qs := ds.GenCases(QueryType(qt))
+				for _, q := range qs {
+					estResult, err := runOneEstCase(ins, q)
+					if err != nil {
+						return err
+					}
+					collector.AddEstResult(insIdx, dsIdx, qtIdx, estResult)
 				}
-				results[dsName][qt] = append(results[dsName][qt], estResult)
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -83,4 +96,27 @@ func runOneEstCase(ins tidb.Instance, query string) (EstResult, error) {
 func parseEstResult(rows *sql.Rows) (EstResult, error) {
 	// TODO
 	return EstResult{}, nil
+}
+
+func parseConfig(confPath string) (Option, error) {
+	confContent, err := ioutil.ReadFile(confPath)
+	if err != nil {
+		return Option{}, errors.Trace(err)
+	}
+	var opt Option
+	if _, err := toml.Decode(string(confContent), &opt); err != nil {
+		return Option{}, errors.Trace(err)
+	}
+	return opt, nil
+}
+
+// genReport generates a report with MarkDown format.
+func genReport(opt Option, collector EstResultCollector) error {
+	for _, qt := range opt.QueryTypes {
+		biasStats := make([]map[string]float64, len(datasetNames))
+		for i, dsName := range datasetNames {
+			biasStats[i] = analyzeBias(results[dsName][qt])
+		}
+	}
+	return nil
 }
