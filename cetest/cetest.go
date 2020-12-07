@@ -27,8 +27,9 @@ const (
 )
 
 type DatasetOpt struct {
-	Name string `toml:"name"`
-	DB   string `toml:"db"`
+	Name  string `toml:"name"`
+	DB    string `toml:"db"`
+	Label string `toml:"label"`
 }
 
 type Option struct {
@@ -65,7 +66,7 @@ func RunCETestWithConfig(confPath string) error {
 	}
 
 	collector := NewEstResultCollector(len(instances), len(opt.Datasets), len(opt.QueryTypes))
-	// TODO: parallelize this loop
+	// TODO: parallelize this loop to speed up
 	for insIdx, ins := range instances {
 		for dsIdx, dataset := range opt.Datasets {
 			ds := datasetMap[dataset.Name]
@@ -85,7 +86,7 @@ func RunCETestWithConfig(confPath string) error {
 		}
 	}
 
-	return nil
+	return GenReport(opt, collector)
 }
 
 func runOneEstCase(ins tidb.Instance, query string) (EstResult, error) {
@@ -114,8 +115,8 @@ func parseConfig(confPath string) (Option, error) {
 	return opt, nil
 }
 
-// genReport generates a report with MarkDown format.
-func genReport(opt Option, collector EstResultCollector) error {
+// GenReport generates a report with MarkDown format.
+func GenReport(opt Option, collector EstResultCollector) error {
 	mdContent := bytes.Buffer{}
 	for qtIdx, qt := range opt.QueryTypes {
 		picPath, err := DrawBiasBoxPlotGroupByQueryType(opt, collector, qtIdx)

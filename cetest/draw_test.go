@@ -23,13 +23,29 @@ func randEstResult(n int) []cetest.EstResult {
 	return rs
 }
 
+func randEstResultCollector(opt cetest.Option, n int) cetest.EstResultCollector {
+	collector := cetest.NewEstResultCollector(len(opt.Instances), len(opt.Datasets), len(opt.QueryTypes))
+	for insIdx := 0; insIdx < len(opt.Instances); insIdx++ {
+		for dsIdx := 0; dsIdx < len(opt.Datasets); dsIdx++ {
+			for qtIdx := 0; qtIdx < len(opt.QueryTypes); qtIdx++ {
+				rs := randEstResult(n)
+				for _, r := range rs {
+					collector.AddEstResult(insIdx, dsIdx, qtIdx, r)
+				}
+			}
+		}
+	}
+	return collector
+}
+
 func TestDrawBiasBoxPlotGroupByQueryType(t *testing.T) {
 	opt := cetest.Option{
 		QueryTypes: []string{"multi-cols-point-query"},
 		Datasets: []cetest.DatasetOpt{
-			{"imdb", "imdb"},
-			{"zipfx", "zipfx"},
-			{"tpcc", "tpcc"},
+			{Label:"zipfx"},
+			{Label:"tpcc-10G"},
+			{Label:"tpcc-100G"},
+			{Label:"imdb"},
 		},
 		Instances: []tidb.Option{
 			{Label: "v3.0"},
@@ -39,14 +55,6 @@ func TestDrawBiasBoxPlotGroupByQueryType(t *testing.T) {
 		ReportDir: "./test",
 	}
 
-	collector := cetest.NewEstResultCollector(3, 3, 1)
-	for insIdx := 0; insIdx < 3; insIdx++ {
-		for dsIdx := 0; dsIdx < 3; dsIdx++ {
-			rs := randEstResult(100)
-			for _, r := range rs {
-				collector.AddEstResult(insIdx, dsIdx, 0, r)
-			}
-		}
-	}
+	collector := randEstResultCollector(opt, 100)
 	fmt.Println(cetest.DrawBiasBoxPlotGroupByQueryType(opt, collector, 0))
 }

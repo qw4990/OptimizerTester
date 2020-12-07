@@ -33,7 +33,7 @@ func DrawBiasBoxPlotGroupByQueryType(opt Option, collector EstResultCollector, q
 				return "", errors.Trace(err)
 			}
 			boxes = append(boxes, box)
-			picNames = append(picNames, fmt.Sprintf("%v:%v", ds.Name, ins.Label))
+			picNames = append(picNames, fmt.Sprintf("%v:%v", ds.Label, ins.Label))
 		}
 	}
 	p.Add(boxes...)
