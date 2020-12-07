@@ -2,6 +2,7 @@ package cetest
 
 import (
 	"fmt"
+	"os"
 	"path"
 
 	"github.com/pingcap/errors"
@@ -39,6 +40,15 @@ func DrawBiasBoxPlotGroupByQueryType(opt Option, collector EstResultCollector, q
 	p.Add(boxes...)
 	p.NominalX(picNames...)
 
-	pngPath := path.Join(opt.ReportDir, fmt.Sprintf("%v-box-plot.png", opt.QueryTypes[qtIdx]))
+	prefixDir := opt.ReportDir
+	if !path.IsAbs(prefixDir) {
+		absPrefix, err := os.Getwd()
+		if err != nil {
+			return "", errors.Trace(err)
+		}
+		prefixDir = path.Join(absPrefix, prefixDir)
+	}
+
+	pngPath := path.Join(prefixDir, fmt.Sprintf("%v-box-plot.png", opt.QueryTypes[qtIdx]))
 	return pngPath, errors.Trace(p.Save(vg.Length(80*len(opt.Datasets)*len(opt.Instances)), 200, pngPath))
 }

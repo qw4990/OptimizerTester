@@ -123,7 +123,7 @@ func GenReport(opt Option, collector EstResultCollector) error {
 		if err != nil {
 			return err
 		}
-		if _, err := mdContent.WriteString(fmt.Sprintf("- %v: %v\n", qt, picPath)); err != nil {
+		if _, err := mdContent.WriteString(fmt.Sprintf("%v: ![pic](%v)\n", qt, picPath)); err != nil {
 			return errors.Trace(err)
 		}
 	}
