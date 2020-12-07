@@ -10,8 +10,8 @@ import (
 	"gonum.org/v1/plot/vg"
 )
 
-// DrawBiasBoxPlot draws a box plot and returns the picture's path.
-func DrawBiasBoxPlot(datasetNames []string, estResults [][]EstResult, queryType, dir string) (string, error) {
+// DrawBiasBoxPlotGroupByQueryType draws a box plot and returns the picture's path.
+func DrawBiasBoxPlotGroupByQueryType(opt Option, collector EstResultCollector, qtIdx int) (string, error) {
 	p, err := plot.New()
 	if err != nil {
 		return "", errors.Trace(err)

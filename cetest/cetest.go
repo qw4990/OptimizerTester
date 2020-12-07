@@ -1,9 +1,12 @@
 package cetest
 
 import (
+	"bytes"
 	"database/sql"
+	"fmt"
 	"github.com/BurntSushi/toml"
 	"io/ioutil"
+	"path"
 
 	"github.com/pingcap/errors"
 	"github.com/qw4990/OptimizerTester/tidb"
@@ -32,6 +35,7 @@ type Option struct {
 	QueryTypes []string      `toml:"query-types"`
 	Datasets   []DatasetOpt  `toml:"datasets"`
 	Databases  []tidb.Option `toml:"databases"`
+	ReportDir  string        `toml:"report-dir"`
 }
 
 // Dataset ...
@@ -112,11 +116,15 @@ func parseConfig(confPath string) (Option, error) {
 
 // genReport generates a report with MarkDown format.
 func genReport(opt Option, collector EstResultCollector) error {
-	for _, qt := range opt.QueryTypes {
-		biasStats := make([]map[string]float64, len(datasetNames))
-		for i, dsName := range datasetNames {
-			biasStats[i] = analyzeBias(results[dsName][qt])
+	mdContent := bytes.Buffer{}
+	for qtIdx, qt := range opt.QueryTypes {
+		picPath, err := DrawBiasBoxPlotGroupByQueryType(opt, collector, qtIdx)
+		if err != nil {
+			return err
+		}
+		if _, err := mdContent.WriteString(fmt.Sprintf("- %v: %v\n", qt, picPath)); err != nil {
+			return errors.Trace(err)
 		}
 	}
-	return nil
+	return ioutil.WriteFile(path.Join(opt.ReportDir, "report.md"), mdContent.Bytes(), 0666)
 }
