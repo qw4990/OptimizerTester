@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/errors"
@@ -114,26 +115,41 @@ func RunCETestWithConfig(confPath string) error {
 	}
 
 	collector := NewEstResultCollector(len(instances), len(opt.Datasets), len(opt.QueryTypes))
-	// TODO: parallelize this loop to speed up
-	for insIdx, ins := range instances {
-		for dsIdx, dataset := range opt.Datasets {
-			ds := datasetMap[dataset.Name]
-			if err := ins.Exec("use " + dataset.DB); err != nil {
-				return err
-			}
-			for qtIdx, qt := range opt.QueryTypes {
-				qs, err := ds.GenCases(opt.N, qt)
-				if err != nil {
-					return err
+	var wg sync.WaitGroup
+	insErrs := make([]error, len(instances))
+	for insIdx := range instances {
+		wg.Add(1)
+		go func(insIdx int) {
+			ins := instances[insIdx]
+			for dsIdx, dataset := range opt.Datasets {
+				ds := datasetMap[dataset.Name]
+				if err := ins.Exec("use " + dataset.DB); err != nil {
+					insErrs[insIdx] = err
+					return
 				}
-				for _, q := range qs {
-					estResult, err := runOneEstCase(ins, q)
+				for qtIdx, qt := range opt.QueryTypes {
+					qs, err := ds.GenCases(opt.N, qt)
 					if err != nil {
-						return err
+						insErrs[insIdx] = err
+						return
 					}
-					collector.AddEstResult(insIdx, dsIdx, qtIdx, estResult)
+					for _, q := range qs {
+						estResult, err := runOneEstCase(ins, q)
+						if err != nil {
+							insErrs[insIdx] = err
+							return
+						}
+						collector.AddEstResult(insIdx, dsIdx, qtIdx, estResult)
+					}
 				}
 			}
+		}(insIdx)
+	}
+	wg.Wait()
+
+	for _, err := range insErrs {
+		if err != nil {
+			return err
 		}
 	}
 

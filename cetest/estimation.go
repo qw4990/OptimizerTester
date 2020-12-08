@@ -1,6 +1,9 @@
 package cetest
 
-import "sort"
+import (
+	"sort"
+	"sync"
+)
 
 type EstResult struct {
 	EstCard  float64 // estimated cardinality
@@ -58,18 +61,25 @@ func NewEstResultCollector(insCap, dsCap, qtCap int) EstResultCollector {
 			rs[i][j] = make([][]EstResult, qtCap)
 		}
 	}
-	return &estResultCollector{rs}
+	c := new(estResultCollector)
+	c.rs = rs
+	return c
 }
 
 type estResultCollector struct {
-	rs [][][][]EstResult
+	rs   [][][][]EstResult
+	lock sync.RWMutex
 }
 
 func (c *estResultCollector) AddEstResult(insIdx, dsIdx, qtIdx int, r EstResult) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	c.rs[insIdx][dsIdx][qtIdx] = append(c.rs[insIdx][dsIdx][qtIdx], r)
 }
 
 func (c *estResultCollector) EstResults(insIdx, dsIdx, qtIdx int) []EstResult {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	return c.rs[insIdx][dsIdx][qtIdx]
 }
 
