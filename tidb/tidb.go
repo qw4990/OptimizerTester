@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/pingcap/errors"
 )
 
