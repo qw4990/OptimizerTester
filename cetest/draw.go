@@ -67,5 +67,5 @@ func DrawBiasBoxPlotGroupByQueryType(opt Option, collector EstResultCollector, q
 	}
 
 	pngPath := path.Join(prefixDir, fmt.Sprintf("%v-box-plot.png", opt.QueryTypes[qtIdx]))
-	return pngPath, errors.Trace(p.Save(vg.Length(80*len(opt.Datasets)*len(opt.Instances)), 200, pngPath))
+	return pngPath, errors.Trace(p.Save(vg.Length(100+80*len(opt.Datasets)*len(opt.Instances)), 200, pngPath))
 }

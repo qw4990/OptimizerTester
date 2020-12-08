@@ -89,9 +89,9 @@ func ConnectToInstances(opts []Option) (xs []Instance, err error) {
 }
 
 func ConnectTo(opt Option) (Instance, error) {
-	dns := fmt.Sprintf("%s:%s@tcp(%s:%s)/%v", opt.User, opt.Password, opt.Addr, opt.Port, "mysql")
+	dns := fmt.Sprintf("%s:%s@tcp(%s:%v)/%v", opt.User, opt.Password, opt.Addr, opt.Port, "mysql")
 	if opt.Password == "" {
-		dns = fmt.Sprintf("%s@tcp(%s:%s)/%v", opt.User, opt.Addr, opt.Port, "mysql")
+		dns = fmt.Sprintf("%s@tcp(%s:%v)/%v", opt.User, opt.Addr, opt.Port, "mysql")
 	}
 	db, err := sql.Open("mysql", dns)
 	if err != nil {

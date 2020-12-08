@@ -117,6 +117,7 @@ func RunCETestWithConfig(confPath string) error {
 	for insIdx := range instances {
 		wg.Add(1)
 		go func(insIdx int) {
+			defer wg.Done()
 			ins := instances[insIdx]
 			for dsIdx, dataset := range opt.Datasets {
 				ds := datasetMap[dataset.Name]

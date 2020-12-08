@@ -10,7 +10,7 @@ import (
 /*
 	datasetMock is used for testing.
 	MockDataset's schema is:
-		CREATE TABLE t (a INT, b INT, PRIMARY KEY a, KEY(b), KEY(a, b))
+		CREATE TABLE t (a INT PRIMARY KEY, b INT, KEY(b), KEY(a, b));
 */
 type datasetMock struct {
 }
