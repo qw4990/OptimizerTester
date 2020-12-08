@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/errors"
@@ -23,6 +24,7 @@ type Option struct {
 	Datasets   []DatasetOpt  `toml:"datasets"`
 	Instances  []tidb.Option `toml:"instances"`
 	ReportDir  string        `toml:"report-dir"`
+	N          int           `toml:"n"`
 }
 
 // DecodeOption decodes option content.
@@ -30,6 +32,11 @@ func DecodeOption(content string) (Option, error) {
 	var opt Option
 	if _, err := toml.Decode(content, &opt); err != nil {
 		return Option{}, errors.Trace(err)
+	}
+	for _, ds := range opt.Datasets {
+		if _, ok := datasetMap[strings.ToLower(ds.Name)]; !ok {
+			return Option{}, fmt.Errorf("unknown dateset=%v", ds.Name)
+		}
 	}
 	return opt, nil
 }
@@ -81,13 +88,14 @@ type Dataset interface {
 	Name() string
 
 	// GenCases ...
-	GenCases(QueryType) (queries []string)
+	GenCases(n int, qt QueryType) (queries []string, err error)
 }
 
 var datasetMap = map[string]Dataset{ // read-only
 	"zipx": new(datasetZipFX),
 	"imdb": new(datasetIMDB),
 	"tpcc": new(datasetTPCC),
+	"mock": new(datasetMock),
 }
 
 func RunCETestWithConfig(confPath string) error {
@@ -114,7 +122,10 @@ func RunCETestWithConfig(confPath string) error {
 				return err
 			}
 			for qtIdx, qt := range opt.QueryTypes {
-				qs := ds.GenCases(qt)
+				qs, err := ds.GenCases(opt.N, qt)
+				if err != nil {
+					return err
+				}
 				for _, q := range qs {
 					estResult, err := runOneEstCase(ins, q)
 					if err != nil {

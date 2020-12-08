@@ -7,7 +7,7 @@ func (ds *datasetIMDB) Name() string {
 	return "IMDB"
 }
 
-func (ds *datasetIMDB) GenCases(QueryType) (queries []string) {
+func (ds *datasetIMDB) GenCases(int, QueryType) ([]string, error) {
 	// TODO
-	return nil
+	return nil, nil
 }

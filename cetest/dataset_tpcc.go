@@ -7,7 +7,7 @@ func (ds *datasetTPCC) Name() string {
 	return "TPCC"
 }
 
-func (ds *datasetTPCC) GenCases(QueryType) (queries []string) {
+func (ds *datasetTPCC) GenCases(int, QueryType) ([]string, error) {
 	//  TODO
-	return nil
+	return nil, nil
 }

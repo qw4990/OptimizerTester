@@ -7,7 +7,7 @@ func (ds *datasetZipFX) Name() string {
 	return "ZipFX"
 }
 
-func (ds *datasetZipFX) GenCases(QueryType) (queries []string) {
+func (ds *datasetZipFX) GenCases(int, QueryType) ([]string, error) {
 	// TODO
-	return nil
+	return nil, nil
 }
