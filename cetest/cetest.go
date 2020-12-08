@@ -1,11 +1,8 @@
 package cetest
 
 import (
-	"bytes"
-	"database/sql"
 	"fmt"
 	"io/ioutil"
-	"path"
 	"strings"
 	"sync"
 
@@ -156,31 +153,35 @@ func RunCETestWithConfig(confPath string) error {
 	return GenReport(opt, collector)
 }
 
-func runOneEstCase(ins tidb.Instance, query string) (EstResult, error) {
-	rows, err := ins.Query(query)
+func runOneEstCase(ins tidb.Instance, query string) (r EstResult, re error) {
+	rows, err := ins.Query("EXPLAIN ANALYZE " + query)
 	if err != nil {
 		return EstResult{}, errors.Trace(err)
 	}
-	defer rows.Close()
-	return parseEstResult(rows)
-}
-
-func parseEstResult(rows *sql.Rows) (EstResult, error) {
-	// TODO
-	return EstResult{}, nil
-}
-
-// GenReport generates a report with MarkDown format.
-func GenReport(opt Option, collector EstResultCollector) error {
-	mdContent := bytes.Buffer{}
-	for qtIdx, qt := range opt.QueryTypes {
-		picPath, err := DrawBiasBoxPlotGroupByQueryType(opt, collector, qtIdx)
-		if err != nil {
-			return err
+	defer func() {
+		if err := rows.Close(); err != nil && re == nil {
+			re = err
 		}
-		if _, err := mdContent.WriteString(fmt.Sprintf("%v: ![pic](%v)\n", qt, picPath)); err != nil {
-			return errors.Trace(err)
-		}
+	}()
+
+	types, err := rows.ColumnTypes()
+	if err != nil {
+		return EstResult{}, err
 	}
-	return ioutil.WriteFile(path.Join(opt.ReportDir, "report.md"), mdContent.Bytes(), 0666)
+	nCols := len(types)
+	results := make([][]string, 0, 8)
+	for rows.Next() {
+		cols := make([]string, nCols)
+		ptrs := make([]interface{}, nCols)
+		for i := 0; i < nCols; i++ {
+			ptrs[i] = &cols[i]
+		}
+		if err := rows.Scan(ptrs...); err != nil {
+			return EstResult{}, err
+		}
+		results = append(results, cols)
+	}
+
+	return ExtractEstResult(results, ins.Version())
 }
+

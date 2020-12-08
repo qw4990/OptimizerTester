@@ -2,7 +2,12 @@ package cetest
 
 import (
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
+
+	"github.com/pingcap/errors"
+	"github.com/qw4990/OptimizerTester/tidb"
 )
 
 type EstResult struct {
@@ -96,4 +101,51 @@ func analyzeBias(results []EstResult) map[string]float64 {
 		"p90": biases[(n*9)/10],
 		"p95": biases[(n*19)/20],
 	}
+}
+
+// ExtractEstResult extracts EstResults from results of explain analyze
+func ExtractEstResult(analyzeResults [][]string, version string) (EstResult, error) {
+	if tidb.ToComparableVersion(version) < tidb.ToComparableVersion("v3.0.0") { // v2.x
+		return EstResult{}, errors.Errorf("unsupported version=%v", version)
+	} else if tidb.ToComparableVersion(version) < tidb.ToComparableVersion("v4.0.0") { // v3.x
+		return extractEstResultForV3(analyzeResults)
+	} else if tidb.ToComparableVersion(version) < tidb.ToComparableVersion("v5.0.0") { // v4.x
+		return extractEstResultForV4(analyzeResults)
+	}
+	return EstResult{}, errors.Errorf("unsupported version=%v", version)
+}
+
+func extractEstResultForV4(analyzeResults [][]string) (EstResult, error) {
+	// | TableReader_5         | 10000.00 | 0       | ...
+	est, err := strconv.ParseFloat(analyzeResults[0][1], 64)
+	if err != nil {
+		return EstResult{}, errors.Trace(err)
+	}
+	act, err := strconv.ParseFloat(analyzeResults[0][2], 64)
+	if err != nil {
+		return EstResult{}, errors.Trace(err)
+	}
+	return EstResult{
+		EstCard:  est,
+		TrueCard: act,
+	}, nil
+}
+
+func extractEstResultForV3(analyzeResults [][]string) (EstResult, error) {
+	//| TableReader_5     | 10000.00 | root | data:TableScan_4                                           | time:2.95024ms, loops:1, rows:0 | 115 Bytes |
+	est, err := strconv.ParseFloat(analyzeResults[0][1], 64)
+	if err != nil {
+		return EstResult{}, errors.Trace(err)
+	}
+	info := analyzeResults[0][4]
+	tmp := strings.Split(info, ":")
+	actStr := tmp[len(tmp)-1]
+	act, err := strconv.ParseFloat(actStr, 64)
+	if err != nil {
+		return EstResult{}, errors.Trace(err)
+	}
+	return EstResult{
+		EstCard:  est,
+		TrueCard: act,
+	}, nil
 }

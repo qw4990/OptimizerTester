@@ -1,7 +1,9 @@
 package cetest
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 
@@ -10,6 +12,21 @@ import (
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
 )
+
+// GenReport generates a report with MarkDown format.
+func GenReport(opt Option, collector EstResultCollector) error {
+	mdContent := bytes.Buffer{}
+	for qtIdx, qt := range opt.QueryTypes {
+		picPath, err := DrawBiasBoxPlotGroupByQueryType(opt, collector, qtIdx)
+		if err != nil {
+			return err
+		}
+		if _, err := mdContent.WriteString(fmt.Sprintf("%v: ![pic](%v)\n", qt, picPath)); err != nil {
+			return errors.Trace(err)
+		}
+	}
+	return ioutil.WriteFile(path.Join(opt.ReportDir, "report.md"), mdContent.Bytes(), 0666)
+}
 
 // DrawBiasBoxPlotGroupByQueryType draws a box plot and returns the picture's path.
 func DrawBiasBoxPlotGroupByQueryType(opt Option, collector EstResultCollector, qtIdx int) (string, error) {

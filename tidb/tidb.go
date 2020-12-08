@@ -3,6 +3,7 @@ package tidb
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/pingcap/errors"
 )
@@ -18,6 +19,7 @@ type Option struct {
 type Instance interface {
 	Exec(sql string) error
 	Query(query string) (*sql.Rows, error)
+	Version() string
 	Opt() Option
 	Close() error
 }
@@ -25,6 +27,7 @@ type Instance interface {
 type instance struct {
 	db  *sql.DB
 	opt Option
+	ver string
 }
 
 func (ins *instance) Exec(sql string) error {
@@ -37,12 +40,31 @@ func (ins *instance) Query(query string) (*sql.Rows, error) {
 	return rows, errors.Trace(err)
 }
 
+func (ins *instance) Version() string {
+	return ins.ver
+}
+
 func (ins *instance) Opt() Option {
 	return ins.opt
 }
 
 func (ins *instance) Close() error {
 	return ins.db.Close()
+}
+
+func (ins *instance) initVersion() error {
+	rows, err := ins.Query(`SELECT VERSION()`)
+	if err != nil {
+		return err
+	}
+	var version string
+	rows.Next()
+	if err := rows.Scan(&version); err != nil {
+		return err
+	}
+	tmp := strings.Split(version, "-")
+	ins.ver = tmp[2]
+	return nil
 }
 
 func ConnectToInstances(opts []Option) (xs []Instance, err error) {
@@ -77,10 +99,6 @@ func ConnectTo(opt Option) (Instance, error) {
 	if err := db.Ping(); err != nil {
 		return nil, errors.Trace(err)
 	}
-	return &instance{db, opt}, nil
-}
-
-func validateOpt(opt *Option) error {
-	// TODO
-	return nil
+	ins := &instance{db: db, opt: opt}
+	return ins, ins.initVersion()
 }
