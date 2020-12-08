@@ -56,5 +56,23 @@ func TestDrawBiasBoxPlotGroupByQueryType(t *testing.T) {
 	}
 
 	collector := randEstResultCollector(opt, 100)
-	fmt.Println(cetest.DrawBiasBoxPlotGroupByQueryType(opt, collector, 0))
+	fmt.Println(cetest.DrawQErrorBoxPlotGroupByQueryType(opt, collector, 0))
+}
+
+func TestDrawBarChartsGroupByQTAndDS(t *testing.T) {
+	opt := cetest.Option{
+		QueryTypes: []cetest.QueryType{cetest.QTMultiColsPointQuery},
+		Datasets: []cetest.DatasetOpt{
+			{Label: "zipfx"},
+		},
+		Instances: []tidb.Option{
+			{Label: "v3.0"},
+			{Label: "v4.0"},
+			{Label: "no-CMSketch"},
+		},
+		ReportDir: "./test",
+	}
+
+	collector := randEstResultCollector(opt, 100)
+	fmt.Println(cetest.DrawBarChartsGroupByQTAndDS(opt, collector, 0, 0))
 }

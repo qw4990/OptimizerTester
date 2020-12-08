@@ -11,15 +11,44 @@ import (
 	"github.com/pingcap/errors"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/plotutil"
 	"gonum.org/v1/plot/vg"
 )
 
-// GenReport generates a report with MarkDown format.
-func GenReport(opt Option, collector EstResultCollector) error {
+// GenQErrorBarChartsReport ...
+func GenQErrorBarChartsReport(opt Option, collector EstResultCollector) error {
+	md := bytes.Buffer{}
+	for qtIdx, qt := range opt.QueryTypes {
+		md.WriteString(fmt.Sprintf("# %v\n", qt))
+		for dsIdx, ds := range opt.Datasets {
+			md.WriteString(fmt.Sprintf("## %v\n", ds.Label))
+			picPath, err := DrawBarChartsGroupByQTAndDS(opt, collector, qtIdx, dsIdx)
+			if err != nil {
+				return err
+			}
+			md.WriteString(fmt.Sprintf("![pic](%v)\n", picPath))
+		}
+
+		md.WriteString("\n| Dataset | Instance | P50 | P90 | P95 | Max |\n")
+		md.WriteString("| ---- | ---- | ---- | ---- | ---- | ---- |\n")
+		for dsIdx, ds := range opt.Datasets {
+			for insIdx, ins := range opt.Instances {
+				stats := analyzeQError(collector.EstResults(insIdx, dsIdx, qtIdx))
+				md.WriteString(fmt.Sprintf("| %v | %v | %.4f | %.4f | %.4f | %.4f |\n",
+					ds.Label, ins.Label, stats["p50"], stats["p90"], stats["p95"], stats["max"]))
+			}
+		}
+	}
+	
+	return ioutil.WriteFile(path.Join(opt.ReportDir, "report.md"), md.Bytes(), 0666)
+}
+
+// GenQErrorBoxPlotReport generates a report with MarkDown format.
+func GenQErrorBoxPlotReport(opt Option, collector EstResultCollector) error {
 	mdContent := bytes.Buffer{}
 	for qtIdx, qt := range opt.QueryTypes {
 		mdContent.WriteString(fmt.Sprintf("## %v q-error report:\n", qt))
-		picPath, err := DrawBiasBoxPlotGroupByQueryType(opt, collector, qtIdx)
+		picPath, err := DrawQErrorBoxPlotGroupByQueryType(opt, collector, qtIdx)
 		if err != nil {
 			return err
 		}
@@ -56,8 +85,68 @@ func analyzeQError(results []EstResult) map[string]float64 {
 	}
 }
 
-// DrawBiasBoxPlotGroupByQueryType draws a box plot and returns the picture's path.
-func DrawBiasBoxPlotGroupByQueryType(opt Option, collector EstResultCollector, qtIdx int) (string, error) {
+// DrawBarChartsGroupByQTAndDS ...
+func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx, dsIdx int) (string, error) {
+	p, err := plot.New()
+	if err != nil {
+		return "", errors.Trace(err)
+	}
+	p.Title.Text = fmt.Sprintf("QError Bar Chart on Dataset %v", opt.Datasets[dsIdx].Label)
+	p.X.Label.Text = "distribution"
+	p.Y.Label.Text = "frequency of occurrence"
+
+	var w float64 = 10
+	boundaries := []float64{2, 3, 4, 5, 6, 7, 8, 9, 10}
+	for insIdx, ins := range opt.Instances {
+		rs := collector.EstResults(insIdx, dsIdx, qtIdx)
+		freqs := qErrorDistribution(rs, boundaries)
+		bar, err := plotter.NewBarChart(plotter.Values(freqs), vg.Points(w))
+		if err != nil {
+			return "", errors.Trace(err)
+		}
+		bar.Color = plotutil.Color(insIdx)
+		bar.Offset = vg.Points(float64(insIdx) * w)
+		p.Add(bar)
+		p.Legend.Add(ins.Label, bar)
+	}
+	p.Legend.Top = true
+	xNames := make([]string, 0, len(boundaries)+1)
+	for _, b := range boundaries {
+		xNames = append(xNames, fmt.Sprintf("<%v", b))
+	}
+	xNames = append(xNames, fmt.Sprintf(">=%v", boundaries[len(boundaries)-1]))
+	p.NominalX(xNames...)
+
+	prefixDir := opt.ReportDir
+	if !path.IsAbs(prefixDir) {
+		absPrefix, err := os.Getwd()
+		if err != nil {
+			return "", errors.Trace(err)
+		}
+		prefixDir = path.Join(absPrefix, prefixDir)
+	}
+
+	pngPath := path.Join(prefixDir, fmt.Sprintf("%v-%v-bar.png", opt.QueryTypes[qtIdx], opt.Datasets[dsIdx].Label))
+	return pngPath, p.Save(vg.Points(10*w*float64(len(opt.Instances)+1)), 3*vg.Inch, pngPath)
+}
+
+func qErrorDistribution(rs []EstResult, boundaries []float64) []float64 {
+	freqs := make([]float64, len(boundaries)+1)
+	for _, r := range rs {
+		qe := r.QError()
+		i := 0
+		for ; i < len(boundaries); i++ {
+			if qe < boundaries[i] {
+				break
+			}
+		}
+		freqs[i]++
+	}
+	return freqs
+}
+
+// DrawQErrorBoxPlotGroupByQueryType draws a box plot and returns the picture's path.
+func DrawQErrorBoxPlotGroupByQueryType(opt Option, collector EstResultCollector, qtIdx int) (string, error) {
 	p, err := plot.New()
 	if err != nil {
 		return "", errors.Trace(err)

@@ -151,7 +151,7 @@ func RunCETestWithConfig(confPath string) error {
 		}
 	}
 
-	return GenReport(opt, collector)
+	return GenQErrorBarChartsReport(opt, collector)
 }
 
 func runOneEstCase(ins tidb.Instance, query string) (r EstResult, re error) {
@@ -185,4 +185,3 @@ func runOneEstCase(ins tidb.Instance, query string) (r EstResult, re error) {
 
 	return ExtractEstResult(results, ins.Version())
 }
-

@@ -7,7 +7,7 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
-func TestGenReport(t *testing.T) {
+func TestGenQErrorBoxPlotReport(t *testing.T) {
 	opt := cetest.Option{
 		QueryTypes: []cetest.QueryType{cetest.QTMultiColsPointQuery, cetest.QTMultiColsRangeQuery},
 		Datasets: []cetest.DatasetOpt{
@@ -25,7 +25,29 @@ func TestGenReport(t *testing.T) {
 	}
 
 	collector := randEstResultCollector(opt, 100)
-	if err := cetest.GenReport(opt, collector); err != nil {
+	if err := cetest.GenQErrorBoxPlotReport(opt, collector); err != nil {
+		t.Fail()
+	}
+}
+
+func TestGenQErrorBarChartsReport(t *testing.T) {
+	opt := cetest.Option{
+		QueryTypes: []cetest.QueryType{cetest.QTMultiColsPointQuery, cetest.QTMultiColsRangeQuery},
+		Datasets: []cetest.DatasetOpt{
+			{Label: "zipfx"},
+			{Label: "tpcc-10G"},
+			{Label: "tpcc-100G"},
+			{Label: "imdb"},
+		},
+		Instances: []tidb.Option{
+			{Label: "v3.0"},
+			{Label: "v4.0"},
+			{Label: "no-CMSketch"},
+		},
+		ReportDir: "./test",
+	}
+	collector := randEstResultCollector(opt, 100)
+	if err := cetest.GenQErrorBarChartsReport(opt, collector); err != nil {
 		t.Fail()
 	}
 }
