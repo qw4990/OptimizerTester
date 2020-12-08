@@ -1,7 +1,6 @@
 package cetest
 
 import (
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -86,21 +85,6 @@ func (c *estResultCollector) EstResults(insIdx, dsIdx, qtIdx int) []EstResult {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.rs[insIdx][dsIdx][qtIdx]
-}
-
-func analyzeBias(results []EstResult) map[string]float64 {
-	n := len(results)
-	biases := make([]float64, n)
-	for i := range results {
-		biases[i] = results[i].Bias()
-	}
-	sort.Float64s(biases)
-	return map[string]float64{
-		"max": biases[n-1],
-		"p50": biases[n/2],
-		"p90": biases[(n*9)/10],
-		"p95": biases[(n*19)/20],
-	}
 }
 
 // ExtractEstResult extracts EstResults from results of explain analyze

@@ -1,32 +1,27 @@
 query-types = ["multi-cols-point-query", "single-col-point-query"]
-report-dir = "/tmp/xxx"
+report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
 n = 1000
 
 [[datasets]]
-name = "imdb"
-db = "imdb"
-label = "imdb"
+name = "mock"
+db = "mock"
+label = "mock1G"
 
 [[datasets]]
-name = "tpcc"
-db = "tpcc10G"
-label = "tpcc10G"
-
-[[datasets]]
-name = "tpcc"
-db = "tpcc50G"
-label = "tpcc50G"
+name = "mock"
+db = "mock"
+label = "mock10G"
 
 [[instances]]
 addr = "127.0.0.1"
 port = 4000
 user = "root"
-password = "123456"
-label = "v4.0"
+password = ""
+label = "master"
 
 [[instances]]
 addr = "127.0.0.1"
-port = 4001
+port = 4000
 user = "root"
-password = "123456"
-label = "master"
+password = ""
+label = "v4.0.12"
