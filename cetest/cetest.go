@@ -4,26 +4,12 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"github.com/BurntSushi/toml"
 	"io/ioutil"
 	"path"
 
+	"github.com/BurntSushi/toml"
 	"github.com/pingcap/errors"
 	"github.com/qw4990/OptimizerTester/tidb"
-)
-
-// QueryType ...
-type QueryType string
-
-const (
-	QTSingleColPointQuery            QueryType = "single-col-point-query"              // where c = ?; where c in (?, ... ?)
-	QTSingleColRangeQuery            QueryType = "single-col-range-query"              // where c >= ?; where c > ? and c < ?
-	QTMultiColsPointQuery            QueryType = "multi-cols-point-query"              // where c1 = ? and c2 = ?
-	QTMultiColsRangeQueryFixedPrefix QueryType = "multi-cols-range-query-fixed-prefix" // where c1 = ? and c2 > ?
-	QTMultiColsRangeQuery            QueryType = "multi-cols-range-query"              // where c1 > ? and c2 > ?
-	QTJoinEQ                         QueryType = "join-eq"                             // where t1.c = t2.c
-	QTJoinNonEQ                      QueryType = "join-non-eq"                         // where t1.c > t2.c
-	QTGroup                          QueryType = "group"                               // group by c
 )
 
 type DatasetOpt struct {
@@ -33,10 +19,60 @@ type DatasetOpt struct {
 }
 
 type Option struct {
-	QueryTypes []string      `toml:"query-types"`
+	QueryTypes []QueryType   `toml:"query-types"`
 	Datasets   []DatasetOpt  `toml:"datasets"`
 	Instances  []tidb.Option `toml:"instances"`
 	ReportDir  string        `toml:"report-dir"`
+}
+
+// DecodeOption decodes option content.
+func DecodeOption(content string) (Option, error) {
+	var opt Option
+	if _, err := toml.Decode(content, &opt); err != nil {
+		return Option{}, errors.Trace(err)
+	}
+	return opt, nil
+}
+
+// QueryType ...
+type QueryType int
+
+const (
+	QTSingleColPointQuery            QueryType = 0 // where c = ?; where c in (?, ... ?)
+	QTSingleColRangeQuery            QueryType = 1 // where c >= ?; where c > ? and c < ?
+	QTMultiColsPointQuery            QueryType = 2 // where c1 = ? and c2 = ?
+	QTMultiColsRangeQueryFixedPrefix QueryType = 3 // where c1 = ? and c2 > ?
+	QTMultiColsRangeQuery            QueryType = 4 // where c1 > ? and c2 > ?
+	QTJoinEQ                         QueryType = 5 // where t1.c = t2.c
+	QTJoinNonEQ                      QueryType = 6 // where t1.c > t2.c
+	QTGroup                          QueryType = 7 // group by c
+)
+
+var (
+	qtNameMap = map[QueryType]string{
+		QTSingleColPointQuery:            "single-col-point-query",
+		QTSingleColRangeQuery:            "single-col-range-query",
+		QTMultiColsPointQuery:            "multi-cols-point-query",
+		QTMultiColsRangeQueryFixedPrefix: "multi-cols-range-query-fixed-prefix",
+		QTMultiColsRangeQuery:            "multi-cols-range-query",
+		QTJoinEQ:                         "join-eq",
+		QTJoinNonEQ:                      "join-non-eq",
+		QTGroup:                          "group",
+	}
+)
+
+func (qt QueryType) String() string {
+	return qtNameMap[qt]
+}
+
+func (qt *QueryType) UnmarshalText(text []byte) error {
+	for k, v := range qtNameMap {
+		if v == string(text) {
+			*qt = k
+			return nil
+		}
+	}
+	return errors.Errorf("unknown query-type=%v", string(text))
 }
 
 // Dataset ...
@@ -55,7 +91,11 @@ var datasetMap = map[string]Dataset{ // read-only
 }
 
 func RunCETestWithConfig(confPath string) error {
-	opt, err := parseConfig(confPath)
+	confContent, err := ioutil.ReadFile(confPath)
+	if err != nil {
+		return errors.Trace(err)
+	}
+	opt, err := DecodeOption(string(confContent))
 	if err != nil {
 		return err
 	}
@@ -74,7 +114,7 @@ func RunCETestWithConfig(confPath string) error {
 				return err
 			}
 			for qtIdx, qt := range opt.QueryTypes {
-				qs := ds.GenCases(QueryType(qt))
+				qs := ds.GenCases(qt)
 				for _, q := range qs {
 					estResult, err := runOneEstCase(ins, q)
 					if err != nil {
@@ -101,18 +141,6 @@ func runOneEstCase(ins tidb.Instance, query string) (EstResult, error) {
 func parseEstResult(rows *sql.Rows) (EstResult, error) {
 	// TODO
 	return EstResult{}, nil
-}
-
-func parseConfig(confPath string) (Option, error) {
-	confContent, err := ioutil.ReadFile(confPath)
-	if err != nil {
-		return Option{}, errors.Trace(err)
-	}
-	var opt Option
-	if _, err := toml.Decode(string(confContent), &opt); err != nil {
-		return Option{}, errors.Trace(err)
-	}
-	return opt, nil
 }
 
 // GenReport generates a report with MarkDown format.

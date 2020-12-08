@@ -9,7 +9,7 @@ import (
 
 type Option struct {
 	Addr     string `toml:"addr"`
-	Port     string `toml:"port"`
+	Port     int    `toml:"port"`
 	User     string `toml:"user"`
 	Password string `toml:"password"`
 	Label    string `toml:"label"`

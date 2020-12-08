@@ -17,7 +17,7 @@ func DrawBiasBoxPlotGroupByQueryType(opt Option, collector EstResultCollector, q
 	if err != nil {
 		return "", errors.Trace(err)
 	}
-	p.Title.Text = "Bias Box Plot: " + opt.QueryTypes[qtIdx]
+	p.Title.Text = "Bias Box Plot: " + opt.QueryTypes[qtIdx].String()
 	p.Y.Label.Text = "Bias Values"
 	boxes := make([]plot.Plotter, 0, len(opt.Datasets)*len(opt.Instances))
 	picNames := make([]string, 0, len(opt.Datasets)*len(opt.Instances))

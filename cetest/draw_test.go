@@ -40,12 +40,12 @@ func randEstResultCollector(opt cetest.Option, n int) cetest.EstResultCollector 
 
 func TestDrawBiasBoxPlotGroupByQueryType(t *testing.T) {
 	opt := cetest.Option{
-		QueryTypes: []string{"multi-cols-point-query"},
+		QueryTypes: []cetest.QueryType{cetest.QTMultiColsPointQuery},
 		Datasets: []cetest.DatasetOpt{
-			{Label:"zipfx"},
-			{Label:"tpcc-10G"},
-			{Label:"tpcc-100G"},
-			{Label:"imdb"},
+			{Label: "zipfx"},
+			{Label: "tpcc-10G"},
+			{Label: "tpcc-100G"},
+			{Label: "imdb"},
 		},
 		Instances: []tidb.Option{
 			{Label: "v3.0"},
