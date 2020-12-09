@@ -15,14 +15,14 @@ import (
 	"gonum.org/v1/plot/vg"
 )
 
-// GenQErrorBarChartsReport ...
-func GenQErrorBarChartsReport(opt Option, collector EstResultCollector) error {
+// GenPErrorBarChartsReport ...
+func GenPErrorBarChartsReport(opt Option, collector EstResultCollector) error {
 	md := bytes.Buffer{}
 	for qtIdx, qt := range opt.QueryTypes {
 		md.WriteString(fmt.Sprintf("# %v\n", qt))
 		for dsIdx, ds := range opt.Datasets {
 			md.WriteString(fmt.Sprintf("## %v\n", ds.Label))
-			picPath, err := DrawBarChartsGroupByQTAndDS(opt, collector, qtIdx, dsIdx)
+			picPath, err := DrawBarChartsGroupByQTAndDS(opt, collector, qtIdx, dsIdx, PError)
 			if err != nil {
 				return err
 			}
@@ -39,7 +39,7 @@ func GenQErrorBarChartsReport(opt Option, collector EstResultCollector) error {
 			}
 		}
 	}
-	
+
 	return ioutil.WriteFile(path.Join(opt.ReportDir, "report.md"), md.Bytes(), 0666)
 }
 
@@ -74,7 +74,7 @@ func analyzeQError(results []EstResult) map[string]float64 {
 	n := len(results)
 	qes := make([]float64, n)
 	for i := range results {
-		qes[i] = results[i].QError()
+		qes[i] = QError(results[i])
 	}
 	sort.Float64s(qes)
 	return map[string]float64{
@@ -86,7 +86,7 @@ func analyzeQError(results []EstResult) map[string]float64 {
 }
 
 // DrawBarChartsGroupByQTAndDS ...
-func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx, dsIdx int) (string, error) {
+func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx, dsIdx int, calFunc func(EstResult) float64) (string, error) {
 	p, err := plot.New()
 	if err != nil {
 		return "", errors.Trace(err)
@@ -96,10 +96,10 @@ func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx
 	p.Y.Label.Text = "frequency of occurrence"
 
 	var w float64 = 10
-	boundaries := []float64{2, 3, 4, 5, 6, 7, 8, 9, 10}
+	boundaries := []float64{-10, -4, -2, -1, 0, 1, 2, 4, 10}
 	for insIdx, ins := range opt.Instances {
 		rs := collector.EstResults(insIdx, dsIdx, qtIdx)
-		freqs := qErrorDistribution(rs, boundaries)
+		freqs := distribution(rs, boundaries, calFunc)
 		bar, err := plotter.NewBarChart(plotter.Values(freqs), vg.Points(w))
 		if err != nil {
 			return "", errors.Trace(err)
@@ -130,10 +130,10 @@ func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx
 	return pngPath, p.Save(vg.Points(10*w*float64(len(opt.Instances)+1)), 3*vg.Inch, pngPath)
 }
 
-func qErrorDistribution(rs []EstResult, boundaries []float64) []float64 {
+func distribution(rs []EstResult, boundaries []float64, calFunc func(EstResult) float64) []float64 {
 	freqs := make([]float64, len(boundaries)+1)
 	for _, r := range rs {
-		qe := r.QError()
+		qe := calFunc(r)
 		i := 0
 		for ; i < len(boundaries); i++ {
 			if qe < boundaries[i] {
@@ -160,8 +160,8 @@ func DrawQErrorBoxPlotGroupByQueryType(opt Option, collector EstResultCollector,
 			rs := collector.EstResults(insIdx, dsIdx, qtIdx)
 			biases := make(plotter.ValueLabels, len(rs))
 			for i, r := range rs {
-				biases[i].Value = r.QError()
-				biases[i].Label = fmt.Sprintf("%4.4f", r.Bias())
+				biases[i].Value = QError(r)
+				biases[i].Label = fmt.Sprintf("%4.4f", QError(r))
 			}
 			box, err := plotter.NewBoxPlot(vg.Points(20), float64(len(boxes)), biases)
 			if err != nil {

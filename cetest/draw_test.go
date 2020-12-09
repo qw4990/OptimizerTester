@@ -74,5 +74,5 @@ func TestDrawBarChartsGroupByQTAndDS(t *testing.T) {
 	}
 
 	collector := randEstResultCollector(opt, 100)
-	fmt.Println(cetest.DrawBarChartsGroupByQTAndDS(opt, collector, 0, 0))
+	fmt.Println(cetest.DrawBarChartsGroupByQTAndDS(opt, collector, 0, 0, cetest.PError))
 }
