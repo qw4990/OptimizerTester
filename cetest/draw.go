@@ -128,7 +128,7 @@ func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx
 	p.X.Label.Text = "distribution"
 	p.Y.Label.Text = "frequency of occurrence"
 
-	var w float64 = 10
+	var w float64 = 20
 	boundaries := []float64{-10, -4, -2, -1, 0, 1, 2, 4, 10}
 	for insIdx, ins := range opt.Instances {
 		rs := collector.EstResults(insIdx, dsIdx, qtIdx)
@@ -138,14 +138,15 @@ func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx
 			return "", errors.Trace(err)
 		}
 		bar.Color = plotutil.Color(insIdx)
-		bar.Offset = vg.Points(float64(insIdx) * w)
+		bar.Offset = vg.Points(float64(insIdx-(len(opt.Instances)/2)) * w)
 		p.Add(bar)
 		p.Legend.Add(ins.Label, bar)
 	}
 	p.Legend.Top = true
 	xNames := make([]string, 0, len(boundaries)+1)
-	for _, b := range boundaries {
-		xNames = append(xNames, fmt.Sprintf("<%v", b))
+	xNames = append(xNames, fmt.Sprintf("<%v", boundaries[0]))
+	for i := 1; i < len(boundaries); i++ {
+		xNames = append(xNames, fmt.Sprintf("[%v, %v)", boundaries[i-1], boundaries[i]))
 	}
 	xNames = append(xNames, fmt.Sprintf(">=%v", boundaries[len(boundaries)-1]))
 	p.NominalX(xNames...)
