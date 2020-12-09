@@ -2,10 +2,11 @@ package cetest
 
 import (
 	"fmt"
-	"github.com/pingcap/errors"
-	"github.com/qw4990/OptimizerTester/tidb"
 	"math/rand"
 	"time"
+
+	"github.com/pingcap/errors"
+	"github.com/qw4990/OptimizerTester/tidb"
 )
 
 /*
@@ -19,17 +20,21 @@ type datasetZipFX struct {
 	opt DatasetOpt
 	ins tidb.Instance
 
-	tbs     []string
-	cols    []string
-	colVals [][][]string // [tbIdx][colIdx][]string{ordered values}
+	tbs         []string
+	cols        []string
+	orderedVals [][][]string // [tbIdx][colIdx][]string{ordered values}
+	mcv         [][][]string
+	lcv         [][][]string
+	percent     int
 }
 
 func newDatasetZipFX(opt DatasetOpt, ins tidb.Instance) (Dataset, error) {
 	return &datasetZipFX{
-		opt:  opt,
-		ins:  ins,
-		tbs:  []string{"int", "double", "string", "datetime"},
-		cols: []string{"a", "b"},
+		opt:     opt,
+		ins:     ins,
+		tbs:     []string{"int", "double", "string", "datetime"},
+		cols:    []string{"a", "b"},
+		percent: 10, // most/least 10% common values
 	}, nil
 }
 
@@ -38,7 +43,7 @@ func (ds *datasetZipFX) Name() string {
 }
 
 func (ds *datasetZipFX) GenCases(n int, qt QueryType) ([]string, error) {
-	if ds.colVals == nil {
+	if ds.orderedVals == nil {
 		if err := ds.init(); err != nil {
 			return nil, err
 		}
@@ -67,13 +72,29 @@ func (ds *datasetZipFX) GenCases(n int, qt QueryType) ([]string, error) {
 			sqls = append(sqls, ds.randRangeQueryEQPrefix())
 		}
 	case QTMCVPointQuery:
-		// TODO:
+		for i := 0; i < n; i++ {
+			sqls = append(sqls, ds.randMCVLCVPointQuery(true))
+		}
 	case QTLCVPointQuery:
-		// TODO:
+		for i := 0; i < n; i++ {
+			sqls = append(sqls, ds.randMCVLCVPointQuery(false))
+		}
 	default:
 		return nil, errors.Errorf("unsupported query-type=%v", qt.String())
 	}
 	return sqls, nil
+}
+
+func (ds *datasetZipFX) randMCVLCVPointQuery(isMCV bool) string {
+	tbIdx := rand.Intn(4)
+	colIdx := rand.Intn(2)
+	val := ""
+	if isMCV {
+		val = ds.mcv[tbIdx][colIdx][rand.Intn(len(ds.mcv[tbIdx][colIdx]))]
+	} else {
+		val = ds.lcv[tbIdx][colIdx][rand.Intn(len(ds.lcv[tbIdx][colIdx]))]
+	}
+	return fmt.Sprintf("SELECT * FROM %v WHERE %v=%v", ds.tbs[tbIdx], ds.cols[colIdx], val)
 }
 
 func (ds *datasetZipFX) randRangeQueryEQPrefix() string {
@@ -94,9 +115,9 @@ func (ds *datasetZipFX) randRangeQuery(cols int) string {
 }
 
 func (ds *datasetZipFX) randRangeColCond(tbIdx, colIdx int) string {
-	val1Idx := rand.Intn(len(ds.colVals[tbIdx][colIdx]))
-	val2Idx := rand.Intn(len(ds.colVals[tbIdx][colIdx])-val1Idx) + val1Idx
-	return fmt.Sprintf("%v>=%v AND %v<=%v", ds.cols[colIdx], ds.colVals[tbIdx][colIdx][val1Idx], ds.cols[colIdx], ds.colVals[tbIdx][colIdx][val2Idx])
+	val1Idx := rand.Intn(len(ds.orderedVals[tbIdx][colIdx]))
+	val2Idx := rand.Intn(len(ds.orderedVals[tbIdx][colIdx])-val1Idx) + val1Idx
+	return fmt.Sprintf("%v>=%v AND %v<=%v", ds.cols[colIdx], ds.orderedVals[tbIdx][colIdx][val1Idx], ds.cols[colIdx], ds.orderedVals[tbIdx][colIdx][val2Idx])
 }
 
 func (ds *datasetZipFX) randPointQuery(cols int) string {
@@ -111,15 +132,12 @@ func (ds *datasetZipFX) randPointQuery(cols int) string {
 }
 
 func (ds *datasetZipFX) randPointColCond(tbIdx, colIdx int) string {
-	val := ds.colVals[tbIdx][colIdx][rand.Intn(len(ds.colVals[tbIdx][colIdx]))]
+	val := ds.orderedVals[tbIdx][colIdx][rand.Intn(len(ds.orderedVals[tbIdx][colIdx]))]
 	return fmt.Sprintf("%v = %v", ds.cols[colIdx], val)
 }
 
 func (ds *datasetZipFX) init() error {
-	ds.colVals = make([][][]string, 4)
-	for i := range ds.colVals {
-		ds.colVals[i] = make([][]string, 2)
-	}
+	ds.orderedVals = ds.valArray()
 	for i, tb := range ds.tbs {
 		for j, col := range ds.cols {
 			sql := fmt.Sprintf("SELECT %v FROM t%v ORDER BY %v", col, tb, col)
@@ -134,8 +152,55 @@ func (ds *datasetZipFX) init() error {
 				if err := rows.Scan(&val); err != nil {
 					return err
 				}
-				ds.colVals[i][j] = append(ds.colVals[i][j], val.(string))
+				ds.orderedVals[i][j] = append(ds.orderedVals[i][j], val.(string))
+			}
+			rows.Close()
+		}
+	}
+
+	// init mcv and lcv
+	ds.mcv = ds.valArray()
+	ds.lcv = ds.valArray()
+	for i, tb := range ds.tbs {
+		row, err := ds.ins.Query(fmt.Sprintf("SELECT COUNT(*) FROM %v", tb))
+		if err != nil {
+			return err
+		}
+		var total int
+		if err := row.Scan(&total); err != nil {
+			return err
+		}
+		row.Close()
+		limit := total * ds.percent / 100
+
+		for j, col := range ds.cols {
+			for _, order := range []string{"DESC", "ASC"} {
+				rows, err := ds.ins.Query(fmt.Sprintf("SELECT %v FROM %v GROUP BY %v ORDER BY COUNT(*) %v LIMIT %v", col, tb, col, order, limit))
+				if err != nil {
+					return err
+				}
+				for rows.Next() {
+					var val interface{}
+					if err := rows.Scan(&val); err != nil {
+						return err
+					}
+					if order == "DESC" {
+						ds.mcv[i][j] = append(ds.mcv[i][j], val.(string))
+					} else {
+						ds.lcv[i][j] = append(ds.lcv[i][j], val.(string))
+					}
+				}
+				rows.Close()
 			}
 		}
 	}
+	return nil
+}
+
+func (ds *datasetZipFX) valArray() [][][]string {
+	xs := make([][][]string, 4)
+	for i := range xs {
+		xs[i] = make([][]string, 2)
+	}
+	return xs
 }
