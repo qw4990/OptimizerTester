@@ -89,11 +89,11 @@ type Dataset interface {
 	GenCases(n int, qt QueryType) (queries []string, err error)
 }
 
-var datasetMap = map[string]Dataset{ // read-only
-	"zipx": new(datasetZipFX),
-	"imdb": new(datasetIMDB),
-	"tpcc": new(datasetTPCC),
-	"mock": new(datasetMock),
+var datasetMap = map[string]func(DatasetOpt, tidb.Instance) (Dataset, error){ // read-only
+	"zipx": newDatasetZipFX,
+	"imdb": newDatasetIMDB,
+	"tpcc": newDatasetTPCC,
+	"mock": newDatasetMock,
 }
 
 func RunCETestWithConfig(confPath string) error {
@@ -110,6 +110,22 @@ func RunCETestWithConfig(confPath string) error {
 	if err != nil {
 		return errors.Trace(err)
 	}
+	defer func() {
+		for _, ins := range instances {
+			ins.Close()
+		}
+	}()
+
+	datasets := make([][]Dataset, len(instances)*len(opt.Datasets)) // DS[insIdx][dsIdx]
+	for i := range instances {
+		for j := range opt.Datasets {
+			var err error
+			datasets[i][j], err = datasetMap[opt.Datasets[j].Name](opt.Datasets[j], instances[i])
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	collector := NewEstResultCollector(len(instances), len(opt.Datasets), len(opt.QueryTypes))
 	var wg sync.WaitGroup
@@ -120,7 +136,7 @@ func RunCETestWithConfig(confPath string) error {
 			defer wg.Done()
 			ins := instances[insIdx]
 			for dsIdx, dataset := range opt.Datasets {
-				ds := datasetMap[dataset.Name]
+				ds := datasets[insIdx][dsIdx]
 				if err := ins.Exec("use " + dataset.DB); err != nil {
 					insErrs[insIdx] = err
 					return
