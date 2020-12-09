@@ -30,7 +30,7 @@ func TestGenQErrorBoxPlotReport(t *testing.T) {
 	}
 }
 
-func TestGenQErrorBarChartsReport(t *testing.T) {
+func TestGenPErrorBarChartsReport(t *testing.T) {
 	opt := cetest.Option{
 		QueryTypes: []cetest.QueryType{cetest.QTMultiColsPointQuery, cetest.QTMultiColsRangeQuery},
 		Datasets: []cetest.DatasetOpt{
@@ -47,7 +47,7 @@ func TestGenQErrorBarChartsReport(t *testing.T) {
 		ReportDir: "./test",
 	}
 	collector := randEstResultCollector(opt, 100)
-	if err := cetest.GenQErrorBarChartsReport(opt, collector); err != nil {
+	if err := cetest.GenPErrorBarChartsReport(opt, collector); err != nil {
 		t.Fail()
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/pingcap/errors"
+	"github.com/qw4990/OptimizerTester/tidb"
 )
 
 /*
@@ -13,6 +14,12 @@ import (
 		CREATE TABLE t (a INT PRIMARY KEY, b INT, KEY(b), KEY(a, b));
 */
 type datasetMock struct {
+	opt DatasetOpt
+	ins tidb.Instance
+}
+
+func newDatasetMock(opt DatasetOpt, ins tidb.Instance) (Dataset, error) {
+	return &datasetMock{opt, ins}, nil
 }
 
 func (ds *datasetMock) Name() string {

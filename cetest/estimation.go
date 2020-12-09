@@ -15,7 +15,7 @@ type EstResult struct {
 }
 
 // QError is max(est/true, true/est) or ((numerator+1)/(denominator+1)) if the denominator is 0.
-func (r EstResult) QError() float64 {
+func QError(r EstResult) float64 {
 	if r.EstCard > r.TrueCard {
 		if r.TrueCard == 0 {
 			return (r.EstCard + 1) / (r.TrueCard + 1)
@@ -35,7 +35,7 @@ func (r EstResult) QError() float64 {
 		if est <= true && est > 0: (true/est)-1
 		if est <= true && est == 0: ((true+1)/(est+1))-1
 */
-func (r EstResult) PError() float64 {
+func PError(r EstResult) float64 {
 	if r.EstCard > r.TrueCard && r.TrueCard > 0 {
 		return -(r.EstCard / r.TrueCard) + 1
 	} else if r.EstCard > r.TrueCard && r.TrueCard == 0 {
@@ -48,7 +48,7 @@ func (r EstResult) PError() float64 {
 }
 
 // Bias is (est-true)/(true+1).
-func (r EstResult) Bias() float64 {
+func Bias(r EstResult) float64 {
 	return (r.EstCard - r.TrueCard) / (r.TrueCard + 1)
 }
 

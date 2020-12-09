@@ -43,26 +43,30 @@ func DecodeOption(content string) (Option, error) {
 type QueryType int
 
 const (
-	QTSingleColPointQuery            QueryType = 0 // where c = ?; where c in (?, ... ?)
-	QTSingleColRangeQuery            QueryType = 1 // where c >= ?; where c > ? and c < ?
-	QTMultiColsPointQuery            QueryType = 2 // where c1 = ? and c2 = ?
-	QTMultiColsRangeQueryFixedPrefix QueryType = 3 // where c1 = ? and c2 > ?
-	QTMultiColsRangeQuery            QueryType = 4 // where c1 > ? and c2 > ?
-	QTJoinEQ                         QueryType = 5 // where t1.c = t2.c
-	QTJoinNonEQ                      QueryType = 6 // where t1.c > t2.c
-	QTGroup                          QueryType = 7 // group by c
+	QTSingleColPointQuery         QueryType = iota // where c = ?; where c in (?, ... ?)
+	QTSingleColRangeQuery                          // where c >= ?; where c > ? and c < ?
+	QTMultiColsPointQuery                          // where c1 = ? and c2 = ?
+	QTMultiColsRangeQueryEQPrefix                  // where c1 = ? and c2 > ?
+	QTMultiColsRangeQuery                          // where c1 > ? and c2 > ?
+	QTMCVPointQuery                                // point query on most common values (10%)
+	QTLCVPointQuery                                // point query on least common values (10%)
+	QTJoinEQ                                       // where t1.c = t2.c
+	QTJoinNonEQ                                    // where t1.c > t2.c
+	QTGroup                                        // group by c
 )
 
 var (
 	qtNameMap = map[QueryType]string{
-		QTSingleColPointQuery:            "single-col-point-query",
-		QTSingleColRangeQuery:            "single-col-range-query",
-		QTMultiColsPointQuery:            "multi-cols-point-query",
-		QTMultiColsRangeQueryFixedPrefix: "multi-cols-range-query-fixed-prefix",
-		QTMultiColsRangeQuery:            "multi-cols-range-query",
-		QTJoinEQ:                         "join-eq",
-		QTJoinNonEQ:                      "join-non-eq",
-		QTGroup:                          "group",
+		QTSingleColPointQuery:         "single-col-point-query",
+		QTSingleColRangeQuery:         "single-col-range-query",
+		QTMultiColsPointQuery:         "multi-cols-point-query",
+		QTMultiColsRangeQueryEQPrefix: "multi-cols-range-query-eq-prefix",
+		QTMultiColsRangeQuery:         "multi-cols-range-query",
+		QTMCVPointQuery:               "most-common-value-point-query(10%)",
+		QTLCVPointQuery:               "least-common-value-point-query(10%)",
+		QTJoinEQ:                      "join-eq",
+		QTJoinNonEQ:                   "join-non-eq",
+		QTGroup:                       "group",
 	}
 )
 
@@ -89,11 +93,11 @@ type Dataset interface {
 	GenCases(n int, qt QueryType) (queries []string, err error)
 }
 
-var datasetMap = map[string]Dataset{ // read-only
-	"zipx": new(datasetZipFX),
-	"imdb": new(datasetIMDB),
-	"tpcc": new(datasetTPCC),
-	"mock": new(datasetMock),
+var datasetMap = map[string]func(DatasetOpt, tidb.Instance) (Dataset, error){ // read-only
+	"zipx": newDatasetZipFX,
+	"imdb": newDatasetIMDB,
+	"tpcc": newDatasetTPCC,
+	"mock": newDatasetMock,
 }
 
 func RunCETestWithConfig(confPath string) error {
@@ -110,6 +114,22 @@ func RunCETestWithConfig(confPath string) error {
 	if err != nil {
 		return errors.Trace(err)
 	}
+	defer func() {
+		for _, ins := range instances {
+			ins.Close()
+		}
+	}()
+
+	datasets := make([][]Dataset, len(instances)*len(opt.Datasets)) // DS[insIdx][dsIdx]
+	for i := range instances {
+		for j := range opt.Datasets {
+			var err error
+			datasets[i][j], err = datasetMap[opt.Datasets[j].Name](opt.Datasets[j], instances[i])
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	collector := NewEstResultCollector(len(instances), len(opt.Datasets), len(opt.QueryTypes))
 	var wg sync.WaitGroup
@@ -120,7 +140,7 @@ func RunCETestWithConfig(confPath string) error {
 			defer wg.Done()
 			ins := instances[insIdx]
 			for dsIdx, dataset := range opt.Datasets {
-				ds := datasetMap[dataset.Name]
+				ds := datasets[insIdx][dsIdx]
 				if err := ins.Exec("use " + dataset.DB); err != nil {
 					insErrs[insIdx] = err
 					return
@@ -151,7 +171,7 @@ func RunCETestWithConfig(confPath string) error {
 		}
 	}
 
-	return GenQErrorBarChartsReport(opt, collector)
+	return GenPErrorBarChartsReport(opt, collector)
 }
 
 func runOneEstCase(ins tidb.Instance, query string) (r EstResult, re error) {
