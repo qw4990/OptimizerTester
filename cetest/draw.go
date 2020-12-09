@@ -27,20 +27,53 @@ func GenPErrorBarChartsReport(opt Option, collector EstResultCollector) error {
 				return err
 			}
 			md.WriteString(fmt.Sprintf("![pic](%v)\n", picPath))
-		}
 
-		md.WriteString("\n| Dataset | Instance | P50 | P90 | P95 | Max |\n")
-		md.WriteString("| ---- | ---- | ---- | ---- | ---- | ---- |\n")
-		for dsIdx, ds := range opt.Datasets {
+			md.WriteString("\nOverEstimation Statistics\n")
+			md.WriteString("\n| Instance | Total | P50 | P90 | Max |\n")
+			md.WriteString("| ---- | ---- | ---- | ---- | ---- |\n")
 			for insIdx, ins := range opt.Instances {
-				stats := analyzeQError(collector.EstResults(insIdx, dsIdx, qtIdx))
-				md.WriteString(fmt.Sprintf("| %v | %v | %.4f | %.4f | %.4f | %.4f |\n",
-					ds.Label, ins.Label, stats["p50"], stats["p90"], stats["p95"], stats["max"]))
+				stats := analyzePError(collector.EstResults(insIdx, dsIdx, qtIdx), true)
+				md.WriteString(fmt.Sprintf("| %v | %.4f | %.4f | %.4f | %.4f |\n",
+					ins.Label, stats["tot"], stats["p50"], stats["p90"], stats["max"]))
 			}
+
+			md.WriteString("\nUnderEstimation Statistics\n")
+			md.WriteString("\n| Instance | Total | P50 | P90 | Max |\n")
+			md.WriteString("| ---- | ---- | ---- | ---- | ---- |\n")
+			for insIdx, ins := range opt.Instances {
+				stats := analyzePError(collector.EstResults(insIdx, dsIdx, qtIdx), false)
+				md.WriteString(fmt.Sprintf("| %v | %.4f | %.4f | %.4f | %.4f |\n",
+					ins.Label, stats["tot"], stats["p50"], stats["p90"], stats["max"]))
+			}
+			md.WriteString("\n")
 		}
 	}
-
 	return ioutil.WriteFile(path.Join(opt.ReportDir, "report.md"), md.Bytes(), 0666)
+}
+
+func analyzePError(results []EstResult, isOverEst bool) map[string]float64 {
+	pes := make([]float64, 0, len(results))
+	for i := range results {
+		pe := PError(results[i])
+		if isOverEst && pe > 0 {
+			pes = append(pes, pe)
+		} else if !isOverEst && pe < 0 {
+			pes = append(pes, pe)
+		}
+	}
+	sort.Float64s(pes)
+	if !isOverEst { // reverse
+		for i, j := 0, len(pes)-1; i < j; i, j = i+1, j-1 {
+			pes[i], pes[j] = pes[j], pes[i]
+		}
+	}
+	n := len(pes)
+	return map[string]float64{
+		"tot": float64(len(pes)),
+		"max": pes[n-1],
+		"p50": pes[n/2],
+		"p90": pes[(n*9)/10],
+	}
 }
 
 // GenQErrorBoxPlotReport generates a report with MarkDown format.
@@ -91,7 +124,7 @@ func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx
 	if err != nil {
 		return "", errors.Trace(err)
 	}
-	p.Title.Text = fmt.Sprintf("QError Bar Chart on Dataset %v", opt.Datasets[dsIdx].Label)
+	p.Title.Text = fmt.Sprintf("PError distribution on %v", opt.Datasets[dsIdx].Label)
 	p.X.Label.Text = "distribution"
 	p.Y.Label.Text = "frequency of occurrence"
 
