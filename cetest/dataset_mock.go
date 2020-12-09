@@ -2,10 +2,10 @@ package cetest
 
 import (
 	"fmt"
-	"github.com/qw4990/OptimizerTester/tidb"
 	"math/rand"
 
 	"github.com/pingcap/errors"
+	"github.com/qw4990/OptimizerTester/tidb"
 )
 
 /*

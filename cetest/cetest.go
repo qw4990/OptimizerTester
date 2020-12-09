@@ -43,26 +43,30 @@ func DecodeOption(content string) (Option, error) {
 type QueryType int
 
 const (
-	QTSingleColPointQuery            QueryType = 0 // where c = ?; where c in (?, ... ?)
-	QTSingleColRangeQuery            QueryType = 1 // where c >= ?; where c > ? and c < ?
-	QTMultiColsPointQuery            QueryType = 2 // where c1 = ? and c2 = ?
-	QTMultiColsRangeQueryFixedPrefix QueryType = 3 // where c1 = ? and c2 > ?
-	QTMultiColsRangeQuery            QueryType = 4 // where c1 > ? and c2 > ?
-	QTJoinEQ                         QueryType = 5 // where t1.c = t2.c
-	QTJoinNonEQ                      QueryType = 6 // where t1.c > t2.c
-	QTGroup                          QueryType = 7 // group by c
+	QTSingleColPointQuery         QueryType = iota // where c = ?; where c in (?, ... ?)
+	QTSingleColRangeQuery                          // where c >= ?; where c > ? and c < ?
+	QTMultiColsPointQuery                          // where c1 = ? and c2 = ?
+	QTMultiColsRangeQueryEQPrefix                  // where c1 = ? and c2 > ?
+	QTMultiColsRangeQuery                          // where c1 > ? and c2 > ?
+	QTMCVPointQuery                                // point query on most common values (10%)
+	QTLCVPointQuery                                // point query on least common values (10%)
+	QTJoinEQ                                       // where t1.c = t2.c
+	QTJoinNonEQ                                    // where t1.c > t2.c
+	QTGroup                                        // group by c
 )
 
 var (
 	qtNameMap = map[QueryType]string{
-		QTSingleColPointQuery:            "single-col-point-query",
-		QTSingleColRangeQuery:            "single-col-range-query",
-		QTMultiColsPointQuery:            "multi-cols-point-query",
-		QTMultiColsRangeQueryFixedPrefix: "multi-cols-range-query-fixed-prefix",
-		QTMultiColsRangeQuery:            "multi-cols-range-query",
-		QTJoinEQ:                         "join-eq",
-		QTJoinNonEQ:                      "join-non-eq",
-		QTGroup:                          "group",
+		QTSingleColPointQuery:         "single-col-point-query",
+		QTSingleColRangeQuery:         "single-col-range-query",
+		QTMultiColsPointQuery:         "multi-cols-point-query",
+		QTMultiColsRangeQueryEQPrefix: "multi-cols-range-query-eq-prefix",
+		QTMultiColsRangeQuery:         "multi-cols-range-query",
+		QTMCVPointQuery:               "most-common-value-point-query(10%)",
+		QTLCVPointQuery:               "least-common-value-point-query(10%)",
+		QTJoinEQ:                      "join-eq",
+		QTJoinNonEQ:                   "join-non-eq",
+		QTGroup:                       "group",
 	}
 )
 
