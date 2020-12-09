@@ -1,4 +1,5 @@
 .idea/
+datagen/test
 bin/
 cetest/test
 vendor/

@@ -3,20 +3,8 @@ package cmd
 import (
 	"github.com/pingcap/errors"
 	"github.com/qw4990/OptimizerTester/cetest"
-	"github.com/qw4990/OptimizerTester/tidb"
 	"github.com/spf13/cobra"
 )
-
-type Dataset struct {
-	Name string `toml:"name"`
-	DB   string `toml:"db"`
-}
-
-type CETestOpt struct {
-	QueryTypes []string      `toml:"query-types"`
-	Datasets   []Dataset     `toml:"datasets"`
-	Databases  []tidb.Option `toml:"databases"`
-}
 
 func newCETestCmd() *cobra.Command {
 	var conf string

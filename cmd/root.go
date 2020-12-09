@@ -18,4 +18,5 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize()
 	rootCmd.AddCommand(newCETestCmd())
+	rootCmd.AddCommand(newDatagenCmd())
 }
