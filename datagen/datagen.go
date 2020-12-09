@@ -32,7 +32,7 @@ var (
 func Generate(dataset string, n int, dir string) error {
 	switch strings.ToLower(dataset) {
 	case "zipfx":
-		x := 3.0 // TODO: make it configurable
+		x := 1.5 // TODO: make it configurable
 		return GenZipfXData(x, n, dir)
 	}
 	return errors.Errorf("unsupported dataset=%v", dataset)
