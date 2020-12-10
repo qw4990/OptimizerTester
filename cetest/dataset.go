@@ -51,6 +51,29 @@ func newBaseDataset(opt DatasetOpt, ins tidb.Instance, tbs []string, cols [][]st
 }
 
 func (ds *baseDataset) init() error {
+	// switch database
+	if err := ds.ins.Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
+		return err
+	}
+
+	// analyze tables
+	for tbIdx, tb := range ds.tbs {
+		used := false
+		for _, flag := range ds.used[tbIdx] {
+			if flag {
+				used = true
+				break
+			}
+		}
+		if !used {
+			continue
+		}
+		if err := ds.ins.Exec(fmt.Sprintf("ANALYZE TABLE %v", tb)); err != nil {
+			return err
+		}
+	}
+
+	// init ordered values
 	ds.orderedVals = ds.valArray()
 	for i, tb := range ds.tbs {
 		for j, col := range ds.cols[i] {

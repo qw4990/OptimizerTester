@@ -130,12 +130,8 @@ func RunCETestWithConfig(confPath string) error {
 		go func(insIdx int) {
 			defer wg.Done()
 			ins := instances[insIdx]
-			for dsIdx, dataset := range opt.Datasets {
+			for dsIdx := range opt.Datasets {
 				ds := datasets[insIdx][dsIdx]
-				if err := ins.Exec("use " + dataset.DB); err != nil {
-					insErrs[insIdx] = err
-					return
-				}
 				for qtIdx, qt := range opt.QueryTypes {
 					qs, err := ds.GenCases(opt.N, qt)
 					if err != nil {
