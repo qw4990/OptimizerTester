@@ -8,7 +8,7 @@ import (
 
 func newDatagenCmd() *cobra.Command {
 	var dataset string
-	var args string
+	var dsargs string
 	var dir string
 	cmd := &cobra.Command{
 		Use:   "datagen",
@@ -17,11 +17,11 @@ func newDatagenCmd() *cobra.Command {
 			if dataset == "" || dir == "" {
 				return errors.Errorf("invalid arguments")
 			}
-			return datagen.Generate(dataset, args, dir)
+			return datagen.Generate(dataset, dsargs, dir)
 		},
 	}
 	cmd.Flags().StringVar(&dataset, "dataset", "", "Dataset name to generate")
-	cmd.Flags().StringVar(&args, "args", "", "Arguments")
+	cmd.Flags().StringVar(&dsargs, "args", "", "Arguments")
 	cmd.Flags().StringVar(&dir, "dir", "", "Directory to store data")
 	return cmd
 }
