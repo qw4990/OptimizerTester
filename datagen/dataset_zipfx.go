@@ -127,6 +127,7 @@ CREATE TABLE tdatetime (a DATETIME, b DATETIME, KEY(a), KEY(a, b));
 // load data local infile '/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/datagen/test/zipfx_tint.csv' into table tint;
 func GenZipfXLoadSQL(dir string) error {
 	var buf bytes.Buffer
+	buf.WriteString("SET @@tidb_dml_batch_size=500000;\n")
 	tbNames := []string{"tint", "tdouble", "tstring", "tdatetime"}
 
 	if !path.IsAbs(dir) {
