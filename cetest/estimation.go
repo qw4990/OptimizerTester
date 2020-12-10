@@ -30,20 +30,20 @@ func QError(r EstResult) float64 {
 
 /*
 	PError is:
-		if est > true && true > 0: -(est/true)+1
-		if est > true && true == 0: -((est+1)/(true+1))+1
-		if est <= true && est > 0: (true/est)-1
-		if est <= true && est == 0: ((true+1)/(est+1))-1
+		if est > true && true > 0: (est/true) - 1
+		if est > true && true == 0: ((est+1)/(true+1)) - 1
+		if est <= true && est > 0: 1 - (true/est)
+		if est <= true && est == 0: 1 - ((true+1)/(est+1))
 */
 func PError(r EstResult) float64 {
 	if r.EstCard > r.TrueCard && r.TrueCard > 0 {
-		return -(r.EstCard / r.TrueCard) + 1
+		return (r.EstCard / r.TrueCard) - 1
 	} else if r.EstCard > r.TrueCard && r.TrueCard == 0 {
-		return -((r.EstCard + 1) / (r.TrueCard + 1)) + 1
+		return ((r.EstCard + 1) / (r.TrueCard + 1)) - 1
 	} else if r.EstCard <= r.TrueCard && r.EstCard > 0 {
-		return (r.TrueCard / r.EstCard) - 1
+		return 1 - (r.TrueCard / r.EstCard)
 	} else {
-		return ((r.TrueCard + 1) / (r.EstCard + 1)) - 1
+		return 1 - ((r.TrueCard + 1) / (r.EstCard + 1))
 	}
 }
 
@@ -109,6 +109,7 @@ func extractEstResultForV4(analyzeResults [][]string) (EstResult, error) {
 	if err != nil {
 		return EstResult{}, errors.Trace(err)
 	}
+
 	return EstResult{
 		EstCard:  est,
 		TrueCard: act,

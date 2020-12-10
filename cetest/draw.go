@@ -33,7 +33,7 @@ func GenPErrorBarChartsReport(opt Option, collector EstResultCollector) error {
 			md.WriteString("| ---- | ---- | ---- | ---- | ---- |\n")
 			for insIdx, ins := range opt.Instances {
 				stats := analyzePError(collector.EstResults(insIdx, dsIdx, qtIdx), true)
-				md.WriteString(fmt.Sprintf("| %v | %.4f | %.4f | %.4f | %.4f |\n",
+				md.WriteString(fmt.Sprintf("| %v | %v | %v | %v | %v |\n",
 					ins.Label, stats["tot"], stats["p50"], stats["p90"], stats["max"]))
 			}
 
@@ -42,7 +42,7 @@ func GenPErrorBarChartsReport(opt Option, collector EstResultCollector) error {
 			md.WriteString("| ---- | ---- | ---- | ---- | ---- |\n")
 			for insIdx, ins := range opt.Instances {
 				stats := analyzePError(collector.EstResults(insIdx, dsIdx, qtIdx), false)
-				md.WriteString(fmt.Sprintf("| %v | %.4f | %.4f | %.4f | %.4f |\n",
+				md.WriteString(fmt.Sprintf("| %v | %v | %v | %v | %v |\n",
 					ins.Label, stats["tot"], stats["p50"], stats["p90"], stats["max"]))
 			}
 			md.WriteString("\n")
@@ -51,7 +51,7 @@ func GenPErrorBarChartsReport(opt Option, collector EstResultCollector) error {
 	return ioutil.WriteFile(path.Join(opt.ReportDir, "report.md"), md.Bytes(), 0666)
 }
 
-func analyzePError(results []EstResult, isOverEst bool) map[string]float64 {
+func analyzePError(results []EstResult, isOverEst bool) map[string]string {
 	pes := make([]float64, 0, len(results))
 	for i := range results {
 		pe := PError(results[i])
@@ -69,18 +69,18 @@ func analyzePError(results []EstResult, isOverEst bool) map[string]float64 {
 	}
 	n := len(pes)
 	if n == 0 {
-		return map[string]float64{
-			"tot": 0,
-			"max": 0,
-			"p50": 0,
-			"p90": 0,
+		return map[string]string{
+			"tot": "0",
+			"max": "-",
+			"p50": "-",
+			"p90": "-",
 		}
 	}
-	return map[string]float64{
-		"tot": float64(n),
-		"max": pes[n-1],
-		"p50": pes[n/2],
-		"p90": pes[(n*9)/10],
+	return map[string]string{
+		"tot": fmt.Sprintf("%v", n),
+		"max": fmt.Sprintf("%.3f", pes[n-1]),
+		"p50": fmt.Sprintf("%.3f", pes[n/2]),
+		"p90": fmt.Sprintf("%.3f", pes[(n*9)/10]),
 	}
 }
 
