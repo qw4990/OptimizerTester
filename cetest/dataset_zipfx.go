@@ -22,7 +22,8 @@ type datasetZipFX struct {
 func newDatasetZipFX(opt DatasetOpt, ins tidb.Instance) (Dataset, error) {
 	tbs := []string{"tint", "tdouble", "tstring", "tdatetime"}
 	cols := [][]string{{"a", "b"}, {"a", "b"}, {"a", "b"}, {"a", "b"}}
-	used := [][]bool{{true, true}, {true, true}, {true, true}, {true, true}}
+	//used := [][]bool{{true, true}, {true, true}, {true, true}, {true, true}}
+	used := [][]bool{{true, true}, {false, false}, {false, false}, {false, false}}
 	base, err := newBaseDataset(opt, ins, tbs, cols, used)
 	return &datasetZipFX{base}, err
 }
@@ -75,7 +76,8 @@ func (ds *datasetZipFX) GenCases(n int, qt QueryType) ([]string, error) {
 }
 
 func (ds *datasetZipFX) randMCVLCVPointQuery(isMCV bool) string {
-	tbIdx := rand.Intn(4)
+	//tbIdx := rand.Intn(4)
+	tbIdx := rand.Intn(1)
 	colIdx := rand.Intn(2)
 	val := ""
 	if isMCV {
@@ -83,17 +85,19 @@ func (ds *datasetZipFX) randMCVLCVPointQuery(isMCV bool) string {
 	} else {
 		val = ds.lcv[tbIdx][colIdx][rand.Intn(len(ds.lcv[tbIdx][colIdx]))]
 	}
-	return fmt.Sprintf("SELECT * FROM %v WHERE %v=%v", ds.tbs[tbIdx], ds.cols[colIdx], val)
+	return fmt.Sprintf("SELECT * FROM %v WHERE %v=%v", ds.tbs[tbIdx], ds.cols[tbIdx][colIdx], val)
 }
 
 func (ds *datasetZipFX) randRangeQueryEQPrefix() string {
-	tbIdx := rand.Intn(4)
+	//tbIdx := rand.Intn(4)
+	tbIdx := rand.Intn(1)
 	cond := fmt.Sprintf("%v AND %v", ds.randPointColCond(tbIdx, 0), ds.randRangeColCond(tbIdx, 1))
 	return fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
 }
 
 func (ds *datasetZipFX) randRangeQuery(cols int) string {
-	tbIdx := rand.Intn(4)
+	//tbIdx := rand.Intn(4)
+	tbIdx := rand.Intn(1)
 	cond := ""
 	if cols == 1 {
 		cond = ds.randRangeColCond(tbIdx, rand.Intn(2))
@@ -104,7 +108,8 @@ func (ds *datasetZipFX) randRangeQuery(cols int) string {
 }
 
 func (ds *datasetZipFX) randPointQuery(cols int) string {
-	tbIdx := rand.Intn(4)
+	//tbIdx := rand.Intn(4)
+	tbIdx := rand.Intn(1)
 	cond := ""
 	if cols == 1 {
 		cond = ds.randPointColCond(tbIdx, rand.Intn(2))

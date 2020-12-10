@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"strings"
 	"sync"
+	"time"
 )
 
 type DatasetOpt struct {
@@ -165,9 +166,14 @@ func RunCETestWithConfig(confPath string) error {
 }
 
 func runOneEstCase(ins tidb.Instance, query string) (r EstResult, re error) {
-	rows, err := ins.Query("EXPLAIN ANALYZE " + query)
+	begin := time.Now()
+	sql := "EXPLAIN ANALYZE " + query
+	rows, err := ins.Query(sql)
 	if err != nil {
 		return EstResult{}, errors.Trace(err)
+	}
+	if time.Since(begin) > time.Millisecond*50 {
+		fmt.Printf("[SLOW QUERY] %v cost %v\n", sql, time.Since(begin))
 	}
 	defer func() {
 		if err := rows.Close(); err != nil && re == nil {
