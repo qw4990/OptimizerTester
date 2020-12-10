@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/pingcap/errors"
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
