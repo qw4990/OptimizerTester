@@ -4,19 +4,57 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
-	"github.com/pingcap/errors"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/pingcap/errors"
 )
 
 // Please see https://docs.google.com/document/d/1ynUQsaFsOUhr7Zp_Ke0aexe1r688GpFjFh4_D1ihy4w/edit# 
 // to get more details about ZipfX dataset.
 
-func GenZipfXData(x float64, n int, dir string) error {
+type zipfXOpt struct {
+	x   float64
+	n   int64
+	ndv int64
+}
+
+func parseZipfXOpt(args string) (opt zipfXOpt, err error) {
+	kvs := strings.Split(args, ",")
+	for _, kv := range kvs {
+		tmp := strings.Split(kv, "=")
+		if len(tmp) != 2 {
+			return opt, errors.Errorf("invalid kv=%v", kv)
+		}
+		k, v := tmp[0], tmp[1]
+		switch strings.ToLower(k) {
+		case "x":
+			if opt.x, err = strconv.ParseFloat(v, 64); err != nil {
+				return opt, errors.Errorf("invalid x=%v", v)
+			}
+		case "n":
+			if opt.n, err = strconv.ParseInt(v, 10, 64); err != nil {
+				return opt, errors.Errorf("invalid n=%v", v)
+			}
+		case "ndv":
+			if opt.ndv, err = strconv.ParseInt(v, 10, 64); err != nil {
+				return opt, errors.Errorf("invalid ndv=%v", v)
+			}
+		}
+	}
+	return
+}
+
+func GenZipfXData(args, dir string) error {
+	opt, err := parseZipfXOpt(args)
+	if err != nil {
+		return err
+	}
 	if err := GenZipfXSchema(dir); err != nil {
 		return err
 	}
@@ -32,9 +70,8 @@ func GenZipfXData(x float64, n int, dir string) error {
 		defer f.Close()
 		w := csv.NewWriter(f)
 
-		const maxVal = uint64(100000) // TODO: make it configurable
 		r := rand.New(rand.NewSource(time.Now().Unix()))
-		zipfx := rand.NewZipf(r, x, 2, maxVal)
+		zipfx := rand.NewZipf(r, opt.x, 2, uint64(opt.ndv))
 		cols := make([]string, 0, 2)
 
 		intFactor := uint64(r.Intn(1000)) + 1
@@ -43,7 +80,7 @@ func GenZipfXData(x float64, n int, dir string) error {
 		datetimeFactor, _ := time.Parse(layout, "2010-01-01 00:00:00")
 		datetimeFactor = datetimeFactor.Add(time.Hour * time.Duration(r.Intn(1000)))
 		strFactor := uint64(r.Intn(10000)) + 1
-		for i := 0; i < n; i++ {
+		for i := 0; i < int(opt.n); i++ {
 			cols = cols[:0]
 			c1, c2 := zipfx.Uint64(), zipfx.Uint64()
 			switch tp {

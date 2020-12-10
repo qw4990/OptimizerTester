@@ -8,20 +8,20 @@ import (
 
 func newDatagenCmd() *cobra.Command {
 	var dataset string
-	var n int
+	var args string
 	var dir string
 	cmd := &cobra.Command{
 		Use:   "datagen",
 		Short: "Data Generator",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if dataset == "" || n <= 0 || dir == "" {
+			if dataset == "" || dir == "" {
 				return errors.Errorf("invalid arguments")
 			}
-			return datagen.Generate(dataset, n, dir)
+			return datagen.Generate(dataset, args, dir)
 		},
 	}
 	cmd.Flags().StringVar(&dataset, "dataset", "", "Dataset name to generate")
-	cmd.Flags().IntVar(&n, "n", 100000, "Number of rows to generate")
+	cmd.Flags().StringVar(&args, "args", "", "Arguments")
 	cmd.Flags().StringVar(&dir, "dir", "", "Directory to store data")
 	return cmd
 }
