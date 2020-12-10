@@ -1,11 +1,11 @@
-query-types = ["most-common-value-point-query(10%)"]
+query-types = ["most-common-value-point-query"]
 report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
-n = 1000
+n = 10000
 
 [[datasets]]
 name = "zipfx"
 db = "zipfx"
-label = "zipf1.5-1000000rows"
+label = "zipf-1000000rows"
 
 [[instances]]
 addr = "127.0.0.1"

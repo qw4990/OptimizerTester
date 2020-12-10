@@ -69,7 +69,12 @@ func analyzePError(results []EstResult, isOverEst bool) map[string]float64 {
 	}
 	n := len(pes)
 	if n == 0 {
-		pes = append(pes, 0)
+		return map[string]float64{
+			"tot": 0,
+			"max": 0,
+			"p50": 0,
+			"p90": 0,
+		}
 	}
 	return map[string]float64{
 		"tot": float64(n),
