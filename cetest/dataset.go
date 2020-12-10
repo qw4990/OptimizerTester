@@ -42,8 +42,8 @@ type baseDataset struct {
 	tbs         []string
 	cols        [][]string
 	orderedVals [][][]string // [tbIdx][colIdx][]string{ordered values}
-	mcv         [][][]string
-	lcv         [][][]string
+	mcv         [][][]string // mcv[i][j] means the most common values in (table[i], column[j]) from the dataset
+	lcv         [][][]string // least common values
 	percent     int
 }
 
@@ -72,7 +72,7 @@ func (ds *baseDataset) init() error {
 	ds.orderedVals = ds.valArray()
 	for i, tb := range ds.tbs {
 		for j, col := range ds.cols[i] {
-			sql := fmt.Sprintf("SELECT %v FROM t%v ORDER BY %v", col, tb, col)
+			sql := fmt.Sprintf("SELECT %v FROM %v ORDER BY %v", col, tb, col)
 			begin := time.Now()
 			rows, err := ds.ins.Query(sql)
 			if err != nil {
@@ -180,6 +180,7 @@ func (ds *baseDataset) GenCases(n int, qt QueryType) ([]string, error) {
 	return sqls, nil
 }
 
+// todo: Support query conditions with more than two columns
 func (ds *baseDataset) randPointQuery(cols int) string {
 	tbIdx := rand.Intn(ds.numTbs)
 	cond := ""
@@ -197,6 +198,7 @@ func (ds *baseDataset) randPointColCond(tbIdx, colIdx int) string {
 	return fmt.Sprintf("%v = %v", ds.cols[tbIdx][colIdx], val)
 }
 
+// todo: Support query conditions with more than two columns
 func (ds *baseDataset) randRangeQuery(cols int) string {
 	tbIdx := rand.Intn(ds.numTbs)
 	cond := ""

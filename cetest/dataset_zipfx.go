@@ -16,7 +16,7 @@ type datasetZipFX struct {
 }
 
 func newDatasetZipFX(opt DatasetOpt, ins tidb.Instance) (Dataset, error) {
-	tbs := []string{"int", "double", "string", "datetime"}
+	tbs := []string{"tint", "tdouble", "tstring", "tdatetime"}
 	cols := [][]string{{"a", "b"}, {"a", "b"}}
 	base, err := newBaseDataset(opt, ins, tbs, cols)
 	return &datasetZipFX{base}, err
