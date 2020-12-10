@@ -85,10 +85,10 @@ func (qt *QueryType) UnmarshalText(text []byte) error {
 }
 
 var datasetMap = map[string]func(DatasetOpt, tidb.Instance) (Dataset, error){ // read-only
-	"zipx": newDatasetZipFX,
-	"imdb": newDatasetIMDB,
-	"tpcc": newDatasetTPCC,
-	"mock": newDatasetMock,
+	"zipfx": newDatasetZipFX,
+	"imdb":  newDatasetIMDB,
+	"tpcc":  newDatasetTPCC,
+	"mock":  newDatasetMock,
 }
 
 func RunCETestWithConfig(confPath string) error {
@@ -113,6 +113,7 @@ func RunCETestWithConfig(confPath string) error {
 
 	datasets := make([][]Dataset, len(instances)*len(opt.Datasets)) // DS[insIdx][dsIdx]
 	for i := range instances {
+		datasets[i] = make([]Dataset, len(opt.Datasets))
 		for j := range opt.Datasets {
 			var err error
 			datasets[i][j], err = datasetMap[opt.Datasets[j].Name](opt.Datasets[j], instances[i])

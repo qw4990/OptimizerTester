@@ -3,14 +3,9 @@ report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTe
 n = 1000
 
 [[datasets]]
-name = "mock"
-db = "mock"
-label = "mock1G"
-
-[[datasets]]
-name = "mock"
-db = "mock"
-label = "mock10G"
+name = "zipfx"
+db = "zipfx"
+label = "zipf1.5-1000000rows"
 
 [[instances]]
 addr = "127.0.0.1"
@@ -19,9 +14,3 @@ user = "root"
 password = ""
 label = "master"
 
-[[instances]]
-addr = "127.0.0.1"
-port = 4000
-user = "root"
-password = ""
-label = "v4.0.12"

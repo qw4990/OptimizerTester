@@ -80,7 +80,7 @@ func (ds *baseDataset) init() error {
 			if !ds.used[i][j] {
 				continue
 			}
-			sql := fmt.Sprintf("SELECT %v FROM %v ORDER BY %v", col, tb, col)
+			sql := fmt.Sprintf("SELECT DISTINCT(%v) FROM %v ORDER BY %v", col, tb, col)
 			begin := time.Now()
 			rows, err := ds.ins.Query(sql)
 			if err != nil {
@@ -92,7 +92,7 @@ func (ds *baseDataset) init() error {
 				if err := rows.Scan(&val); err != nil {
 					return err
 				}
-				ds.orderedVals[i][j] = append(ds.orderedVals[i][j], val.(string))
+				ds.orderedVals[i][j] = append(ds.orderedVals[i][j], fmt.Sprintf("%v", val))
 			}
 			rows.Close()
 		}
@@ -107,6 +107,7 @@ func (ds *baseDataset) init() error {
 			return err
 		}
 		var total int
+		row.Next()
 		if err := row.Scan(&total); err != nil {
 			return err
 		}
@@ -128,9 +129,9 @@ func (ds *baseDataset) init() error {
 						return err
 					}
 					if order == "DESC" {
-						ds.mcv[i][j] = append(ds.mcv[i][j], val.(string))
+						ds.mcv[i][j] = append(ds.mcv[i][j], fmt.Sprintf("%v", val))
 					} else {
-						ds.lcv[i][j] = append(ds.lcv[i][j], val.(string))
+						ds.lcv[i][j] = append(ds.lcv[i][j], fmt.Sprintf("%v", val))
 					}
 				}
 				rows.Close()
