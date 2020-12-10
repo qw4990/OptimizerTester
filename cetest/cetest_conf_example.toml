@@ -1,6 +1,6 @@
 query-types = ["most-common-value-point-query"]
 report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
-n = 10
+n = 10000
 
 [[datasets]]
 name = "zipfx"

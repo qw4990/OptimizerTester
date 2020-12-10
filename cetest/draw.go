@@ -167,7 +167,7 @@ func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx
 	}
 
 	pngPath := path.Join(prefixDir, fmt.Sprintf("%v-%v-bar.png", opt.QueryTypes[qtIdx], opt.Datasets[dsIdx].Label))
-	return pngPath, p.Save(vg.Points(10*w*float64(len(opt.Instances)+1)), 3*vg.Inch, pngPath)
+	return pngPath, p.Save(vg.Points(w+(w+5)*float64(len(boundaries)*len(opt.Instances))), 3*vg.Inch, pngPath)
 }
 
 func adaptiveBoundaries(opt Option, collector EstResultCollector, qtIdx, dsIdx int, calFunc func(EstResult) float64) []float64 {
