@@ -1,7 +1,9 @@
 package cetest
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/pingcap/errors"
 	"math/rand"
 	"time"
 
@@ -86,15 +88,12 @@ func (ds *baseDataset) init() error {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("[%v-%v] %v cost %v\n", ds.opt.Label, ds.ins.Opt().Label, sql, time.Since(begin))
-			for rows.Next() {
-				var val interface{}
-				if err := rows.Scan(&val); err != nil {
-					return err
-				}
-				ds.orderedVals[i][j] = append(ds.orderedVals[i][j], fmt.Sprintf("%v", val))
+			fmt.Printf("[%v-%v] init values %v cost %v\n", ds.opt.Label, ds.ins.Opt().Label, sql, time.Since(begin))
+			vals, err := drainOneColValsToStr(rows)
+			if err != nil {
+				return err
 			}
-			rows.Close()
+			ds.orderedVals[i][j] = vals
 		}
 	}
 
@@ -119,22 +118,22 @@ func (ds *baseDataset) init() error {
 				continue
 			}
 			for _, order := range []string{"DESC", "ASC"} {
-				rows, err := ds.ins.Query(fmt.Sprintf("SELECT %v FROM %v GROUP BY %v ORDER BY COUNT(*) %v LIMIT %v", col, tb, col, order, limit))
+				sql := fmt.Sprintf("SELECT %v FROM %v GROUP BY %v ORDER BY COUNT(*) %v LIMIT %v", col, tb, col, order, limit)
+				begin := time.Now()
+				rows, err := ds.ins.Query(sql)
 				if err != nil {
 					return err
 				}
-				for rows.Next() {
-					var val interface{}
-					if err := rows.Scan(&val); err != nil {
-						return err
-					}
-					if order == "DESC" {
-						ds.mcv[i][j] = append(ds.mcv[i][j], fmt.Sprintf("%v", val))
-					} else {
-						ds.lcv[i][j] = append(ds.lcv[i][j], fmt.Sprintf("%v", val))
-					}
+				fmt.Printf("[%v-%v] init MCV/LCV %v cost %v\n", ds.opt.Label, ds.ins.Opt().Label, sql, time.Since(begin))
+				vals, err := drainOneColValsToStr(rows)
+				if err != nil {
+					return err
 				}
-				rows.Close()
+				if order == "DESC" {
+					ds.mcv[i][j] = vals
+				} else {
+					ds.lcv[i][j] = vals
+				}
 			}
 		}
 	}
@@ -158,4 +157,42 @@ func (ds *baseDataset) randRangeColCond(tbIdx, colIdx int) string {
 	val1Idx := rand.Intn(len(ds.orderedVals[tbIdx][colIdx]))
 	val2Idx := rand.Intn(len(ds.orderedVals[tbIdx][colIdx])-val1Idx) + val1Idx
 	return fmt.Sprintf("%v>=%v AND %v<=%v", ds.cols[tbIdx][colIdx], ds.orderedVals[tbIdx][colIdx][val1Idx], ds.cols[tbIdx][colIdx], ds.orderedVals[tbIdx][colIdx][val2Idx])
+}
+
+func drainOneColValsToStr(rows *sql.Rows) ([]string, error) {
+	defer rows.Close()
+	buf := make([]string, 0, 512)
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, err
+	}
+	switch colTypes[0].DatabaseTypeName() {
+	case "INT":
+		for rows.Next() {
+			var i int
+			if err := rows.Scan(&i); err != nil {
+				return nil, err
+			}
+			buf = append(buf, fmt.Sprintf("%v", i))
+		}
+	case "DOUBLE":
+		for rows.Next() {
+			var i float64
+			if err := rows.Scan(&i); err != nil {
+				return nil, err
+			}
+			buf = append(buf, fmt.Sprintf("%.4f", i))
+		}
+	case "VARCHAR", "DATETIME":
+		for rows.Next() {
+			var i string
+			if err := rows.Scan(&i); err != nil {
+				return nil, err
+			}
+			buf = append(buf, fmt.Sprintf("'%v'", i))
+		}
+	default:
+		return nil, errors.Errorf("unsupported database type=%v", colTypes[0].DatabaseTypeName())
+	}
+	return buf, nil
 }

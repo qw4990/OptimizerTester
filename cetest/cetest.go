@@ -2,13 +2,12 @@ package cetest
 
 import (
 	"fmt"
-	"io/ioutil"
-	"strings"
-	"sync"
-
 	"github.com/BurntSushi/toml"
 	"github.com/pingcap/errors"
 	"github.com/qw4990/OptimizerTester/tidb"
+	"io/ioutil"
+	"strings"
+	"sync"
 )
 
 type DatasetOpt struct {
@@ -139,7 +138,10 @@ func RunCETestWithConfig(confPath string) error {
 						insErrs[insIdx] = err
 						return
 					}
-					for _, q := range qs {
+					for i, q := range qs {
+						if i%1000 == 0 || i%(opt.N/20) == 0 {
+							fmt.Printf("[%v-%v-%v] progress (%v/%v)\n", opt.Datasets[dsIdx].Label, opt.Instances[insIdx].Label, qt.String(), i, opt.N)
+						}
 						estResult, err := runOneEstCase(ins, q)
 						if err != nil {
 							insErrs[insIdx] = err

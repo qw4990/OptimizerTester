@@ -1,4 +1,4 @@
-query-types = ["multi-cols-point-query", "single-col-point-query"]
+query-types = ["most-common-value-point-query(10%)"]
 report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
 n = 1000
 
