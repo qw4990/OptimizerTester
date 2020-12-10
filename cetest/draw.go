@@ -137,11 +137,11 @@ func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx
 	p.Y.Label.Text = "frequency of occurrence"
 
 	var w float64 = 20
-	boundaries := []float64{-10, -4, -2, -1, 0, 1, 2, 4, 10}
+	boundaries := adaptiveBoundaries(opt, collector, qtIdx, dsIdx, calFunc)
 	for insIdx, ins := range opt.Instances {
 		rs := collector.EstResults(insIdx, dsIdx, qtIdx)
 		freqs := distribution(rs, boundaries, calFunc)
-		bar, err := plotter.NewBarChart(plotter.Values(freqs), vg.Points(w))
+		bar, err := plotter.NewBarChart(plotter.Values(freqs[1:len(freqs)-2]), vg.Points(w))
 		if err != nil {
 			return "", errors.Trace(err)
 		}
@@ -151,12 +151,10 @@ func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx
 		p.Legend.Add(ins.Label, bar)
 	}
 	p.Legend.Top = true
-	xNames := make([]string, 0, len(boundaries)+1)
-	xNames = append(xNames, fmt.Sprintf("<%v", boundaries[0]))
+	xNames := make([]string, 0, len(boundaries)-1)
 	for i := 1; i < len(boundaries); i++ {
 		xNames = append(xNames, fmt.Sprintf("[%v, %v)", boundaries[i-1], boundaries[i]))
 	}
-	xNames = append(xNames, fmt.Sprintf(">=%v", boundaries[len(boundaries)-1]))
 	p.NominalX(xNames...)
 
 	prefixDir := opt.ReportDir
@@ -170,6 +168,44 @@ func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx
 
 	pngPath := path.Join(prefixDir, fmt.Sprintf("%v-%v-bar.png", opt.QueryTypes[qtIdx], opt.Datasets[dsIdx].Label))
 	return pngPath, p.Save(vg.Points(10*w*float64(len(opt.Instances)+1)), 3*vg.Inch, pngPath)
+}
+
+func adaptiveBoundaries(opt Option, collector EstResultCollector, qtIdx, dsIdx int, calFunc func(EstResult) float64) []float64 {
+	lower, upper := 1.0, -1.0
+	for insIdx := range opt.Instances {
+		rs := collector.EstResults(insIdx, dsIdx, qtIdx)
+		for _, r := range rs {
+			v := calFunc(r)
+			if v < lower {
+				lower = v
+			}
+			if v > upper {
+				upper = v
+			}
+		}
+	}
+	if lower > -2.0 {
+		lower = -2.0
+	}
+	if upper < 2.0 {
+		upper = 2.0
+	}
+	xs := make([]float64, 0, 8)
+	x := -1.0
+	for x > lower {
+		xs = append(xs, x)
+		x *= 2
+	}
+	xs = append(xs, x)
+	x = 1.0
+	for x < upper {
+		xs = append(xs, x)
+		x *= 2
+	}
+	xs = append(xs, x)
+	xs = append(xs, 0)
+	sort.Float64s(xs)
+	return xs
 }
 
 func distribution(rs []EstResult, boundaries []float64, calFunc func(EstResult) float64) []float64 {
