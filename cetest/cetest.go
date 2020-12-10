@@ -84,15 +84,6 @@ func (qt *QueryType) UnmarshalText(text []byte) error {
 	return errors.Errorf("unknown query-type=%v", string(text))
 }
 
-// Dataset ...
-type Dataset interface {
-	// Name returns the name of the dataset
-	Name() string
-
-	// GenCases ...
-	GenCases(n int, qt QueryType) (queries []string, err error)
-}
-
 var datasetMap = map[string]func(DatasetOpt, tidb.Instance) (Dataset, error){ // read-only
 	"zipx": newDatasetZipFX,
 	"imdb": newDatasetIMDB,
