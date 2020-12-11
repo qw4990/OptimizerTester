@@ -165,39 +165,3 @@ func RunCETestWithConfig(confPath string) error {
 	return GenPErrorBarChartsReport(opt, collector)
 }
 
-func runOneEstCase(ins tidb.Instance, query string) (r EstResult, re error) {
-	begin := time.Now()
-	sql := "EXPLAIN ANALYZE " + query
-	rows, err := ins.Query(sql)
-	if err != nil {
-		return EstResult{}, errors.Trace(err)
-	}
-	if time.Since(begin) > time.Millisecond*50 {
-		fmt.Printf("[SLOW QUERY] %v cost %v\n", sql, time.Since(begin))
-	}
-	defer func() {
-		if err := rows.Close(); err != nil && re == nil {
-			re = err
-		}
-	}()
-
-	types, err := rows.ColumnTypes()
-	if err != nil {
-		return EstResult{}, err
-	}
-	nCols := len(types)
-	results := make([][]string, 0, 8)
-	for rows.Next() {
-		cols := make([]string, nCols)
-		ptrs := make([]interface{}, nCols)
-		for i := 0; i < nCols; i++ {
-			ptrs[i] = &cols[i]
-		}
-		if err := rows.Scan(ptrs...); err != nil {
-			return EstResult{}, err
-		}
-		results = append(results, cols)
-	}
-
-	return ExtractEstResult(results, ins.Version())
-}

@@ -17,7 +17,7 @@ type Dataset interface {
 	Name() string
 
 	// GenEstResults ...
-	GenEstResults(n int, insts []tidb.Instance, qts []QueryType) ([][][]EstResult, error)
+	GenEstResults(n int, insts []tidb.Instance, qts []QueryType) (DatasetEstResulter, error)
 }
 
 type DatasetEstResulter interface {
@@ -40,7 +40,7 @@ func (d *datasetEstResulter) EstResults(insIdx, qtIdx int) []EstResult {
 	return d.rs[insIdx][qtIdx]
 }
 
-func NewDatasetEstResulter(insCap, qtCap int) EstResultCollector {
+func NewDatasetEstResulter(insCap, qtCap int) DatasetEstResulter {
 	rs := make([][][]EstResult, insCap)
 	for i := range rs {
 		rs[i] = make([][]EstResult, qtCap)

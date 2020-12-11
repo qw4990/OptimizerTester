@@ -26,11 +26,27 @@ func (ds *datasetMock) Name() string {
 	return "Mock"
 }
 
-func (ds *datasetMock) GenEstResults(n int, insts []tidb.Instance, qts []QueryType) ([][][]EstResult, error) {
-	return nil, nil
+func (ds *datasetMock) GenEstResults(n int, insts []tidb.Instance, qts []QueryType) (DatasetEstResulter, error) {
+	collector := NewDatasetEstResulter(len(insts), len(qts))
+	for qtIdx, qt := range qts {
+		qs, err := ds.genCases(n, qt)
+		if err != nil {
+			return nil, err
+		}
+		for insIdx, ins := range insts {
+			for _, q := range qs {
+				estResult, err := getEstResultFromExplainAnalyze(ins, q)
+				if err != nil {
+					return nil, err
+				}
+				collector.AddEstResult(insIdx, qtIdx, estResult)
+			}
+		}
+	}
+	return collector, nil
 }
 
-func (ds *datasetMock) GenCases(n int, qt QueryType) ([]string, error) {
+func (ds *datasetMock) genCases(n int, qt QueryType) ([]string, error) {
 	sqls := make([]string, 0, n)
 	switch qt {
 	case QTSingleColPointQuery:
