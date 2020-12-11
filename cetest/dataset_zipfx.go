@@ -32,6 +32,10 @@ func (ds *datasetZipFX) Name() string {
 	return "ZipFX"
 }
 
+func (ds *datasetZipFX) GenEstResults(n int, insts []tidb.Instance, qts []QueryType) ([][][]EstResult, error) {
+	return nil, nil
+}
+
 func (ds *datasetZipFX) GenCases(n int, qt QueryType) ([]string, error) {
 	if ds.orderedVals == nil {
 		if err := ds.init(); err != nil {

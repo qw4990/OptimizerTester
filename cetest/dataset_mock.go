@@ -26,6 +26,10 @@ func (ds *datasetMock) Name() string {
 	return "Mock"
 }
 
+func (ds *datasetMock) GenEstResults(n int, insts []tidb.Instance, qts []QueryType) ([][][]EstResult, error) {
+	return nil, nil
+}
+
 func (ds *datasetMock) GenCases(n int, qt QueryType) ([]string, error) {
 	sqls := make([]string, 0, n)
 	switch qt {

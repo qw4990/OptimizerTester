@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/pingcap/errors"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/qw4990/OptimizerTester/tidb"
@@ -15,8 +16,38 @@ type Dataset interface {
 	// Name returns the name of the dataset
 	Name() string
 
-	// GenCases ...
-	GenCases(n int, qt QueryType) (queries []string, err error)
+	// GenEstResults ...
+	GenEstResults(n int, insts []tidb.Instance, qts []QueryType) ([][][]EstResult, error)
+}
+
+type DatasetEstResulter interface {
+	AddEstResult(insIdx, qtIdx int, r EstResult)
+	EstResults(insIdx, qtIdx int) []EstResult
+}
+
+type datasetEstResulter struct {
+	rs   [][][]EstResult
+	lock sync.RWMutex
+}
+
+func (d *datasetEstResulter) AddEstResult(insIdx, qtIdx int, r EstResult) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	d.rs[insIdx][qtIdx] = append(d.rs[insIdx][qtIdx], r)
+}
+
+func (d *datasetEstResulter) EstResults(insIdx, qtIdx int) []EstResult {
+	return d.rs[insIdx][qtIdx]
+}
+
+func NewDatasetEstResulter(insCap, qtCap int) EstResultCollector {
+	rs := make([][][]EstResult, insCap)
+	for i := range rs {
+		rs[i] = make([][]EstResult, qtCap)
+	}
+	c := new(datasetEstResulter)
+	c.rs = rs
+	return c
 }
 
 type baseDataset struct {

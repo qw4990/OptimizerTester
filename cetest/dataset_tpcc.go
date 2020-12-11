@@ -15,6 +15,10 @@ func (ds *datasetTPCC) Name() string {
 	return "TPCC"
 }
 
+func (ds *datasetTPCC) GenEstResults(n int, insts []tidb.Instance, qts []QueryType) ([][][]EstResult, error) {
+	return nil, nil
+}
+
 func (ds *datasetTPCC) GenCases(int, QueryType) ([]string, error) {
 	//  TODO
 	return nil, nil

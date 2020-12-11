@@ -15,7 +15,6 @@ func (ds *datasetIMDB) Name() string {
 	return "IMDB"
 }
 
-func (ds *datasetIMDB) GenCases(int, QueryType) ([]string, error) {
-	// TODO
+func (ds *datasetIMDB) GenEstResults(n int, insts []tidb.Instance, qts []QueryType) ([][][]EstResult, error) {
 	return nil, nil
 }
