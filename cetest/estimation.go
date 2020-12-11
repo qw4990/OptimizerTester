@@ -1,12 +1,7 @@
 package cetest
 
 import (
-	"strconv"
-	"strings"
 	"sync"
-
-	"github.com/pingcap/errors"
-	"github.com/qw4990/OptimizerTester/tidb"
 )
 
 type EstResult struct {
@@ -54,6 +49,7 @@ func Bias(r EstResult) float64 {
 
 type EstResultCollector interface {
 	AddEstResult(insIdx, dsIdx, qtIdx int, r EstResult)
+	AppendEstResults(insIdx, dsIdx, qtIdx int, ers []EstResult)
 	EstResults(insIdx, dsIdx, qtIdx int) []EstResult
 }
 
@@ -73,6 +69,12 @@ func NewEstResultCollector(insCap, dsCap, qtCap int) EstResultCollector {
 type estResultCollector struct {
 	rs   [][][][]EstResult
 	lock sync.RWMutex
+}
+
+func (c *estResultCollector) AppendEstResults(insIdx, dsIdx, qtIdx int, ers []EstResult) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.rs[insIdx][dsIdx][qtIdx] = append(c.rs[insIdx][dsIdx][qtIdx], ers...)
 }
 
 func (c *estResultCollector) AddEstResult(insIdx, dsIdx, qtIdx int, r EstResult) {

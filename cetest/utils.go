@@ -11,7 +11,7 @@ import (
 
 func getEstRowFromExplain(ins tidb.Instance, query string) (estRow float64, re error) {
 	begin := time.Now()
-	sql := "EXPLAIN" + query
+	sql := "EXPLAIN " + query
 	rows, err := ins.Query(sql)
 	if err != nil {
 		return 0, errors.Trace(err)
@@ -47,8 +47,23 @@ func getEstRowFromExplain(ins tidb.Instance, query string) (estRow float64, re e
 }
 
 func ExtractEstRows(explainResults [][]string, version string) (float64, error) {
-	panic("TODO")
+	if tidb.ToComparableVersion(version) < tidb.ToComparableVersion("v3.0.0") { // v2.x
+		panic("TODO")
+	} else if tidb.ToComparableVersion(version) < tidb.ToComparableVersion("v4.0.0") { // v3.x
+		panic("TODO")
+	} else if tidb.ToComparableVersion(version) < tidb.ToComparableVersion("v5.0.0") { // v4.x
+		return extractEstRowsForV4(explainResults)
+	}
 	return 0, nil
+}
+
+func extractEstRowsForV4(explainResults [][]string) (float64, error) {
+	// | IndexReader_6          | 0.00    | root      |                             | index:IndexRangeScan_5 
+	est, err := strconv.ParseFloat(explainResults[0][1], 64)
+	if err != nil {
+		return 0, errors.Trace(err)
+	}
+	return est, nil
 }
 
 func getEstResultFromExplainAnalyze(ins tidb.Instance, query string) (r EstResult, re error) {

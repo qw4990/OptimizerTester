@@ -3,6 +3,8 @@ package cetest
 import (
 	"fmt"
 	"math/rand"
+	"strings"
+	"time"
 
 	"github.com/pingcap/errors"
 	"github.com/qw4990/OptimizerTester/tidb"
@@ -16,109 +18,137 @@ import (
 		CREATE TABLE tdatetime (a DATETIME, b DATATIME, KEY(a), KEY(a, b))
 */
 type datasetZipFX struct {
-	baseDataset
+	opt DatasetOpt
+	tv  *tableVals
+
+	tbs  []string
+	cols [][]string
 }
 
-func newDatasetZipFX(opt DatasetOpt, ins tidb.Instance) (Dataset, error) {
+func newDatasetZipFX(opt DatasetOpt) (Dataset, error) {
 	tbs := []string{"tint", "tdouble", "tstring", "tdatetime"}
 	cols := [][]string{{"a", "b"}, {"a", "b"}, {"a", "b"}, {"a", "b"}}
-	//used := [][]bool{{true, true}, {true, true}, {true, true}, {true, true}}
-	used := [][]bool{{true, true}, {false, false}, {false, false}, {false, false}}
-	base, err := newBaseDataset(opt, ins, tbs, cols, used)
-	return &datasetZipFX{base}, err
+	for _, arg := range opt.Args {
+		tmp := strings.Split(arg, "=")
+		if len(tmp) != 2 {
+			return nil, errors.Errorf("invalid argument %v", arg)
+		}
+		k, v := tmp[0], tmp[1]
+		switch strings.ToLower(k) {
+		case "types":
+			vs := strings.Split(v, ",")
+			newTbs := make([]string, 0, len(tbs))
+			newCols := make([][]string, 0, len(cols))
+			for tbIdx, tb := range tbs {
+				picked := false
+				for _, v := range vs {
+					if strings.Contains(tb, strings.ToLower(v)) {
+						picked = true
+						break
+					}
+				}
+				if picked {
+					newTbs = append(newTbs, tbs[tbIdx])
+					newCols = append(newCols, cols[tbIdx])
+				}
+				tbs, cols = newTbs, newCols
+			}
+		default:
+			return nil, errors.Errorf("unknown argument %v", arg)
+		}
+	}
+
+	return &datasetZipFX{
+		opt:  opt,
+		tbs:  tbs,
+		cols: cols,
+	}, nil
 }
 
 func (ds *datasetZipFX) Name() string {
 	return "ZipFX"
 }
 
-func (ds *datasetZipFX) GenEstResults(n int, insts []tidb.Instance, qts []QueryType) ([][][]EstResult, error) {
-	return nil, nil
-}
+func (ds *datasetZipFX) Init(instances []tidb.Instance, queryTypes []QueryType) (err error) {
+	// if there are multiple instances, assume they have the same data
+	if err := instances[0].Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
+		return err
+	}
+	if ds.tv, err = newTableVals(instances[0], ds.tbs, ds.cols); err != nil {
+		return
+	}
 
-func (ds *datasetZipFX) GenCases(n int, qt QueryType) ([]string, error) {
-	if ds.orderedVals == nil {
-		if err := ds.init(); err != nil {
-			return nil, err
+	for _, ins := range instances {
+		if err := ins.Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
+			return err
+		}
+		for _, tb := range ds.tbs {
+			if err = ins.Exec(fmt.Sprintf("ANALYZE TABLE %v", tb)); err != nil {
+				return
+			}
 		}
 	}
 
-	sqls := make([]string, 0, n)
+	return
+}
+
+func (ds *datasetZipFX) GenEstResults(n int, ins tidb.Instance, qt QueryType) ([]EstResult, error) {
+	defer func(begin time.Time) {
+		fmt.Printf("[GenEstResults] n=%v, dataset=%v, ins=%v, qt=%v, cost=%v\n", n, ds.opt.Label, ins.Opt().Label, qt, time.Since(begin))
+	}(time.Now())
+
+	if err := ins.Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
+		return nil, err
+	}
+
+	ers := make([]EstResult, 0, n)
 	switch qt {
-	case QTSingleColPointQuery:
+	case QTSingleColPointQueryOnCol:
 		for i := 0; i < n; i++ {
-			sqls = append(sqls, ds.randPointQuery(1))
+			tbIdx := rand.Intn(len(ds.tbs))
+			cond, act := ds.tv.randPointCond(tbIdx, 1)
+			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
+			est, err := getEstRowFromExplain(ins, q)
+			if err != nil {
+				return nil, err
+			}
+			ers = append(ers, EstResult{est, float64(act)})
 		}
-	case QTMultiColsPointQuery:
+	case QTSingleColPointQueryOnIndex:
 		for i := 0; i < n; i++ {
-			sqls = append(sqls, ds.randPointQuery(2))
+			tbIdx := rand.Intn(len(ds.tbs))
+			cond, act := ds.tv.randPointCond(tbIdx, 0)
+			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
+			est, err := getEstRowFromExplain(ins, q)
+			if err != nil {
+				return nil, err
+			}
+			ers = append(ers, EstResult{est, float64(act)})
 		}
-	case QTSingleColRangeQuery:
+	case QTSingleColMCVPointOnCol:
 		for i := 0; i < n; i++ {
-			sqls = append(sqls, ds.randRangeQuery(1))
+			tbIdx := rand.Intn(len(ds.tbs))
+			cond, act := ds.tv.randMCVPointCond(tbIdx, 1, 10)
+			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
+			est, err := getEstRowFromExplain(ins, q)
+			if err != nil {
+				return nil, err
+			}
+			ers = append(ers, EstResult{est, float64(act)})
 		}
-	case QTMultiColsRangeQuery:
+	case QTSingleColMCVPointOnIndex:
 		for i := 0; i < n; i++ {
-			sqls = append(sqls, ds.randRangeQuery(2))
-		}
-	case QTMultiColsRangeQueryEQPrefix:
-		for i := 0; i < n; i++ {
-			sqls = append(sqls, ds.randRangeQueryEQPrefix())
-		}
-	case QTMCVPointQuery:
-		for i := 0; i < n; i++ {
-			sqls = append(sqls, ds.randMCVLCVPointQuery(true))
-		}
-	case QTLCVPointQuery:
-		for i := 0; i < n; i++ {
-			sqls = append(sqls, ds.randMCVLCVPointQuery(false))
+			tbIdx := rand.Intn(len(ds.tbs))
+			cond, act := ds.tv.randMCVPointCond(tbIdx, 0, 10)
+			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
+			est, err := getEstRowFromExplain(ins, q)
+			if err != nil {
+				return nil, err
+			}
+			ers = append(ers, EstResult{est, float64(act)})
 		}
 	default:
-		return nil, errors.Errorf("unsupported query-type=%v", qt.String())
+		return nil, errors.Errorf("unsupported query-type=%v", qt)
 	}
-	return sqls, nil
-}
-
-func (ds *datasetZipFX) randMCVLCVPointQuery(isMCV bool) string {
-	//tbIdx := rand.Intn(4)
-	tbIdx := rand.Intn(1)
-	colIdx := rand.Intn(2)
-	val := ""
-	if isMCV {
-		val = ds.mcv[tbIdx][colIdx][rand.Intn(len(ds.mcv[tbIdx][colIdx]))]
-	} else {
-		val = ds.lcv[tbIdx][colIdx][rand.Intn(len(ds.lcv[tbIdx][colIdx]))]
-	}
-	return fmt.Sprintf("SELECT * FROM %v WHERE %v=%v", ds.tbs[tbIdx], ds.cols[tbIdx][colIdx], val)
-}
-
-func (ds *datasetZipFX) randRangeQueryEQPrefix() string {
-	//tbIdx := rand.Intn(4)
-	tbIdx := rand.Intn(1)
-	cond := fmt.Sprintf("%v AND %v", ds.randPointColCond(tbIdx, 0), ds.randRangeColCond(tbIdx, 1))
-	return fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-}
-
-func (ds *datasetZipFX) randRangeQuery(cols int) string {
-	//tbIdx := rand.Intn(4)
-	tbIdx := rand.Intn(1)
-	cond := ""
-	if cols == 1 {
-		cond = ds.randRangeColCond(tbIdx, rand.Intn(2))
-	} else {
-		cond = fmt.Sprintf("%v AND %v", ds.randRangeColCond(tbIdx, 0), ds.randRangeColCond(tbIdx, 1))
-	}
-	return fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-}
-
-func (ds *datasetZipFX) randPointQuery(cols int) string {
-	//tbIdx := rand.Intn(4)
-	tbIdx := rand.Intn(1)
-	cond := ""
-	if cols == 1 {
-		cond = ds.randPointColCond(tbIdx, rand.Intn(2))
-	} else {
-		cond = fmt.Sprintf("%v AND %v", ds.randPointColCond(tbIdx, 0), ds.randPointColCond(tbIdx, 1))
-	}
-	return fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
+	return ers, nil
 }

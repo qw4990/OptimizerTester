@@ -2,19 +2,20 @@ package cetest
 
 import (
 	"fmt"
-	"github.com/BurntSushi/toml"
-	"github.com/pingcap/errors"
-	"github.com/qw4990/OptimizerTester/tidb"
 	"io/ioutil"
 	"strings"
 	"sync"
-	"time"
+
+	"github.com/BurntSushi/toml"
+	"github.com/pingcap/errors"
+	"github.com/qw4990/OptimizerTester/tidb"
 )
 
 type DatasetOpt struct {
-	Name  string `toml:"name"`
-	DB    string `toml:"db"`
-	Label string `toml:"label"`
+	Name  string   `toml:"name"`
+	DB    string   `toml:"db"`
+	Label string   `toml:"label"`
+	Args  []string `toml:"args"`
 }
 
 type Option struct {
@@ -43,30 +44,18 @@ func DecodeOption(content string) (Option, error) {
 type QueryType int
 
 const (
-	QTSingleColPointQuery         QueryType = iota // where c = ?; where c in (?, ... ?)
-	QTSingleColRangeQuery                          // where c >= ?; where c > ? and c < ?
-	QTMultiColsPointQuery                          // where c1 = ? and c2 = ?
-	QTMultiColsRangeQueryEQPrefix                  // where c1 = ? and c2 > ?
-	QTMultiColsRangeQuery                          // where c1 > ? and c2 > ?
-	QTMCVPointQuery                                // point query on most common values (10%)
-	QTLCVPointQuery                                // point query on least common values (10%)
-	QTJoinEQ                                       // where t1.c = t2.c
-	QTJoinNonEQ                                    // where t1.c > t2.c
-	QTGroup                                        // group by c
+	QTSingleColPointQueryOnCol QueryType = iota
+	QTSingleColPointQueryOnIndex
+	QTSingleColMCVPointOnCol
+	QTSingleColMCVPointOnIndex
 )
 
 var (
 	qtNameMap = map[QueryType]string{
-		QTSingleColPointQuery:         "single-col-point-query",
-		QTSingleColRangeQuery:         "single-col-range-query",
-		QTMultiColsPointQuery:         "multi-cols-point-query",
-		QTMultiColsRangeQueryEQPrefix: "multi-cols-range-query-eq-prefix",
-		QTMultiColsRangeQuery:         "multi-cols-range-query",
-		QTMCVPointQuery:               "most-common-value-point-query",
-		QTLCVPointQuery:               "least-common-value-point-query",
-		QTJoinEQ:                      "join-eq",
-		QTJoinNonEQ:                   "join-non-eq",
-		QTGroup:                       "group",
+		QTSingleColPointQueryOnCol:   "single-col-point-query-on-col",
+		QTSingleColPointQueryOnIndex: "single-col-point-query-on-index",
+		QTSingleColMCVPointOnCol:     "single-col-mcv-point-on-col",
+		QTSingleColMCVPointOnIndex:   "single-col-mcv-point-on-index",
 	}
 )
 
@@ -84,11 +73,8 @@ func (qt *QueryType) UnmarshalText(text []byte) error {
 	return errors.Errorf("unknown query-type=%v", string(text))
 }
 
-var datasetMap = map[string]func(DatasetOpt, tidb.Instance) (Dataset, error){ // read-only
+var datasetMap = map[string]func(DatasetOpt) (Dataset, error){ // read-only
 	"zipfx": newDatasetZipFX,
-	"imdb":  newDatasetIMDB,
-	"tpcc":  newDatasetTPCC,
-	"mock":  newDatasetMock,
 }
 
 func RunCETestWithConfig(confPath string) error {
@@ -111,15 +97,15 @@ func RunCETestWithConfig(confPath string) error {
 		}
 	}()
 
-	datasets := make([][]Dataset, len(instances)*len(opt.Datasets)) // DS[insIdx][dsIdx]
-	for i := range instances {
-		datasets[i] = make([]Dataset, len(opt.Datasets))
-		for j := range opt.Datasets {
-			var err error
-			datasets[i][j], err = datasetMap[opt.Datasets[j].Name](opt.Datasets[j], instances[i])
-			if err != nil {
-				return err
-			}
+	datasets := make([]Dataset, len(opt.Datasets))
+	for i := range opt.Datasets {
+		var err error
+		datasets[i], err = datasetMap[opt.Datasets[i].Name](opt.Datasets[i])
+		if err != nil {
+			return err
+		}
+		if err := datasets[i].Init(instances, opt.QueryTypes); err != nil {
+			return err
 		}
 	}
 
@@ -132,24 +118,14 @@ func RunCETestWithConfig(confPath string) error {
 			defer wg.Done()
 			ins := instances[insIdx]
 			for dsIdx := range opt.Datasets {
-				ds := datasets[insIdx][dsIdx]
+				ds := datasets[dsIdx]
 				for qtIdx, qt := range opt.QueryTypes {
-					qs, err := ds.GenCases(opt.N, qt)
+					ers, err := ds.GenEstResults(opt.N, ins, qt)
 					if err != nil {
 						insErrs[insIdx] = err
 						return
 					}
-					for i, q := range qs {
-						if i%1000 == 0 || (opt.N >= 20 && (i%(opt.N/20)) == 0) {
-							fmt.Printf("[%v-%v-%v] progress (%v/%v)\n", opt.Datasets[dsIdx].Label, opt.Instances[insIdx].Label, qt.String(), i, opt.N)
-						}
-						estResult, err := runOneEstCase(ins, q)
-						if err != nil {
-							insErrs[insIdx] = err
-							return
-						}
-						collector.AddEstResult(insIdx, dsIdx, qtIdx, estResult)
-					}
+					collector.AppendEstResults(insIdx, dsIdx, qtIdx, ers)
 				}
 			}
 		}(insIdx)
@@ -164,4 +140,3 @@ func RunCETestWithConfig(confPath string) error {
 
 	return GenPErrorBarChartsReport(opt, collector)
 }
-

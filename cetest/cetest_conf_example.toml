@@ -1,11 +1,12 @@
-query-types = ["most-common-value-point-query"]
+query-types = ["single-col-point-query-on-col", "single-col-point-query-on-index", "single-col-mcv-point-on-col", "single-col-mcv-point-on-index"]
 report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
 n = 10000
 
 [[datasets]]
 name = "zipfx"
 db = "zipfx"
-label = "zipf-1000000rows"
+label = "zipf-1e6rows-int"
+args = ["types=int"]
 
 [[instances]]
 addr = "127.0.0.1"

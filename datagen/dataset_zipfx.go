@@ -115,10 +115,10 @@ func uint2Str(v uint64) string {
 }
 
 func GenZipfXSchema(dir string) error {
-	content := `CREATE TABLE tint ( a INT, b INT, KEY(a), KEY(b), KEY(a, b) );
-CREATE TABLE tdouble ( a DOUBLE, b DOUBLE, KEY(a), KEY(b), KEY(a, b) );
-CREATE TABLE tstring ( a VARCHAR(32), b VARCHAR(32), KEY(a), KEY(b), KEY(a, b) );
-CREATE TABLE tdatetime (a DATETIME, b DATETIME, KEY(a), KEY(b), KEY(a, b));
+	content := `CREATE TABLE tint ( a INT, b INT, KEY(a), KEY(a, b) );
+CREATE TABLE tdouble ( a DOUBLE, b DOUBLE, KEY(a), KEY(a, b) );
+CREATE TABLE tstring ( a VARCHAR(32), b VARCHAR(32), KEY(a), KEY(a, b) );
+CREATE TABLE tdatetime (a DATETIME, b DATETIME, KEY(a), KEY(a, b));
 `
 	schemaFile := path.Join(dir, "zipfx_schema.sql")
 	return ioutil.WriteFile(schemaFile, []byte(content), 0666)

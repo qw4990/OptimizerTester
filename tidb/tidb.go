@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/pingcap/errors"
@@ -32,12 +33,20 @@ type instance struct {
 }
 
 func (ins *instance) Exec(sql string) error {
+	begin := time.Now()
 	_, err := ins.db.Exec(sql)
+	if time.Since(begin) > time.Millisecond*10 {
+		fmt.Printf("[SLOW-QUERY]access %v with SQL %v cost %v\n", ins.opt.Label, sql, time.Since(begin))
+	}
 	return errors.Trace(err)
 }
 
 func (ins *instance) Query(query string) (*sql.Rows, error) {
+	begin := time.Now()
 	rows, err := ins.db.Query(query)
+	if time.Since(begin) > time.Millisecond*10 {
+		fmt.Printf("[SLOW-QUERY]access %v with SQL %v cost %v\n", ins.opt.Label, query, time.Since(begin))
+	}
 	return rows, errors.Trace(err)
 }
 
