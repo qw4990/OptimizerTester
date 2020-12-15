@@ -75,6 +75,7 @@ func (qt *QueryType) UnmarshalText(text []byte) error {
 
 var datasetMap = map[string]func(DatasetOpt) (Dataset, error){ // read-only
 	"zipfx": newDatasetZipFX,
+	"imdb":  newDatasetIMDB,
 }
 
 func RunCETestWithConfig(confPath string) error {
