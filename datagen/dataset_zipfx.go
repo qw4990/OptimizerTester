@@ -60,6 +60,10 @@ func GenZipfXData(args, dir string) error {
 	}
 
 	tbNames := []string{"tint", "tdouble", "tstring", "tdatetime"}
+	ints1 := prepareIntNDV(int(opt.ndv))
+	ints2 := prepareIntNDV(int(opt.ndv))
+	doubles1 := prepareDoubleNDV(int(opt.ndv))
+	doubles2 := prepareDoubleNDV(int(opt.ndv))
 	for tbIdx, tp := range []DATAType{TypeInt, TypeDouble, TypeString, TypeDateTime} {
 		tb := tbNames[tbIdx]
 		csvFile := path.Join(dir, fmt.Sprintf("zipfx_%v.csv", tb))
@@ -74,24 +78,25 @@ func GenZipfXData(args, dir string) error {
 		zipfx := rand.NewZipf(r, opt.x, 2, uint64(opt.ndv))
 		cols := make([]string, 0, 2)
 
-		intFactor := uint64(r.Intn(1000)) + 1
-		doubleFactor := float64(r.Intn(1000))
-		const layout = "2006-01-02 15:04:05"
-		datetimeFactor, _ := time.Parse(layout, "2010-01-01 00:00:00")
-		datetimeFactor = datetimeFactor.Add(time.Hour * time.Duration(r.Intn(1000)))
 		strFactor := uint64(r.Intn(10000)) + 1
 		for i := 0; i < int(opt.n); i++ {
 			cols = cols[:0]
 			c1, c2 := zipfx.Uint64(), zipfx.Uint64()
 			switch tp {
 			case TypeInt:
-				cols = append(cols, strconv.FormatUint(intFactor+c1, 10), strconv.FormatUint(intFactor+c2, 10))
+				cols = append(cols, strconv.FormatUint(uint64(ints1[c1]), 10), strconv.FormatUint(uint64(ints2[c2]), 10))
 			case TypeDouble:
-				cols = append(cols, strconv.FormatFloat(doubleFactor/float64(c1+1), 'f', 4, 64),
-					strconv.FormatFloat(doubleFactor/float64(c2+1), 'f', 4, 64))
+				cols = append(cols, strconv.FormatFloat(doubles1[c1], 'f', 4, 64),
+					strconv.FormatFloat(doubles2[c2], 'f', 4, 64))
 			case TypeDateTime:
-				t1 := datetimeFactor.Add(time.Second * time.Duration(c1))
-				t2 := datetimeFactor.Add(time.Second * time.Duration(c2))
+				const layout = "2006-01-02 15:04:05"
+				begin, _ := time.Parse(layout, "2000-01-01 00:00:00")
+				end, _ := time.Parse(layout, "2100-01-01 00:00:00")
+				interval := end.Sub(begin)
+				datetimeFactor := interval / time.Duration(opt.ndv)
+
+				t1 := begin.Add(datetimeFactor * time.Duration(c1))
+				t2 := begin.Add(datetimeFactor * time.Duration(c2))
 				cols = append(cols, t1.Format(layout), t2.Format(layout))
 			case TypeString:
 				cols = append(cols, uint2Str(c1+strFactor), uint2Str(c2+strFactor))
@@ -103,6 +108,22 @@ func GenZipfXData(args, dir string) error {
 		w.Flush()
 	}
 	return GenZipfXLoadSQL(dir)
+}
+
+func prepareIntNDV(ndv int) []int {
+	ints := make([]int, ndv)
+	for i := range ints {
+		ints[i] = rand.Intn(int(2e9))
+	}
+	return ints
+}
+
+func prepareDoubleNDV(ndv int) []float64 {
+	doubles := make([]float64, ndv)
+	for i := range doubles {
+		doubles[i] = rand.Float64() * 2e9
+	}
+	return doubles
 }
 
 func uint2Str(v uint64) string {

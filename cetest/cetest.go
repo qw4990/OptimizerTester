@@ -3,6 +3,8 @@ package cetest
 import (
 	"fmt"
 	"io/ioutil"
+	"math"
+	"sort"
 	"strings"
 	"sync"
 
@@ -139,5 +141,27 @@ func RunCETestWithConfig(confPath string) error {
 		}
 	}
 
-	return GenPErrorBarChartsReport(opt, collector)
+	if err := GenPErrorBarChartsReport(opt, collector); err != nil {
+		return err
+	}
+
+	return printTop10BadCases(opt, collector)
+}
+
+func printTop10BadCases(opt Option, collector EstResultCollector) error {
+	for insIdx := range opt.Instances {
+		for dsIdx := range opt.Datasets {
+			for qtIdx := range opt.QueryTypes {
+				ers := collector.EstResults(insIdx, dsIdx, qtIdx)
+				sort.Slice(ers, func(i, j int) bool {
+					return math.Abs(PError(ers[i])) > math.Abs(PError(ers[j]))
+				})
+				for i := 0; i < 10 && i < len(ers); i++ {
+					fmt.Printf("[BadCase-%v-%v-%v]: %v, perror=%v\n", opt.Instances[insIdx].Label, opt.Datasets[dsIdx].Label,
+						opt.QueryTypes[qtIdx].String(), ers[i].SQL, PError(ers[i]))
+				}
+			}
+		}
+	}
+	return nil
 }

@@ -112,7 +112,7 @@ func (ds *datasetZipFX) GenEstResults(n int, ins tidb.Instance, qt QueryType) ([
 			if err != nil {
 				return nil, err
 			}
-			ers = append(ers, EstResult{est, float64(act)})
+			ers = append(ers, EstResult{q, est, float64(act)})
 		}
 	case QTSingleColPointQueryOnIndex:
 		for i := 0; i < n; i++ {
@@ -123,7 +123,7 @@ func (ds *datasetZipFX) GenEstResults(n int, ins tidb.Instance, qt QueryType) ([
 			if err != nil {
 				return nil, err
 			}
-			ers = append(ers, EstResult{est, float64(act)})
+			ers = append(ers, EstResult{q, est, float64(act)})
 		}
 	case QTSingleColMCVPointOnCol:
 		for i := 0; i < n; i++ {
@@ -134,7 +134,7 @@ func (ds *datasetZipFX) GenEstResults(n int, ins tidb.Instance, qt QueryType) ([
 			if err != nil {
 				return nil, err
 			}
-			ers = append(ers, EstResult{est, float64(act)})
+			ers = append(ers, EstResult{q, est, float64(act)})
 		}
 	case QTSingleColMCVPointOnIndex:
 		for i := 0; i < n; i++ {
@@ -145,7 +145,7 @@ func (ds *datasetZipFX) GenEstResults(n int, ins tidb.Instance, qt QueryType) ([
 			if err != nil {
 				return nil, err
 			}
-			ers = append(ers, EstResult{est, float64(act)})
+			ers = append(ers, EstResult{q, est, float64(act)})
 		}
 	default:
 		return nil, errors.Errorf("unsupported query-type=%v", qt)

@@ -5,6 +5,7 @@ import (
 )
 
 type EstResult struct {
+	SQL      string
 	EstCard  float64 // estimated cardinality
 	TrueCard float64 // true cardinality
 }
