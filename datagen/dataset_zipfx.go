@@ -60,10 +60,10 @@ func GenZipfXData(args, dir string) error {
 	}
 
 	tbNames := []string{"tint", "tdouble", "tstring", "tdatetime"}
-	ints1 := prepareIntNDV(int(opt.ndv))
-	ints2 := prepareIntNDV(int(opt.ndv))
-	doubles1 := prepareDoubleNDV(int(opt.ndv))
-	doubles2 := prepareDoubleNDV(int(opt.ndv))
+	ints1 := prepareIntNDV(int(opt.ndv+1))
+	ints2 := prepareIntNDV(int(opt.ndv+1))
+	doubles1 := prepareDoubleNDV(int(opt.ndv+1))
+	doubles2 := prepareDoubleNDV(int(opt.ndv+1))
 	for tbIdx, tp := range []DATAType{TypeInt, TypeDouble, TypeString, TypeDateTime} {
 		tb := tbNames[tbIdx]
 		csvFile := path.Join(dir, fmt.Sprintf("zipfx_%v.csv", tb))
