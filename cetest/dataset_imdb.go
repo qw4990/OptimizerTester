@@ -3,6 +3,7 @@ package cetest
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/pingcap/errors"
@@ -13,8 +14,9 @@ type datasetIMDB struct {
 	opt DatasetOpt
 	tv  *tableVals
 
-	tbs  []string
-	cols [][]string
+	disableAnalyze bool
+	tbs            []string
+	cols           [][]string
 }
 
 func (ds *datasetIMDB) Name() string {
@@ -24,10 +26,25 @@ func (ds *datasetIMDB) Name() string {
 func newDatasetIMDB(opt DatasetOpt) (Dataset, error) {
 	tbs := []string{"title", "cast_info"}
 	cols := [][]string{{"phonetic_code"}, {"movie_id", "person_id"}}
+	disableAnalyze := false
+	for _, arg := range opt.Args {
+		tmp := strings.Split(arg, "=")
+		if len(tmp) != 2 {
+			return nil, errors.Errorf("invalid argument %v", arg)
+		}
+		k := tmp[0]
+		switch strings.ToLower(k) {
+		case "analyze":
+			disableAnalyze = true
+		default:
+			return nil, errors.Errorf("unknown argument %v", arg)
+		}
+	}
 	return &datasetIMDB{
-		opt:  opt,
-		tbs:  tbs,
-		cols: cols,
+		opt:            opt,
+		disableAnalyze: disableAnalyze,
+		tbs:            tbs,
+		cols:           cols,
 	}, nil
 }
 
@@ -40,13 +57,15 @@ func (ds *datasetIMDB) Init(instances []tidb.Instance, queryTypes []QueryType) (
 		return
 	}
 
-	for _, ins := range instances {
-		if err := ins.Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
-			return err
-		}
-		for _, tb := range ds.tbs {
-			if err = ins.Exec(fmt.Sprintf("ANALYZE TABLE %v", tb)); err != nil {
-				return
+	if !ds.disableAnalyze {
+		for _, ins := range instances {
+			if err := ins.Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
+				return err
+			}
+			for _, tb := range ds.tbs {
+				if err = ins.Exec(fmt.Sprintf("ANALYZE TABLE %v", tb)); err != nil {
+					return
+				}
 			}
 		}
 	}
