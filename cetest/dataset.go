@@ -54,7 +54,7 @@ func newIntArray(cols [][]string) [][][]int {
 func fillTableVals(ins tidb.Instance, tv *tableVals) error {
 	for i, tb := range tv.tbs {
 		for j, col := range tv.cols[i] {
-			q := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v GROUP BY %v ORDER BY COUNT(*)", col, tb, col)
+			q := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v where %v is not null GROUP BY %v ORDER BY COUNT(*)", col, tb, col, col)
 			rows, err := ins.Query(q)
 			if err != nil {
 				return err
