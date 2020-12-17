@@ -15,6 +15,7 @@ type datasetIMDB struct {
 	tv  *tableVals
 
 	disableAnalyze bool
+	ignoreError    bool
 	tbs            []string
 	cols           [][]string
 	colTypes       [][]DATATYPE
@@ -29,6 +30,7 @@ func newDatasetIMDB(opt DatasetOpt) (Dataset, error) {
 	cols := [][]string{{"phonetic_code"}, {"movie_id", "person_id"}}
 	colTypes := [][]DATATYPE{{DTString}, {DTInt, DTInt}}
 	disableAnalyze := false
+	ignoreError := false
 	for _, arg := range opt.Args {
 		tmp := strings.Split(arg, "=")
 		if len(tmp) != 2 {
@@ -38,6 +40,8 @@ func newDatasetIMDB(opt DatasetOpt) (Dataset, error) {
 		switch strings.ToLower(k) {
 		case "analyze":
 			disableAnalyze = true
+		case "error":
+			ignoreError = true
 		default:
 			return nil, errors.Errorf("unknown argument %v", arg)
 		}
@@ -45,6 +49,7 @@ func newDatasetIMDB(opt DatasetOpt) (Dataset, error) {
 	return &datasetIMDB{
 		opt:            opt,
 		disableAnalyze: disableAnalyze,
+		ignoreError:    ignoreError,
 		tbs:            tbs,
 		cols:           cols,
 		colTypes:       colTypes,
@@ -95,6 +100,9 @@ func (ds *datasetIMDB) GenEstResults(n int, ins tidb.Instance, qt QueryType) ([]
 			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
 			est, err := getEstRowFromExplain(ins, q)
 			if err != nil {
+				if ds.ignoreError {
+					continue
+				}
 				return nil, err
 			}
 			ers = append(ers, EstResult{q, est, float64(act)})
@@ -108,6 +116,9 @@ func (ds *datasetIMDB) GenEstResults(n int, ins tidb.Instance, qt QueryType) ([]
 			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
 			est, err := getEstRowFromExplain(ins, q)
 			if err != nil {
+				if ds.ignoreError {
+					continue
+				}
 				return nil, err
 			}
 			ers = append(ers, EstResult{q, est, float64(act)})
@@ -120,6 +131,9 @@ func (ds *datasetIMDB) GenEstResults(n int, ins tidb.Instance, qt QueryType) ([]
 			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
 			est, err := getEstRowFromExplain(ins, q)
 			if err != nil {
+				if ds.ignoreError {
+					continue
+				}
 				return nil, err
 			}
 			ers = append(ers, EstResult{q, est, float64(act)})
@@ -133,6 +147,9 @@ func (ds *datasetIMDB) GenEstResults(n int, ins tidb.Instance, qt QueryType) ([]
 			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
 			est, err := getEstRowFromExplain(ins, q)
 			if err != nil {
+				if ds.ignoreError {
+					continue
+				}
 				return nil, err
 			}
 			ers = append(ers, EstResult{q, est, float64(act)})
