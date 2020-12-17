@@ -24,11 +24,13 @@ type datasetZipFX struct {
 	disableAnalyze bool
 	tbs            []string
 	cols           [][]string
+	colTypes       [][]DATATYPE
 }
 
 func newDatasetZipFX(opt DatasetOpt) (Dataset, error) {
 	tbs := []string{"tint", "tdouble", "tstring", "tdatetime"}
 	cols := [][]string{{"a", "b"}, {"a", "b"}, {"a", "b"}, {"a", "b"}}
+	colTypes := [][]DATATYPE{{DTInt, DTInt}, {DTDouble, DTDouble}, {DTString, DTString}, {DTInt, DTInt}}
 	disableAnalyze := false
 	for _, arg := range opt.Args {
 		tmp := strings.Split(arg, "=")
@@ -67,6 +69,7 @@ func newDatasetZipFX(opt DatasetOpt) (Dataset, error) {
 		disableAnalyze: disableAnalyze,
 		tbs:            tbs,
 		cols:           cols,
+		colTypes:       colTypes,
 	}, nil
 }
 
@@ -79,7 +82,7 @@ func (ds *datasetZipFX) Init(instances []tidb.Instance, queryTypes []QueryType) 
 	if err := instances[0].Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
 		return err
 	}
-	if ds.tv, err = newTableVals(instances[0], ds.tbs, ds.cols); err != nil {
+	if ds.tv, err = newTableVals(instances[0], ds.tbs, ds.cols, ds.colTypes); err != nil {
 		return
 	}
 

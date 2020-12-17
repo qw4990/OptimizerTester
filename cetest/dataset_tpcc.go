@@ -36,7 +36,7 @@ func (ds *datasetTPCC) Init(instances []tidb.Instance, queryTypes []QueryType) (
 	if err := instances[0].Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
 		return err
 	}
-	if ds.tv, err = newTableVals(instances[0], ds.tbs, ds.cols); err != nil {
+	if ds.tv, err = newTableVals(instances[0], ds.tbs, ds.cols, nil); err != nil {
 		return
 	}
 

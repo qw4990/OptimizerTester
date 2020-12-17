@@ -17,6 +17,7 @@ type datasetIMDB struct {
 	disableAnalyze bool
 	tbs            []string
 	cols           [][]string
+	colTypes       [][]DATATYPE
 }
 
 func (ds *datasetIMDB) Name() string {
@@ -26,6 +27,7 @@ func (ds *datasetIMDB) Name() string {
 func newDatasetIMDB(opt DatasetOpt) (Dataset, error) {
 	tbs := []string{"title", "cast_info"}
 	cols := [][]string{{"phonetic_code"}, {"movie_id", "person_id"}}
+	colTypes := [][]DATATYPE{{DTString}, {DTInt, DTInt}}
 	disableAnalyze := false
 	for _, arg := range opt.Args {
 		tmp := strings.Split(arg, "=")
@@ -45,6 +47,7 @@ func newDatasetIMDB(opt DatasetOpt) (Dataset, error) {
 		disableAnalyze: disableAnalyze,
 		tbs:            tbs,
 		cols:           cols,
+		colTypes:       colTypes,
 	}, nil
 }
 
@@ -53,7 +56,7 @@ func (ds *datasetIMDB) Init(instances []tidb.Instance, queryTypes []QueryType) (
 	if err := instances[0].Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
 		return err
 	}
-	if ds.tv, err = newTableVals(instances[0], ds.tbs, ds.cols); err != nil {
+	if ds.tv, err = newTableVals(instances[0], ds.tbs, ds.cols, ds.colTypes); err != nil {
 		return
 	}
 

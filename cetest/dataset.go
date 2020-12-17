@@ -18,17 +18,27 @@ type Dataset interface {
 	GenEstResults(n int, ins tidb.Instance, qt QueryType) ([]EstResult, error)
 }
 
+type DATATYPE int
+
+const (
+	DTInt DATATYPE = iota
+	DTDouble
+	DTString
+)
+
 type tableVals struct {
-	tbs             []string     // table names
-	cols            [][]string   // table columns' names
+	tbs             []string   // table names
+	cols            [][]string // table columns' names
+	colTypes        [][]DATATYPE
 	orderedDistVals [][][]string // ordered distinct values
 	valActRows      [][][]int    // actual row count
 }
 
-func newTableVals(ins tidb.Instance, tbs []string, cols [][]string) (*tableVals, error) {
+func newTableVals(ins tidb.Instance, tbs []string, cols [][]string, colTypes [][]DATATYPE) (*tableVals, error) {
 	tv := &tableVals{
 		tbs:             tbs,
 		cols:            cols,
+		colTypes:        colTypes,
 		orderedDistVals: newStrArray(cols),
 		valActRows:      newIntArray(cols),
 	}
@@ -78,7 +88,11 @@ func fillTableVals(ins tidb.Instance, tv *tableVals) error {
 
 func (tv *tableVals) randPointCond(tbIdx, colIdx int) (cond string, actRows int) {
 	x := rand.Intn(len(tv.orderedDistVals[tbIdx][colIdx]))
-	cond = fmt.Sprintf("%v=%v", tv.cols[tbIdx][colIdx], tv.orderedDistVals[tbIdx][colIdx][x])
+	pattern := "%v=%v"
+	if tv.colTypes[tbIdx][colIdx] == DTString {
+		pattern = "%v='%v'"
+	}
+	cond = fmt.Sprintf(pattern, tv.cols[tbIdx][colIdx], tv.orderedDistVals[tbIdx][colIdx][x])
 	actRows = tv.valActRows[tbIdx][colIdx][x]
 	return
 }
@@ -99,7 +113,11 @@ func (tv *tableVals) randMCVPointCond(tbIdx, colIdx, percent int) (cond string, 
 	n := len(tv.orderedDistVals[tbIdx][colIdx])
 	width := n * percent / 100
 	x := rand.Intn(width) + (n - width)
-	cond = fmt.Sprintf("%v=%v", tv.cols[tbIdx][colIdx], tv.orderedDistVals[tbIdx][colIdx][x])
+	pattern := "%v=%v"
+	if tv.colTypes[tbIdx][colIdx] == DTString {
+		pattern = "%v='%v'"
+	}
+	cond = fmt.Sprintf(pattern, tv.cols[tbIdx][colIdx], tv.orderedDistVals[tbIdx][colIdx][x])
 	actRows = tv.valActRows[tbIdx][colIdx][x]
 	return
 }
