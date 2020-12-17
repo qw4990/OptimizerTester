@@ -126,7 +126,8 @@ func RunCETestWithConfig(confPath string) error {
 				for qtIdx, qt := range opt.QueryTypes {
 					ers, err := ds.GenEstResults(opt.N, ins, qt)
 					if err != nil {
-						insErrs[insIdx] = err
+						insErrs[insIdx] = fmt.Errorf("GenEstResult ins=%v, ds=%v, qt=%v, err=%v", opt.Instances[insIdx].Label,
+							opt.Datasets[dsIdx].Label, qt.String(), err)
 						return
 					}
 					collector.AppendEstResults(insIdx, dsIdx, qtIdx, ers)
