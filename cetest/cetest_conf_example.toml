@@ -1,4 +1,4 @@
-query-types = ["single-col-point-query-on-col", "single-col-point-query-on-index", "single-col-mcv-point-on-col", "single-col-mcv-point-on-index"]
+query-types = ["single-col-point-query-on-col"]
 report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
 n = 10000
 
@@ -17,7 +17,7 @@ label = "master"
 
 [[instances]]
 addr = "127.0.0.1"
-port = 4001
+port = 4000
 user = "root"
 password = ""
 label = "pg-style"
