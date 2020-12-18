@@ -40,19 +40,13 @@ func newDatasetTPCC(opt DatasetOpt) (Dataset, error) {
 
 func (ds *datasetTPCC) Init(instances []tidb.Instance, queryTypes []QueryType) (err error) {
 	// if there are multiple instances, assume they have the same data
-	if err := instances[0].Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
-		return err
-	}
-	if ds.tv, err = newTableVals(instances[0], ds.tbs, ds.cols, nil); err != nil {
+	if ds.tv, err = newTableVals(instances[0], ds.opt.DB, ds.tbs, ds.cols, nil); err != nil {
 		return
 	}
 
 	for _, ins := range instances {
-		if err := ins.Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
-			return err
-		}
 		for _, tb := range ds.tbs {
-			if err = ins.Exec(fmt.Sprintf("ANALYZE TABLE %v", tb)); err != nil {
+			if err = ins.Exec(fmt.Sprintf("ANALYZE TABLE %v.%v", ds.opt.DB, tb)); err != nil {
 				return
 			}
 		}
@@ -65,10 +59,6 @@ func (ds *datasetTPCC) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Est
 	defer func(begin time.Time) {
 		fmt.Printf("[GenEstResults] dataset=%v, ins=%v, qt=%v, cost=%v\n", ds.opt.Label, ins.Opt().Label, qt, time.Since(begin))
 	}(time.Now())
-
-	if err := ins.Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
-		return nil, err
-	}
 
 	switch qt {
 	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex:

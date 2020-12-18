@@ -30,6 +30,7 @@ const (
 )
 
 type tableVals struct {
+	db              string
 	tbs             []string   // table names
 	cols            [][]string // table columns' names
 	colTypes        [][]DATATYPE
@@ -37,8 +38,9 @@ type tableVals struct {
 	valActRows      [][][]int    // actual row count
 }
 
-func newTableVals(ins tidb.Instance, tbs []string, cols [][]string, colTypes [][]DATATYPE) (*tableVals, error) {
+func newTableVals(ins tidb.Instance, db string, tbs []string, cols [][]string, colTypes [][]DATATYPE) (*tableVals, error) {
 	tv := &tableVals{
+		db:              db,
 		tbs:             tbs,
 		cols:            cols,
 		colTypes:        colTypes,
@@ -67,7 +69,7 @@ func newIntArray(cols [][]string) [][][]int {
 func fillTableVals(ins tidb.Instance, tv *tableVals) error {
 	for i, tb := range tv.tbs {
 		for j, col := range tv.cols[i] {
-			q := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v where %v is not null GROUP BY %v ORDER BY COUNT(*)", col, tb, col, col)
+			q := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.%v where %v is not null GROUP BY %v ORDER BY COUNT(*)", col, tv.db, tb, col, col)
 			rows, err := ins.Query(q)
 			if err != nil {
 				return err
@@ -124,10 +126,15 @@ func (tv *tableVals) collectPointQueryEstResult(tbIdx, colIdx, rowBegin, rowEnd 
 				}
 
 				cond, act := tv.pointCond(tbIdx, colIdx, rowIdx)
-				q := fmt.Sprintf("SELECT * FROM %v WHERE %v", tv.tbs[tbIdx], cond)
+				q := fmt.Sprintf("SELECT * FROM %v.%v WHERE %v", tv.db, tv.tbs[tbIdx], cond)
 				est, err := getEstRowFromExplain(ins, q)
-				if err != nil && !ignoreErr {
-					panic(err)
+				if err != nil {
+					if !ignoreErr {
+						panic(err)
+					}
+					fmt.Println(q, err)
+					continue
+
 				}
 				resultCh <- EstResult{q, est, float64(act)}
 			}
