@@ -144,7 +144,7 @@ func (tv *tableVals) collectPointQueryEstResult(tbIdx, colIdx, rowBegin, rowEnd 
 		er := <-resultCh
 		ers = append(ers, er)
 		if i-rowBegin > 0 && (i-rowBegin)%5000 == 0 {
-			fmt.Printf("[CollectPointQueryEstResult] access %v-%v, progress (%v/%v)\n", tv.tbs[tbIdx], tv.cols[tbIdx][colIdx], i-rowBegin, rowEnd-rowBegin)
+			fmt.Printf("[CollectPointQueryEstResult] access ins=%v, table=%v, col=%v, progress (%v/%v)\n", ins.Opt().Label, tv.tbs[tbIdx], tv.cols[tbIdx][colIdx], i-rowBegin, rowEnd-rowBegin)
 		}
 	}
 
