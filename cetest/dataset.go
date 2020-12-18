@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/pingcap/errors"
 	"github.com/qw4990/OptimizerTester/tidb"
-	"math/rand"
 	"strings"
 )
 
@@ -17,7 +16,7 @@ type Dataset interface {
 	Init(instances []tidb.Instance, queryTypes []QueryType) error
 
 	// GenEstResults ...
-	GenEstResults(n int, ins tidb.Instance, qt QueryType) ([]EstResult, error)
+	GenEstResults(ins tidb.Instance, qt QueryType) ([]EstResult, error)
 }
 
 type DATATYPE int
@@ -88,40 +87,37 @@ func fillTableVals(ins tidb.Instance, tv *tableVals) error {
 	return nil
 }
 
-func (tv *tableVals) randPointCond(tbIdx, colIdx int) (cond string, actRows int) {
-	x := rand.Intn(len(tv.orderedDistVals[tbIdx][colIdx]))
-	pattern := "%v=%v"
-	if tv.colTypes[tbIdx][colIdx] == DTString {
-		pattern = "%v='%v'"
-	}
-	cond = fmt.Sprintf(pattern, tv.cols[tbIdx][colIdx], tv.orderedDistVals[tbIdx][colIdx][x])
-	actRows = tv.valActRows[tbIdx][colIdx][x]
+func (tv *tableVals) numNDVs(tbIdx, colIdx int) int {
+	return len(tv.orderedDistVals[tbIdx][colIdx])
+}
+
+func (tv *tableVals) pointCond(tbIdx, colIdx, rowIdx int) (cond string, actRows int) {
+	pattern := "%v=" + tv.colPlaceHolder(tbIdx, colIdx)
+	cond = fmt.Sprintf(pattern, tv.cols[tbIdx][colIdx], tv.orderedDistVals[tbIdx][colIdx][rowIdx])
+	actRows = tv.valActRows[tbIdx][colIdx][rowIdx]
 	return
 }
 
-func (tv *tableVals) randRangeCond(tbIdx, colIdx int) (cond string, actRows int) {
-	l := rand.Intn(len(tv.orderedDistVals[tbIdx][colIdx]))
-	r := rand.Intn(len(tv.orderedDistVals[tbIdx][colIdx])-1) + l
-	cond = fmt.Sprintf("%v>=%v AND %v<=%v", tv.cols[tbIdx][colIdx],
-		tv.orderedDistVals[tbIdx][colIdx][l], tv.cols[tbIdx][colIdx], tv.orderedDistVals[tbIdx][colIdx][r])
-	actRows = 0
-	for i := l; i <= r; i++ {
-		actRows += tv.valActRows[tbIdx][colIdx][i]
+func (tv *tableVals) colPlaceHolder(tbIdx, colIdx int) string {
+	if tv.colTypes[tbIdx][colIdx] == DTString {
+		return "'%v'"
 	}
-	return
+	return "%v"
 }
 
-func (tv *tableVals) randMCVPointCond(tbIdx, colIdx, percent int) (cond string, actRows int) {
-	n := len(tv.orderedDistVals[tbIdx][colIdx])
-	width := n * percent / 100
-	x := rand.Intn(width) + (n - width)
-	pattern := "%v=%v"
-	if tv.colTypes[tbIdx][colIdx] == DTString {
-		pattern = "%v='%v'"
+func (tv *tableVals) collectEstResults(tbIdx, colIdx, rowBegin, rowEnd int, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
+	for i := rowBegin; i < rowEnd; i++ {
+		cond, act := tv.pointCond(tbIdx, colIdx, i)
+		q := fmt.Sprintf("SELECT * FROM %v WHERE %v", tv.tbs[tbIdx], cond)
+		est, err := getEstRowFromExplain(ins, q)
+		if err != nil {
+			if ignoreErr {
+				continue
+			}
+			return nil, err
+		}
+		ers = append(ers, EstResult{q, est, float64(act)})
 	}
-	cond = fmt.Sprintf(pattern, tv.cols[tbIdx][colIdx], tv.orderedDistVals[tbIdx][colIdx][x])
-	actRows = tv.valActRows[tbIdx][colIdx][x]
-	return
 }
 
 type datasetArgs struct {

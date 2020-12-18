@@ -2,7 +2,6 @@ package cetest
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/pingcap/errors"
@@ -25,8 +24,8 @@ func (ds *datasetIMDB) Name() string {
 
 func newDatasetIMDB(opt DatasetOpt) (Dataset, error) {
 	tbs := []string{"title", "cast_info"}
-	cols := [][]string{{"phonetic_code"}, {"movie_id", "person_id"}}
-	colTypes := [][]DATATYPE{{DTString}, {DTInt, DTInt}}
+	cols := [][]string{{"phonetic_code"}, {"movie_id"}}
+	colTypes := [][]DATATYPE{{DTString}, {DTInt}}
 	args, err := parseArgs(opt.Args)
 	if err != nil {
 		return nil, err
@@ -65,81 +64,37 @@ func (ds *datasetIMDB) Init(instances []tidb.Instance, queryTypes []QueryType) (
 	return nil
 }
 
-func (ds *datasetIMDB) GenEstResults(n int, ins tidb.Instance, qt QueryType) ([]EstResult, error) {
+func (ds *datasetIMDB) GenEstResults(ins tidb.Instance, qt QueryType) (ers []EstResult, err error) {
 	defer func(begin time.Time) {
-		fmt.Printf("[GenEstResults] n=%v, dataset=%v, ins=%v, qt=%v, cost=%v\n", n, ds.opt.Label, ins.Opt().Label, qt, time.Since(begin))
+		fmt.Printf("[GenEstResults] dataset=%v, ins=%v, qt=%v, cost=%v\n", ds.opt.Label, ins.Opt().Label, qt, time.Since(begin))
 	}(time.Now())
 
 	if err := ins.Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
 		return nil, err
 	}
 
-	ers := make([]EstResult, 0, n)
 	switch qt {
-	case QTSingleColPointQueryOnCol:
-		for i := 0; i < n; i++ {
-			tbIdx := 0
-			cond, act := ds.tv.randPointCond(tbIdx, 0)
-			// SELECT * FROM title WHERE phonetic_code = ?
-			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-			est, err := getEstRowFromExplain(ins, q)
-			if err != nil {
-				if ds.args.ignoreError {
-					continue
-				}
-				return nil, err
-			}
-			ers = append(ers, EstResult{q, est, float64(act)})
+	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex:
+		var tbIdx, colIdx int
+		if qt == QTSingleColPointQueryOnCol {
+			tbIdx, colIdx = 0, 0 // SELECT * FROM title WHERE phonetic_code = ?
+		} else if qt == QTSingleColPointQueryOnIndex {
+			tbIdx, colIdx = 1, 0 // SELECT * FROM cast_info WHERE movie_id = ?
 		}
-	case QTSingleColPointQueryOnIndex:
-		for i := 0; i < n; i++ {
-			tbIdx := 1
-			colIdx := rand.Intn(2)
-			cond, act := ds.tv.randPointCond(tbIdx, colIdx)
-			// SELECT * FROM cast_info WHERE {movie_id|person_id} = ?
-			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-			est, err := getEstRowFromExplain(ins, q)
-			if err != nil {
-				if ds.args.ignoreError {
-					continue
-				}
-				return nil, err
-			}
-			ers = append(ers, EstResult{q, est, float64(act)})
+		numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
+		ers, err = ds.tv.collectEstResults(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
+	case QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
+		var tbIdx, colIdx int
+		if qt == QTSingleColMCVPointOnCol {
+			tbIdx, colIdx = 0, 0 // SELECT * FROM title WHERE phonetic_code = ?
+		} else if qt == QTSingleColMCVPointOnIndex {
+			tbIdx, colIdx = 1, 0 // SELECT * FROM cast_info WHERE movie_id = ?
 		}
-	case QTSingleColMCVPointOnCol:
-		for i := 0; i < n; i++ {
-			tbIdx := 0
-			cond, act := ds.tv.randMCVPointCond(tbIdx, 0, 10)
-			// SELECT * FROM title WHERE phonetic_code = ?
-			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-			est, err := getEstRowFromExplain(ins, q)
-			if err != nil {
-				if ds.args.ignoreError {
-					continue
-				}
-				return nil, err
-			}
-			ers = append(ers, EstResult{q, est, float64(act)})
-		}
-	case QTSingleColMCVPointOnIndex:
-		for i := 0; i < n; i++ {
-			tbIdx := 1
-			colIdx := rand.Intn(2)
-			cond, act := ds.tv.randMCVPointCond(tbIdx, colIdx, 10)
-			// SELECT * FROM cast_info WHERE {movie_id|person_id} = ?
-			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-			est, err := getEstRowFromExplain(ins, q)
-			if err != nil {
-				if ds.args.ignoreError {
-					continue
-				}
-				return nil, err
-			}
-			ers = append(ers, EstResult{q, est, float64(act)})
-		}
+		numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
+		numMCVs := numNDVs * 10 / 100 // 10%
+		ers, err = ds.tv.collectEstResults(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
 	default:
 		return nil, errors.Errorf("unsupported query-type=%v", qt)
 	}
-	return ers, nil
+	return
 }

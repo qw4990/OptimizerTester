@@ -2,7 +2,6 @@ package cetest
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/pingcap/errors"
@@ -13,6 +12,7 @@ type datasetTPCC struct {
 	opt DatasetOpt
 	tv  *tableVals
 
+	args datasetArgs
 	tbs  []string
 	cols [][]string
 }
@@ -23,9 +23,16 @@ func (ds *datasetTPCC) Name() string {
 
 func newDatasetTPCC(opt DatasetOpt) (Dataset, error) {
 	tbs := []string{"order_line", "customer"}
-	cols := [][]string{{"ol_amount"}, {"c_balance", "c_ytd_payment"}}
+	cols := [][]string{{"ol_amount"}, {"c_balance"}}
+
+	args, err := parseArgs(opt.Args)
+	if err != nil {
+		return nil, err
+	}
+
 	return &datasetTPCC{
 		opt:  opt,
+		args: args,
 		tbs:  tbs,
 		cols: cols,
 	}, nil
@@ -54,67 +61,35 @@ func (ds *datasetTPCC) Init(instances []tidb.Instance, queryTypes []QueryType) (
 	return nil
 }
 
-func (ds *datasetTPCC) GenEstResults(n int, ins tidb.Instance, qt QueryType) ([]EstResult, error) {
+func (ds *datasetTPCC) GenEstResults(ins tidb.Instance, qt QueryType) (ers []EstResult, err error) {
 	defer func(begin time.Time) {
-		fmt.Printf("[GenEstResults] n=%v, dataset=%v, ins=%v, qt=%v, cost=%v\n", n, ds.opt.Label, ins.Opt().Label, qt, time.Since(begin))
+		fmt.Printf("[GenEstResults] dataset=%v, ins=%v, qt=%v, cost=%v\n", ds.opt.Label, ins.Opt().Label, qt, time.Since(begin))
 	}(time.Now())
 
 	if err := ins.Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
 		return nil, err
 	}
 
-	ers := make([]EstResult, 0, n)
 	switch qt {
-	case QTSingleColPointQueryOnCol:
-		for i := 0; i < n; i++ {
-			tbIdx := 0
-			cond, act := ds.tv.randPointCond(tbIdx, 0)
-			// select * from order_line where ol_amount = ?
-			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-			est, err := getEstRowFromExplain(ins, q)
-			if err != nil {
-				return nil, err
-			}
-			ers = append(ers, EstResult{q, est, float64(act)})
+	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex:
+		var tbIdx, colIdx int
+		if qt == QTSingleColPointQueryOnCol {
+			tbIdx, colIdx = 0, 0
+		} else if qt == QTSingleColPointQueryOnIndex {
+			tbIdx, colIdx = 1, 0
 		}
-	case QTSingleColPointQueryOnIndex:
-		for i := 0; i < n; i++ {
-			tbIdx := 1
-			colIdx := rand.Intn(2)
-			cond, act := ds.tv.randPointCond(tbIdx, colIdx)
-			// select * from customer where {c_balance|c_ytd_payment} = ?
-			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-			est, err := getEstRowFromExplain(ins, q)
-			if err != nil {
-				return nil, err
-			}
-			ers = append(ers, EstResult{q, est, float64(act)})
+		numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
+		ers, err = ds.tv.collectEstResults(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
+	case QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
+		var tbIdx, colIdx int
+		if qt == QTSingleColPointQueryOnCol {
+			tbIdx, colIdx = 0, 0
+		} else if qt == QTSingleColPointQueryOnIndex {
+			tbIdx, colIdx = 1, 0
 		}
-	case QTSingleColMCVPointOnCol:
-		for i := 0; i < n; i++ {
-			tbIdx := 0
-			cond, act := ds.tv.randMCVPointCond(tbIdx, 0, 10)
-			// select * from order_line where ol_amount = ?
-			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-			est, err := getEstRowFromExplain(ins, q)
-			if err != nil {
-				return nil, err
-			}
-			ers = append(ers, EstResult{q, est, float64(act)})
-		}
-	case QTSingleColMCVPointOnIndex:
-		for i := 0; i < n; i++ {
-			tbIdx := 1
-			colIdx := rand.Intn(2)
-			cond, act := ds.tv.randMCVPointCond(tbIdx, colIdx, 10)
-			// select * from customer where {c_balance|c_ytd_payment} = ?
-			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-			est, err := getEstRowFromExplain(ins, q)
-			if err != nil {
-				return nil, err
-			}
-			ers = append(ers, EstResult{q, est, float64(act)})
-		}
+		numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
+		numMCVs := numNDVs * 10 / 100 // 10%
+		ers, err = ds.tv.collectEstResults(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
 	default:
 		return nil, errors.Errorf("unsupported query-type=%v", qt)
 	}

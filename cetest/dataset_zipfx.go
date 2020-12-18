@@ -2,7 +2,6 @@ package cetest
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -100,63 +99,41 @@ func (ds *datasetZipFX) Init(instances []tidb.Instance, queryTypes []QueryType) 
 	return
 }
 
-func (ds *datasetZipFX) GenEstResults(n int, ins tidb.Instance, qt QueryType) ([]EstResult, error) {
+func (ds *datasetZipFX) GenEstResults(ins tidb.Instance, qt QueryType) (ers []EstResult, err error) {
 	defer func(begin time.Time) {
-		fmt.Printf("[GenEstResults] n=%v, dataset=%v, ins=%v, qt=%v, cost=%v\n", n, ds.opt.Label, ins.Opt().Label, qt, time.Since(begin))
+		fmt.Printf("[GenEstResults] dataset=%v, ins=%v, qt=%v, cost=%v\n", ds.opt.Label, ins.Opt().Label, qt, time.Since(begin))
 	}(time.Now())
 
 	if err := ins.Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
 		return nil, err
 	}
 
-	ers := make([]EstResult, 0, n)
 	switch qt {
-	case QTSingleColPointQueryOnCol:
-		for i := 0; i < n; i++ {
-			tbIdx := rand.Intn(len(ds.tbs))
-			cond, act := ds.tv.randPointCond(tbIdx, 1)
-			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-			est, err := getEstRowFromExplain(ins, q)
-			if err != nil {
-				return nil, err
+	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex:
+		for tbIdx := 0; tbIdx < len(ds.tbs); tbIdx++ {
+			var colIdx int
+			if qt == QTSingleColPointQueryOnCol {
+				colIdx = 1
+			} else if qt == QTSingleColPointQueryOnIndex {
+				colIdx = 0
 			}
-			ers = append(ers, EstResult{q, est, float64(act)})
+			numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
+			ers, err = ds.tv.collectEstResults(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
 		}
-	case QTSingleColPointQueryOnIndex:
-		for i := 0; i < n; i++ {
-			tbIdx := rand.Intn(len(ds.tbs))
-			cond, act := ds.tv.randPointCond(tbIdx, 0)
-			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-			est, err := getEstRowFromExplain(ins, q)
-			if err != nil {
-				return nil, err
+	case QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
+		for tbIdx := 0; tbIdx < len(ds.tbs); tbIdx++ {
+			var colIdx int
+			if qt == QTSingleColMCVPointOnCol {
+				colIdx = 1
+			} else if qt == QTSingleColMCVPointOnIndex {
+				colIdx = 0
 			}
-			ers = append(ers, EstResult{q, est, float64(act)})
-		}
-	case QTSingleColMCVPointOnCol:
-		for i := 0; i < n; i++ {
-			tbIdx := rand.Intn(len(ds.tbs))
-			cond, act := ds.tv.randMCVPointCond(tbIdx, 1, 10)
-			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-			est, err := getEstRowFromExplain(ins, q)
-			if err != nil {
-				return nil, err
-			}
-			ers = append(ers, EstResult{q, est, float64(act)})
-		}
-	case QTSingleColMCVPointOnIndex:
-		for i := 0; i < n; i++ {
-			tbIdx := rand.Intn(len(ds.tbs))
-			cond, act := ds.tv.randMCVPointCond(tbIdx, 0, 10)
-			q := fmt.Sprintf("SELECT * FROM %v WHERE %v", ds.tbs[tbIdx], cond)
-			est, err := getEstRowFromExplain(ins, q)
-			if err != nil {
-				return nil, err
-			}
-			ers = append(ers, EstResult{q, est, float64(act)})
+			numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
+			numMCVs := numNDVs * 10 / 100 // 10%
+			ers, err = ds.tv.collectEstResults(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
 		}
 	default:
 		return nil, errors.Errorf("unsupported query-type=%v", qt)
 	}
-	return ers, nil
+	return
 }
