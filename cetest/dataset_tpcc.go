@@ -79,7 +79,7 @@ func (ds *datasetTPCC) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Est
 			tbIdx, colIdx = 1, 0
 		}
 		numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
-		ers, err = ds.tv.collectEstResults(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
+		ers, err = ds.tv.collectPointQueryEstResult(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
 	case QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
 		var tbIdx, colIdx int
 		if qt == QTSingleColPointQueryOnCol {
@@ -89,7 +89,7 @@ func (ds *datasetTPCC) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Est
 		}
 		numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
 		numMCVs := numNDVs * 10 / 100 // 10%
-		ers, err = ds.tv.collectEstResults(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
+		ers, err = ds.tv.collectPointQueryEstResult(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
 	default:
 		return nil, errors.Errorf("unsupported query-type=%v", qt)
 	}

@@ -118,7 +118,7 @@ func (ds *datasetZipFX) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Es
 				colIdx = 0
 			}
 			numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
-			ers, err = ds.tv.collectEstResults(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
+			ers, err = ds.tv.collectPointQueryEstResult(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
 		}
 	case QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
 		for tbIdx := 0; tbIdx < len(ds.tbs); tbIdx++ {
@@ -130,7 +130,7 @@ func (ds *datasetZipFX) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Es
 			}
 			numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
 			numMCVs := numNDVs * 10 / 100 // 10%
-			ers, err = ds.tv.collectEstResults(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
+			ers, err = ds.tv.collectPointQueryEstResult(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
 		}
 	default:
 		return nil, errors.Errorf("unsupported query-type=%v", qt)

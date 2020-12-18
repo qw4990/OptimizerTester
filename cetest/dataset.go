@@ -105,8 +105,12 @@ func (tv *tableVals) colPlaceHolder(tbIdx, colIdx int) string {
 	return "%v"
 }
 
-func (tv *tableVals) collectEstResults(tbIdx, colIdx, rowBegin, rowEnd int, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
+func (tv *tableVals) collectPointQueryEstResult(tbIdx, colIdx, rowBegin, rowEnd int, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
 	for i := rowBegin; i < rowEnd; i++ {
+		if i-rowBegin > 0 && (i-rowBegin)%5000 == 0 {
+			fmt.Printf("[CollectPointQueryEstResult] access %v-%v, progress (%v/%v)\n", tv.tbs[tbIdx], tv.cols[tbIdx][colIdx], i-rowBegin, rowEnd-rowBegin)
+		}
+
 		cond, act := tv.pointCond(tbIdx, colIdx, i)
 		q := fmt.Sprintf("SELECT * FROM %v WHERE %v", tv.tbs[tbIdx], cond)
 		est, err := getEstRowFromExplain(ins, q)
