@@ -5,6 +5,7 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/qw4990/OptimizerTester/tidb"
 	"strings"
+	"sync"
 )
 
 // Dataset ...
@@ -106,22 +107,49 @@ func (tv *tableVals) colPlaceHolder(tbIdx, colIdx int) string {
 }
 
 func (tv *tableVals) collectPointQueryEstResult(tbIdx, colIdx, rowBegin, rowEnd int, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
+	concurrency := 128
+	var wg sync.WaitGroup
+	taskCh := make(chan int, concurrency)
+	resultCh := make(chan EstResult, concurrency)
+	for workerID := 0; workerID < concurrency; workerID++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				rowIdx, ok := <-taskCh
+				if !ok {
+					return
+				}
+
+				cond, act := tv.pointCond(tbIdx, colIdx, rowIdx)
+				q := fmt.Sprintf("SELECT * FROM %v WHERE %v", tv.tbs[tbIdx], cond)
+				est, err := getEstRowFromExplain(ins, q)
+				if err != nil && !ignoreErr {
+					panic(err)
+				}
+				resultCh <- EstResult{q, est, float64(act)}
+			}
+		}()
+	}
+
+	wg.Add(1)
+	go func() { // task deliverer
+		defer wg.Done()
+		for i := rowBegin; i < rowEnd; i++ {
+			taskCh <- i
+		}
+	}()
+
 	for i := rowBegin; i < rowEnd; i++ {
+		er := <-resultCh
+		ers = append(ers, er)
 		if i-rowBegin > 0 && (i-rowBegin)%5000 == 0 {
 			fmt.Printf("[CollectPointQueryEstResult] access %v-%v, progress (%v/%v)\n", tv.tbs[tbIdx], tv.cols[tbIdx][colIdx], i-rowBegin, rowEnd-rowBegin)
 		}
-
-		cond, act := tv.pointCond(tbIdx, colIdx, i)
-		q := fmt.Sprintf("SELECT * FROM %v WHERE %v", tv.tbs[tbIdx], cond)
-		est, err := getEstRowFromExplain(ins, q)
-		if err != nil {
-			if ignoreErr {
-				continue
-			}
-			return nil, err
-		}
-		ers = append(ers, EstResult{q, est, float64(act)})
 	}
+
+	close(taskCh)
+	wg.Wait()
 	return ers, nil
 }
 
