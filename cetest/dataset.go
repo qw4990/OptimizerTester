@@ -86,6 +86,14 @@ func fillTableVals(ins tidb.Instance, tv *tableVals) error {
 			}
 		}
 	}
+
+	rows := len(tv.orderedDistVals[0][0])
+	for i := 0; i < rows; i++ {
+		if tv.orderedDistVals[0][0][i] == "3959748" {
+			fmt.Println("======>>>> ", tv.valActRows[0][0][i])
+		}
+	}
+
 	return nil
 }
 
@@ -129,7 +137,11 @@ func (tv *tableVals) collectPointQueryEstResult(tbIdx, colIdx, rowBegin, rowEnd 
 				if err != nil && !ignoreErr {
 					panic(err)
 				}
-				resultCh <- EstResult{q, est, float64(act)}
+				er := EstResult{q, est, float64(act)}
+				if QError(er) > 1000 {
+					fmt.Println(er)
+				}
+				resultCh <- er
 			}
 		}()
 	}
