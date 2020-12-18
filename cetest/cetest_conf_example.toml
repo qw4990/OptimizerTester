@@ -1,6 +1,5 @@
 query-types = ["single-col-point-query-on-col"]
 report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
-n = 10000
 
 [[datasets]]
 name = "zipfx"
