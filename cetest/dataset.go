@@ -6,6 +6,7 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Dataset ...
@@ -107,7 +108,8 @@ func (tv *tableVals) colPlaceHolder(tbIdx, colIdx int) string {
 }
 
 func (tv *tableVals) collectPointQueryEstResult(tbIdx, colIdx, rowBegin, rowEnd int, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
-	concurrency := 128
+	begin := time.Now()
+	concurrency := 256
 	var wg sync.WaitGroup
 	taskCh := make(chan int, concurrency)
 	resultCh := make(chan EstResult, concurrency)
@@ -144,7 +146,8 @@ func (tv *tableVals) collectPointQueryEstResult(tbIdx, colIdx, rowBegin, rowEnd 
 		er := <-resultCh
 		ers = append(ers, er)
 		if i-rowBegin > 0 && (i-rowBegin)%5000 == 0 {
-			fmt.Printf("[CollectPointQueryEstResult] access ins=%v, table=%v, col=%v, progress (%v/%v)\n", ins.Opt().Label, tv.tbs[tbIdx], tv.cols[tbIdx][colIdx], i-rowBegin, rowEnd-rowBegin)
+			fmt.Printf("[CollectPointQueryEstResult] access ins=%v, table=%v, col=%v, concurrency=%v, time-cost=%v, progress (%v/%v)\n",
+				ins.Opt().Label, tv.tbs[tbIdx], tv.cols[tbIdx][colIdx], concurrency, time.Since(begin), i-rowBegin, rowEnd-rowBegin)
 		}
 	}
 
