@@ -93,5 +93,5 @@ func (ds *datasetTPCC) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Est
 	default:
 		return nil, errors.Errorf("unsupported query-type=%v", qt)
 	}
-	return ers, nil
+	return
 }

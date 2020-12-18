@@ -118,6 +118,7 @@ func (tv *tableVals) collectEstResults(tbIdx, colIdx, rowBegin, rowEnd int, ins 
 		}
 		ers = append(ers, EstResult{q, est, float64(act)})
 	}
+	return ers, nil
 }
 
 type datasetArgs struct {

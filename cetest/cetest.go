@@ -25,7 +25,6 @@ type Option struct {
 	Datasets   []DatasetOpt  `toml:"datasets"`
 	Instances  []tidb.Option `toml:"instances"`
 	ReportDir  string        `toml:"report-dir"`
-	N          int           `toml:"n"`
 }
 
 // DecodeOption decodes option content.
@@ -124,7 +123,7 @@ func RunCETestWithConfig(confPath string) error {
 			for dsIdx := range opt.Datasets {
 				ds := datasets[dsIdx]
 				for qtIdx, qt := range opt.QueryTypes {
-					ers, err := ds.GenEstResults(opt.N, ins, qt)
+					ers, err := ds.GenEstResults(ins, qt)
 					if err != nil {
 						insErrs[insIdx] = fmt.Errorf("GenEstResult ins=%v, ds=%v, qt=%v, err=%v", opt.Instances[insIdx].Label,
 							opt.Datasets[dsIdx].Label, qt.String(), err)
