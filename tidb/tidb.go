@@ -35,7 +35,7 @@ type instance struct {
 func (ins *instance) Exec(sql string) error {
 	begin := time.Now()
 	_, err := ins.db.Exec(sql)
-	if time.Since(begin) > time.Millisecond*10 {
+	if time.Since(begin) > time.Millisecond*50 {
 		fmt.Printf("[SLOW-QUERY]access %v with SQL %v cost %v\n", ins.opt.Label, sql, time.Since(begin))
 	}
 	return errors.Trace(err)
