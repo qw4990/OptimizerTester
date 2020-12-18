@@ -10,14 +10,10 @@ import (
 )
 
 func getEstRowFromExplain(ins tidb.Instance, query string) (estRow float64, re error) {
-	begin := time.Now()
 	sql := "EXPLAIN " + query
 	rows, err := ins.Query(sql)
 	if err != nil {
 		return 0, fmt.Errorf("run sql=%v, err=%v", sql, err)
-	}
-	if time.Since(begin) > time.Millisecond*50 {
-		fmt.Printf("[SLOW QUERY] %v cost %v\n", sql, time.Since(begin))
 	}
 	defer func() {
 		if err := rows.Close(); err != nil && re == nil {
