@@ -21,17 +21,20 @@ type datasetZipFX struct {
 	opt DatasetOpt
 	tv  *tableVals
 
-	disableAnalyze bool
-	tbs            []string
-	cols           [][]string
-	colTypes       [][]DATATYPE
+	args     datasetArgs
+	tbs      []string
+	cols     [][]string
+	colTypes [][]DATATYPE
 }
 
 func newDatasetZipFX(opt DatasetOpt) (Dataset, error) {
 	tbs := []string{"tint", "tdouble", "tstring", "tdatetime"}
 	cols := [][]string{{"a", "b"}, {"a", "b"}, {"a", "b"}, {"a", "b"}}
 	colTypes := [][]DATATYPE{{DTInt, DTInt}, {DTDouble, DTDouble}, {DTString, DTString}, {DTInt, DTInt}}
-	disableAnalyze := false
+	args, err := parseArgs(opt.Args)
+	if err != nil {
+		return nil, err
+	}
 	for _, arg := range opt.Args {
 		tmp := strings.Split(arg, "=")
 		if len(tmp) != 2 {
@@ -57,19 +60,15 @@ func newDatasetZipFX(opt DatasetOpt) (Dataset, error) {
 				}
 				tbs, cols = newTbs, newCols
 			}
-		case "analyze":
-			disableAnalyze = true
-		default:
-			return nil, errors.Errorf("unknown argument %v", arg)
 		}
 	}
 
 	return &datasetZipFX{
-		opt:            opt,
-		disableAnalyze: disableAnalyze,
-		tbs:            tbs,
-		cols:           cols,
-		colTypes:       colTypes,
+		opt:      opt,
+		args:     args,
+		tbs:      tbs,
+		cols:     cols,
+		colTypes: colTypes,
 	}, nil
 }
 
@@ -86,7 +85,7 @@ func (ds *datasetZipFX) Init(instances []tidb.Instance, queryTypes []QueryType) 
 		return
 	}
 
-	if !ds.disableAnalyze {
+	if !ds.args.disableAnalyze {
 		for _, ins := range instances {
 			if err := ins.Exec(fmt.Sprintf("USE %v", ds.opt.DB)); err != nil {
 				return err
