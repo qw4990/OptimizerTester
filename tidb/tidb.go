@@ -36,7 +36,7 @@ func (ins *instance) Exec(sql string) error {
 	begin := time.Now()
 	_, err := ins.db.Exec(sql)
 	if time.Since(begin) > time.Second*3 {
-		fmt.Printf("[SLOW-QUERY]access %v with SQL %v cost %v\n", ins.opt.Label, sql, time.Since(begin))
+		fmt.Printf("[SLOW-QUERY] access %v with SQL %v cost %v\n", ins.opt.Label, sql, time.Since(begin))
 	}
 	return errors.Trace(err)
 }
@@ -67,6 +67,7 @@ func (ins *instance) initVersion() error {
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 	var version string
 	rows.Next()
 	if err := rows.Scan(&version); err != nil {
@@ -110,5 +111,6 @@ func ConnectTo(opt Option) (Instance, error) {
 		return nil, errors.Trace(err)
 	}
 	ins := &instance{db: db, opt: opt}
+	db.SetMaxOpenConns(256)
 	return ins, ins.initVersion()
 }

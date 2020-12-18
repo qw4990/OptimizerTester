@@ -78,6 +78,7 @@ func fillTableVals(ins tidb.Instance, tv *tableVals) error {
 				var val string
 				var cnt int
 				if err := rows.Scan(&val, &cnt); err != nil {
+					rows.Close()
 					return err
 				}
 				tv.orderedDistVals[i][j] = append(tv.orderedDistVals[i][j], val)
@@ -111,7 +112,7 @@ func (tv *tableVals) colPlaceHolder(tbIdx, colIdx int) string {
 
 func (tv *tableVals) collectPointQueryEstResult(tbIdx, colIdx, rowBegin, rowEnd int, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
 	begin := time.Now()
-	concurrency := 256
+	concurrency := 64
 	var wg sync.WaitGroup
 	taskCh := make(chan int, concurrency)
 	resultCh := make(chan EstResult, concurrency)

@@ -2,11 +2,12 @@ package cetest
 
 import (
 	"fmt"
-	"github.com/pingcap/errors"
-	"github.com/qw4990/OptimizerTester/tidb"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pingcap/errors"
+	"github.com/qw4990/OptimizerTester/tidb"
 )
 
 func getEstRowFromExplain(ins tidb.Instance, query string) (estRow float64, re error) {
