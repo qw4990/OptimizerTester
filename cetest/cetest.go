@@ -49,6 +49,9 @@ const (
 	QTSingleColPointQueryOnIndex
 	QTSingleColMCVPointOnCol
 	QTSingleColMCVPointOnIndex
+
+	QTMulColsPointQueryOnIndex
+	QTMulColsRangeQueryOnIndex
 )
 
 var (
@@ -57,6 +60,9 @@ var (
 		QTSingleColPointQueryOnIndex: "single-col-point-query-on-index",
 		QTSingleColMCVPointOnCol:     "single-col-mcv-point-on-col",
 		QTSingleColMCVPointOnIndex:   "single-col-mcv-point-on-index",
+
+		QTMulColsPointQueryOnIndex: "mul-cols-point-query-on-index",
+		QTMulColsRangeQueryOnIndex: "mul-cols-range-query-on-index",
 	}
 )
 

@@ -10,7 +10,7 @@ import (
 
 type datasetTPCC struct {
 	opt DatasetOpt
-	tv  *tableVals
+	tv  *singleColQuerier
 
 	args datasetArgs
 	tbs  []string
@@ -40,7 +40,7 @@ func newDatasetTPCC(opt DatasetOpt) (Dataset, error) {
 
 func (ds *datasetTPCC) Init(instances []tidb.Instance, queryTypes []QueryType) (err error) {
 	// if there are multiple instances, assume they have the same data
-	if ds.tv, err = newTableVals(instances[0], ds.opt.DB, ds.tbs, ds.cols, nil); err != nil {
+	if ds.tv, err = newSingleColQuerier(instances[0], ds.opt.DB, ds.tbs, ds.cols, nil); err != nil {
 		return
 	}
 

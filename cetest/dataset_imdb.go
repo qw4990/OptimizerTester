@@ -10,7 +10,7 @@ import (
 
 type datasetIMDB struct {
 	opt DatasetOpt
-	tv  *tableVals
+	tv  *singleColQuerier
 
 	args     datasetArgs
 	tbs      []string
@@ -41,7 +41,7 @@ func newDatasetIMDB(opt DatasetOpt) (Dataset, error) {
 
 func (ds *datasetIMDB) Init(instances []tidb.Instance, queryTypes []QueryType) (err error) {
 	// if there are multiple instances, assume they have the same data
-	if ds.tv, err = newTableVals(instances[0], ds.opt.DB, ds.tbs, ds.cols, ds.colTypes); err != nil {
+	if ds.tv, err = newSingleColQuerier(instances[0], ds.opt.DB, ds.tbs, ds.cols, ds.colTypes); err != nil {
 		return
 	}
 

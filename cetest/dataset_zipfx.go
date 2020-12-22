@@ -18,7 +18,7 @@ import (
 */
 type datasetZipFX struct {
 	opt DatasetOpt
-	tv  *tableVals
+	tv  *singleColQuerier
 
 	args     datasetArgs
 	tbs      []string
@@ -77,7 +77,7 @@ func (ds *datasetZipFX) Name() string {
 
 func (ds *datasetZipFX) Init(instances []tidb.Instance, queryTypes []QueryType) (err error) {
 	// if there are multiple instances, assume they have the same data
-	if ds.tv, err = newTableVals(instances[0], ds.opt.DB, ds.tbs, ds.cols, ds.colTypes); err != nil {
+	if ds.tv, err = newSingleColQuerier(instances[0], ds.opt.DB, ds.tbs, ds.cols, ds.colTypes); err != nil {
 		return
 	}
 
