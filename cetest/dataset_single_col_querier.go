@@ -9,6 +9,8 @@ import (
 )
 
 // singleColQuerier supports QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex, QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex
+// It generates queries like:
+//	SELECT * FROM t WHERE col = ?
 type singleColQuerier struct {
 	db              string
 	tbs             []string   // table names

@@ -8,6 +8,10 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
+// mulColIndexQuerier supports QTMulColsPointQueryOnIndex, QTMulColsRangeQueryOnIndex.
+// It generates queries like:
+//	SELECT * FROM t WHERE idx1Col1=? 
+//	SELECT * FROM t WHERE idx1Col1=? and idx1Col2=?
 type mulColIndexQuerier struct {
 	db          string
 	indexes     []string
@@ -58,7 +62,7 @@ func (q *mulColIndexQuerier) init(ins tidb.Instance) (rerr error) {
 				q.orderedVals[i] = append(q.orderedVals[i], colVals)
 				q.valRows[i] = append(q.valRows[i], cnt)
 			}
-			if rerr = rows.Close(); err != nil {
+			if rerr = rows.Close(); rerr != nil {
 				return
 			}
 		}

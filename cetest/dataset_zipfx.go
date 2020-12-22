@@ -17,14 +17,14 @@ type datasetZipFX struct {
 }
 
 func newDatasetZipFX(opt DatasetOpt) Dataset {
-	tbs := []string{"tint", "tdouble", "tstring", "tdatetime"}
-	cols := [][]string{{"a", "b"}, {"a", "b"}, {"a", "b"}, {"a", "b"}}
-	colTypes := [][]DATATYPE{{DTInt, DTInt}, {DTDouble, DTDouble}, {DTString, DTString}, {DTInt, DTInt}}
+	scqTbs := []string{"tint", "tdouble", "tstring", "tdatetime"}
+	scqCols := [][]string{{"a", "b"}, {"a", "b"}, {"a", "b"}, {"a", "b"}}
+	scqColTypes := [][]DATATYPE{{DTInt, DTInt}, {DTDouble, DTDouble}, {DTString, DTString}, {DTInt, DTInt}}
 
-	idxNames := []string{"a2"} // only support int now
-	idxTables := []string{"tint"}
-	idxCols := [][]string{{"a", "b"}}
-	idxColTypes := [][]DATATYPE{{DTInt, DTInt}}
+	mciqIdxs := []string{"a2"} // TODO: only support int now
+	mciqTbs := []string{"tint"}
+	mciqIdxCols := [][]string{{"a", "b"}}
+	mciqColTypes := [][]DATATYPE{{DTInt, DTInt}}
 
 	for _, arg := range opt.Args {
 		tmp := strings.Split(arg, "=")
@@ -35,9 +35,12 @@ func newDatasetZipFX(opt DatasetOpt) Dataset {
 		switch strings.ToLower(k) {
 		case "types":
 			vs := strings.Split(v, ",")
-			newTbs := make([]string, 0, len(tbs))
-			newCols := make([][]string, 0, len(cols))
-			for tbIdx, tb := range tbs {
+
+			// filter for scq
+			newTbs := make([]string, 0, len(scqTbs))
+			newCols := make([][]string, 0, len(scqCols))
+			newColTypes := make([][]DATATYPE, 0, len(scqColTypes))
+			for tbIdx, tb := range scqTbs {
 				picked := false
 				for _, v := range vs {
 					if strings.Contains(tb, strings.ToLower(v)) {
@@ -46,19 +49,23 @@ func newDatasetZipFX(opt DatasetOpt) Dataset {
 					}
 				}
 				if picked {
-					newTbs = append(newTbs, tbs[tbIdx])
-					newCols = append(newCols, cols[tbIdx])
+					newTbs = append(newTbs, scqTbs[tbIdx])
+					newCols = append(newCols, scqCols[tbIdx])
+					newColTypes = append(newColTypes, scqColTypes[tbIdx])
 				}
-				tbs, cols = newTbs, newCols
+				scqTbs, scqCols = newTbs, newCols
 			}
+
+			// filter for mciq
+			// TODO
 		}
 	}
 
 	return &datasetZipFX{datasetBase{
 		opt:  opt,
 		args: parseArgs(opt.Args),
-		scq:  newSingleColQuerier(opt.DB, tbs, cols, colTypes),
-		mciq: newMulColIndexQuerier(opt.DB, idxNames, idxTables, idxCols, idxColTypes),
+		scq:  newSingleColQuerier(opt.DB, scqTbs, scqCols, scqColTypes),
+		mciq: newMulColIndexQuerier(opt.DB, mciqIdxs, mciqTbs, mciqIdxCols, mciqColTypes),
 	}}
 }
 
