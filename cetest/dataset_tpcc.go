@@ -68,7 +68,7 @@ func (ds *datasetTPCC) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Est
 		} else if qt == QTSingleColPointQueryOnIndex {
 			tbIdx, colIdx = 1, 0
 		}
-		numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
+		numNDVs := ds.tv.ndv(tbIdx, colIdx)
 		ers, err = ds.tv.collectPointQueryEstResult(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
 	case QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
 		var tbIdx, colIdx int
@@ -77,7 +77,7 @@ func (ds *datasetTPCC) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Est
 		} else if qt == QTSingleColPointQueryOnIndex {
 			tbIdx, colIdx = 1, 0
 		}
-		numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
+		numNDVs := ds.tv.ndv(tbIdx, colIdx)
 		numMCVs := numNDVs * 10 / 100 // 10%
 		ers, err = ds.tv.collectPointQueryEstResult(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
 	default:

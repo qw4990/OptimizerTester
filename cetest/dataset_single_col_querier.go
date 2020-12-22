@@ -63,7 +63,7 @@ func (tv *singleColQuerier) init(ins tidb.Instance) error {
 	return nil
 }
 
-func (tv *singleColQuerier) numNDVs(tbIdx, colIdx int) int {
+func (tv *singleColQuerier) ndv(tbIdx, colIdx int) int {
 	return len(tv.orderedDistVals[tbIdx][colIdx])
 }
 

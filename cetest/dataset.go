@@ -12,9 +12,6 @@ type Dataset interface {
 	// Name returns the name of the dataset
 	Name() string
 
-	// Init ...
-	Init(instances []tidb.Instance, queryTypes []QueryType) error
-
 	// GenEstResults ...
 	GenEstResults(ins tidb.Instance, qt QueryType) ([]EstResult, error)
 }

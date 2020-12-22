@@ -113,9 +113,6 @@ func RunCETestWithConfig(confPath string) error {
 		if err != nil {
 			return err
 		}
-		if err := datasets[i].Init(instances, opt.QueryTypes); err != nil {
-			return err
-		}
 	}
 
 	collector := NewEstResultCollector(len(instances), len(opt.Datasets), len(opt.QueryTypes))

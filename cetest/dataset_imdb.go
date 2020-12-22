@@ -71,7 +71,7 @@ func (ds *datasetIMDB) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Est
 		} else if qt == QTSingleColPointQueryOnIndex {
 			tbIdx, colIdx = 1, 0 // SELECT * FROM cast_info WHERE movie_id = ?
 		}
-		numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
+		numNDVs := ds.tv.ndv(tbIdx, colIdx)
 		ers, err = ds.tv.collectPointQueryEstResult(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
 	case QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
 		var tbIdx, colIdx int
@@ -80,7 +80,7 @@ func (ds *datasetIMDB) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Est
 		} else if qt == QTSingleColMCVPointOnIndex {
 			tbIdx, colIdx = 1, 0 // SELECT * FROM cast_info WHERE movie_id = ?
 		}
-		numNDVs := ds.tv.numNDVs(tbIdx, colIdx)
+		numNDVs := ds.tv.ndv(tbIdx, colIdx)
 		numMCVs := numNDVs * 10 / 100 // 10%
 		ers, err = ds.tv.collectPointQueryEstResult(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
 	default:
