@@ -2,6 +2,7 @@ package cetest
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/pingcap/errors"
@@ -9,13 +10,17 @@ import (
 )
 
 type datasetIMDB struct {
-	opt DatasetOpt
-	tv  *singleColQuerier
+	opt  DatasetOpt
+	tv   *singleColQuerier
+	args datasetArgs
 
-	args     datasetArgs
+	// fields for single-col-querier
 	tbs      []string
 	cols     [][]string
 	colTypes [][]DATATYPE
+
+	analyzed map[string]bool
+	mu       sync.Mutex
 }
 
 func (ds *datasetIMDB) Name() string {
@@ -39,29 +44,38 @@ func newDatasetIMDB(opt DatasetOpt) (Dataset, error) {
 	}, nil
 }
 
-func (ds *datasetIMDB) Init(instances []tidb.Instance, queryTypes []QueryType) (err error) {
-	// if there are multiple instances, assume they have the same data
-	if ds.tv, err = newSingleColQuerier(instances[0], ds.opt.DB, ds.tbs, ds.cols, ds.colTypes); err != nil {
-		return
-	}
-
-	if !ds.args.disableAnalyze {
-		for _, ins := range instances {
-			for _, tb := range ds.tbs {
-				if err = ins.Exec(fmt.Sprintf("ANALYZE TABLE %v.%v", ds.opt.DB, tb)); err != nil {
-					return
-				}
+func (ds *datasetIMDB) lazyInit(ins tidb.Instance, qt QueryType) (err error) {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+	if !ds.analyzed[ins.Opt().Label] && !ds.args.disableAnalyze {
+		for _, tb := range ds.tbs {
+			if err = ins.Exec(fmt.Sprintf("ANALYZE TABLE %v.%v", ds.opt.DB, tb)); err != nil {
+				return
 			}
 		}
+		ds.analyzed[ins.Opt().Label] = true
 	}
 
-	return nil
+	switch qt {
+	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex, QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
+		if ds.tv != nil {
+			return nil
+		}
+		ds.tv, err = newSingleColQuerier(ins, ds.opt.DB, ds.tbs, ds.cols, ds.colTypes)
+	case QTMulColsPointQueryOnIndex, QTMulColsRangeQueryOnIndex:
+		panic("TODO")
+	}
+	return
 }
 
 func (ds *datasetIMDB) GenEstResults(ins tidb.Instance, qt QueryType) (ers []EstResult, err error) {
 	defer func(begin time.Time) {
 		fmt.Printf("[GenEstResults] dataset=%v, ins=%v, qt=%v, cost=%v\n", ds.opt.Label, ins.Opt().Label, qt, time.Since(begin))
 	}(time.Now())
+
+	if err := ds.lazyInit(ins, qt); err != nil {
+		return nil, err
+	}
 
 	switch qt {
 	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex:
