@@ -1,13 +1,8 @@
 package cetest
 
 import (
-	"fmt"
-	"strings"
-	"sync"
-	"time"
-
 	"github.com/pingcap/errors"
-	"github.com/qw4990/OptimizerTester/tidb"
+	"strings"
 )
 
 /*
@@ -18,24 +13,7 @@ import (
 		CREATE TABLE tdatetime (a DATETIME, b DATATIME, KEY(a), KEY(a, b))
 */
 type datasetZipFX struct {
-	opt  DatasetOpt
-	tv   *singleColQuerier
-	mq   *mulColIndexQuerier
-	args datasetArgs
-
-	// fields for single-col-querier
-	tbs      []string
-	cols     [][]string
-	colTypes [][]DATATYPE
-
-	// fields for mul-col-index-queirer
-	idxNames    []string
-	idxTables   []string
-	idxCols     [][]string
-	idxColTypes [][]DATATYPE
-
-	analyzed map[string]bool
-	mu       sync.Mutex
+	datasetBase
 }
 
 func newDatasetZipFX(opt DatasetOpt) (Dataset, error) {
@@ -80,7 +58,7 @@ func newDatasetZipFX(opt DatasetOpt) (Dataset, error) {
 		}
 	}
 
-	return &datasetZipFX{
+	return &datasetZipFX{datasetBase{
 		opt:         opt,
 		args:        args,
 		tbs:         tbs,
@@ -90,81 +68,9 @@ func newDatasetZipFX(opt DatasetOpt) (Dataset, error) {
 		idxTables:   idxTables,
 		idxCols:     idxCols,
 		idxColTypes: idxColTypes,
-	}, nil
+	}}, nil
 }
 
 func (ds *datasetZipFX) Name() string {
 	return "ZipFX"
-}
-
-func (ds *datasetZipFX) lazyInit(ins tidb.Instance, qt QueryType) (err error) {
-	ds.mu.Lock()
-	defer ds.mu.Unlock()
-	if !ds.analyzed[ins.Opt().Label] && !ds.args.disableAnalyze {
-		for _, tb := range ds.tbs {
-			if err = ins.Exec(fmt.Sprintf("ANALYZE TABLE %v.%v", ds.opt.DB, tb)); err != nil {
-				return
-			}
-		}
-		ds.analyzed[ins.Opt().Label] = true
-	}
-
-	switch qt {
-	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex, QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
-		if ds.tv != nil {
-			return nil
-		}
-		ds.tv, err = newSingleColQuerier(ins, ds.opt.DB, ds.tbs, ds.cols, ds.colTypes)
-	case QTMulColsPointQueryOnIndex, QTMulColsRangeQueryOnIndex:
-		if ds.mq != nil {
-			return nil
-		}
-		ds.mq, err = newMulColIndexQuerier(ins, ds.opt.DB, ds.idxNames, ds.idxTables, ds.idxCols, ds.idxColTypes)
-	}
-	return
-}
-
-func (ds *datasetZipFX) GenEstResults(ins tidb.Instance, qt QueryType) (ers []EstResult, err error) {
-	defer func(begin time.Time) {
-		fmt.Printf("[GenEstResults] dataset=%v, ins=%v, qt=%v, cost=%v\n", ds.opt.Label, ins.Opt().Label, qt, time.Since(begin))
-	}(time.Now())
-
-	if err := ds.lazyInit(ins, qt); err != nil {
-		return nil, err
-	}
-
-	switch qt {
-	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex:
-		for tbIdx := 0; tbIdx < len(ds.tbs); tbIdx++ {
-			var colIdx int
-			if qt == QTSingleColPointQueryOnCol {
-				colIdx = 1
-			} else if qt == QTSingleColPointQueryOnIndex {
-				colIdx = 0
-			}
-			numNDVs := ds.tv.ndv(tbIdx, colIdx)
-			ers, err = ds.tv.collectPointQueryEstResult(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
-		}
-	case QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
-		for tbIdx := 0; tbIdx < len(ds.tbs); tbIdx++ {
-			var colIdx int
-			if qt == QTSingleColMCVPointOnCol {
-				colIdx = 1
-			} else if qt == QTSingleColMCVPointOnIndex {
-				colIdx = 0
-			}
-			numNDVs := ds.tv.ndv(tbIdx, colIdx)
-			numMCVs := numNDVs * 10 / 100 // 10%
-			ers, err = ds.tv.collectPointQueryEstResult(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
-		}
-	case QTMulColsPointQueryOnIndex, QTMulColsRangeQueryOnIndex:
-		useRange := false
-		if qt == QTMulColsRangeQueryOnIndex {
-			useRange = true
-		}
-		ers, err = ds.mq.collectMulColIndexEstResult(0, useRange, ins, ers, ds.args.ignoreError) // only support int now
-	default:
-		return nil, errors.Errorf("unsupported query-type=%v", qt)
-	}
-	return
 }
