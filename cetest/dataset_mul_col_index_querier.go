@@ -3,6 +3,7 @@ package cetest
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/qw4990/OptimizerTester/tidb"
 )
@@ -15,16 +16,17 @@ type mulColIndexQuerier struct {
 	colTypes    [][]DATATYPE // idxID, colID, type
 	orderedVals [][][]string // idxID, rowID, colValues
 	valRows     [][]int      // idxID, rowID, numOfRows
+	initOnce    sync.Once
 }
 
-func newMulColIndexQuerier(ins tidb.Instance, db string, indexes, tbs []string, indexCols [][]string, colTypes [][]DATATYPE) (*mulColIndexQuerier, error) {
+func newMulColIndexQuerier(db string, indexes, tbs []string, indexCols [][]string, colTypes [][]DATATYPE) *mulColIndexQuerier {
 	distVals := make([][][]string, len(indexCols))
 	actRows := make([][]int, len(indexCols))
 	for i := range indexCols {
 		distVals[i] = make([][]string, len(indexCols[i]))
 	}
 
-	tv := &mulColIndexQuerier{
+	return &mulColIndexQuerier{
 		db:          db,
 		indexes:     indexes,
 		indexTables: tbs,
@@ -33,33 +35,35 @@ func newMulColIndexQuerier(ins tidb.Instance, db string, indexes, tbs []string, 
 		orderedVals: distVals,
 		valRows:     actRows,
 	}
-	return tv, tv.init(ins)
 }
 
-func (q *mulColIndexQuerier) init(ins tidb.Instance) error {
-	for i := range q.indexes {
-		cols := strings.Join(q.indexCols[i], ", ")
-		sql := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.%v GROUP BY %v ORDER BY %v", cols, q.db, q.indexTables[i], cols, cols)
-		rows, err := ins.Query(sql)
-		if err != nil {
-			return err
-		}
-		for rows.Next() {
-			colVals := make([]string, len(cols))
-			var cnt int
-			args := make([]interface{}, len(cols)+1)
-			for i := 0; i < len(cols); i++ {
-				args[i] = &colVals[i]
+func (q *mulColIndexQuerier) init(ins tidb.Instance) (rerr error) {
+	q.initOnce.Do(func() {
+		for i := range q.indexes {
+			cols := strings.Join(q.indexCols[i], ", ")
+			sql := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.%v GROUP BY %v ORDER BY %v", cols, q.db, q.indexTables[i], cols, cols)
+			rows, err := ins.Query(sql)
+			if err != nil {
+				rerr = err
+				return
 			}
-			args[len(cols)] = &cnt
-			q.orderedVals[i] = append(q.orderedVals[i], colVals)
-			q.valRows[i] = append(q.valRows[i], cnt)
+			for rows.Next() {
+				colVals := make([]string, len(cols))
+				var cnt int
+				args := make([]interface{}, len(cols)+1)
+				for i := 0; i < len(cols); i++ {
+					args[i] = &colVals[i]
+				}
+				args[len(cols)] = &cnt
+				q.orderedVals[i] = append(q.orderedVals[i], colVals)
+				q.valRows[i] = append(q.valRows[i], cnt)
+			}
+			if rerr = rows.Close(); err != nil {
+				return
+			}
 		}
-		if err := rows.Close(); err != nil {
-			return err
-		}
-	}
-	return nil
+	})
+	return
 }
 
 func (q *mulColIndexQuerier) collectMulColIndexEstResult(indexIdx int, rangeQuery bool, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {

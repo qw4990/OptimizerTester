@@ -24,6 +24,7 @@ type Option struct {
 	QueryTypes []QueryType   `toml:"query-types"`
 	Datasets   []DatasetOpt  `toml:"datasets"`
 	Instances  []tidb.Option `toml:"instances"`
+	AnaTables  []string      `toml:"analyze-tables"`
 	ReportDir  string        `toml:"report-dir"`
 }
 
@@ -80,7 +81,7 @@ func (qt *QueryType) UnmarshalText(text []byte) error {
 	return errors.Errorf("unknown query-type=%v", string(text))
 }
 
-var datasetMap = map[string]func(DatasetOpt) (Dataset, error){ // read-only
+var datasetMap = map[string]func(DatasetOpt) Dataset{ // read-only
 	"zipfx": newDatasetZipFX,
 	"imdb":  newDatasetIMDB,
 	"tpcc":  newDatasetTPCC,
@@ -108,11 +109,7 @@ func RunCETestWithConfig(confPath string) error {
 
 	datasets := make([]Dataset, len(opt.Datasets))
 	for i := range opt.Datasets {
-		var err error
-		datasets[i], err = datasetMap[opt.Datasets[i].Name](opt.Datasets[i])
-		if err != nil {
-			return err
-		}
+		datasets[i] = datasetMap[opt.Datasets[i].Name](opt.Datasets[i])
 	}
 
 	collector := NewEstResultCollector(len(instances), len(opt.Datasets), len(opt.QueryTypes))
@@ -123,6 +120,15 @@ func RunCETestWithConfig(confPath string) error {
 		go func(insIdx int) {
 			defer wg.Done()
 			ins := instances[insIdx]
+
+			// analyze tables
+			for _, tbl := range opt.AnaTables {
+				sql := fmt.Sprintf("ANALYZE TABLE %v", tbl)
+				if err := ins.Exec(sql); err != nil {
+					panic(fmt.Sprintf("sql=%v, err=%v", sql, err))
+				}
+			}
+
 			for dsIdx := range opt.Datasets {
 				ds := datasets[dsIdx]
 				for qtIdx, qt := range opt.QueryTypes {

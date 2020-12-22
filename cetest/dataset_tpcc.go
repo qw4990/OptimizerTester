@@ -8,19 +8,13 @@ func (ds *datasetTPCC) Name() string {
 	return "TPCC"
 }
 
-func newDatasetTPCC(opt DatasetOpt) (Dataset, error) {
-	tbs := []string{"order_line", "customer"}
-	cols := [][]string{{"ol_amount"}, {"c_balance"}}
-
-	args, err := parseArgs(opt.Args)
-	if err != nil {
-		return nil, err
-	}
-
+func newDatasetTPCC(opt DatasetOpt) Dataset {
 	return &datasetTPCC{datasetBase{
 		opt:  opt,
-		args: args,
-		tbs:  tbs,
-		cols: cols,
-	}}, nil
+		args: parseArgs(opt.Args),
+		scq: newSingleColQuerier(opt.DB,
+			[]string{"order_line", "customer"},
+			[][]string{{"ol_amount"}, {"c_balance"}},
+			nil),
+	}}
 }

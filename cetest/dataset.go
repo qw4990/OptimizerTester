@@ -32,12 +32,12 @@ type datasetArgs struct {
 	ignoreError    bool
 }
 
-func parseArgs(args []string) (datasetArgs, error) {
+func parseArgs(args []string) datasetArgs {
 	var da datasetArgs
 	for _, arg := range args {
 		tmp := strings.Split(arg, "=")
 		if len(tmp) != 2 {
-			return da, errors.Errorf("invalid argument %v", arg)
+			panic(errors.Errorf("invalid argument %v", arg))
 		}
 		k := tmp[0]
 		switch strings.ToLower(k) {
@@ -46,57 +46,30 @@ func parseArgs(args []string) (datasetArgs, error) {
 		case "error":
 			da.ignoreError = true
 		default:
-			return da, errors.Errorf("unknown argument %v", arg)
+			panic(errors.Errorf("unknown argument %v", arg))
 		}
 	}
-	return da, nil
+	return da
 }
 
 type datasetBase struct {
 	opt  DatasetOpt
 	args datasetArgs
 
-	// fields for single-col-querier
-	tbs      []string
-	cols     [][]string
-	colTypes [][]DATATYPE
-	tv       *singleColQuerier
-
-	// fields for mul-col-index-queirer
-	idxNames    []string
-	idxTables   []string
-	idxCols     [][]string
-	idxColTypes [][]DATATYPE
-	mq          *mulColIndexQuerier
+	scq  *singleColQuerier
+	mciq *mulColIndexQuerier
 
 	// fields for lazy init
-	analyzed map[string]bool
+	analyzed map[string]bool // ins+tbl => inited
 	mu       sync.Mutex
 }
 
 func (ds *datasetBase) lazyInit(ins tidb.Instance, qt QueryType) (err error) {
-	ds.mu.Lock()
-	defer ds.mu.Unlock()
-	if !ds.analyzed[ins.Opt().Label] && !ds.args.disableAnalyze {
-		for _, tb := range ds.tbs {
-			if err = ins.Exec(fmt.Sprintf("ANALYZE TABLE %v.%v", ds.opt.DB, tb)); err != nil {
-				return
-			}
-		}
-		ds.analyzed[ins.Opt().Label] = true
-	}
-
 	switch qt {
 	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex, QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
-		if ds.tv != nil {
-			return nil
-		}
-		ds.tv, err = newSingleColQuerier(ins, ds.opt.DB, ds.tbs, ds.cols, ds.colTypes)
+		return ds.scq.init(ins)
 	case QTMulColsPointQueryOnIndex, QTMulColsRangeQueryOnIndex:
-		if ds.mq != nil {
-			return nil
-		}
-		ds.mq, err = newMulColIndexQuerier(ins, ds.opt.DB, ds.idxNames, ds.idxTables, ds.idxCols, ds.idxColTypes)
+		return ds.mciq.init(ins)
 	}
 	return
 }
@@ -118,8 +91,8 @@ func (ds *datasetBase) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Est
 		} else if qt == QTSingleColPointQueryOnIndex {
 			tbIdx, colIdx = 1, 0 // SELECT * FROM cast_info WHERE movie_id = ?
 		}
-		numNDVs := ds.tv.ndv(tbIdx, colIdx)
-		ers, err = ds.tv.collectPointQueryEstResult(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
+		numNDVs := ds.scq.ndv(tbIdx, colIdx)
+		ers, err = ds.scq.collectPointQueryEstResult(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
 	case QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
 		var tbIdx, colIdx int
 		if qt == QTSingleColMCVPointOnCol {
@@ -127,9 +100,9 @@ func (ds *datasetBase) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Est
 		} else if qt == QTSingleColMCVPointOnIndex {
 			tbIdx, colIdx = 1, 0 // SELECT * FROM cast_info WHERE movie_id = ?
 		}
-		numNDVs := ds.tv.ndv(tbIdx, colIdx)
+		numNDVs := ds.scq.ndv(tbIdx, colIdx)
 		numMCVs := numNDVs * 10 / 100 // 10%
-		ers, err = ds.tv.collectPointQueryEstResult(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
+		ers, err = ds.scq.collectPointQueryEstResult(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
 	default:
 		return nil, errors.Errorf("unsupported query-type=%v", qt)
 	}

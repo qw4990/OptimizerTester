@@ -16,14 +16,10 @@ type datasetZipFX struct {
 	datasetBase
 }
 
-func newDatasetZipFX(opt DatasetOpt) (Dataset, error) {
+func newDatasetZipFX(opt DatasetOpt) Dataset {
 	tbs := []string{"tint", "tdouble", "tstring", "tdatetime"}
 	cols := [][]string{{"a", "b"}, {"a", "b"}, {"a", "b"}, {"a", "b"}}
 	colTypes := [][]DATATYPE{{DTInt, DTInt}, {DTDouble, DTDouble}, {DTString, DTString}, {DTInt, DTInt}}
-	args, err := parseArgs(opt.Args)
-	if err != nil {
-		return nil, err
-	}
 
 	idxNames := []string{"a2"} // only support int now
 	idxTables := []string{"tint"}
@@ -33,7 +29,7 @@ func newDatasetZipFX(opt DatasetOpt) (Dataset, error) {
 	for _, arg := range opt.Args {
 		tmp := strings.Split(arg, "=")
 		if len(tmp) != 2 {
-			return nil, errors.Errorf("invalid argument %v", arg)
+			panic(errors.Errorf("invalid argument %v", arg))
 		}
 		k, v := tmp[0], tmp[1]
 		switch strings.ToLower(k) {
@@ -59,16 +55,11 @@ func newDatasetZipFX(opt DatasetOpt) (Dataset, error) {
 	}
 
 	return &datasetZipFX{datasetBase{
-		opt:         opt,
-		args:        args,
-		tbs:         tbs,
-		cols:        cols,
-		colTypes:    colTypes,
-		idxNames:    idxNames,
-		idxTables:   idxTables,
-		idxCols:     idxCols,
-		idxColTypes: idxColTypes,
-	}}, nil
+		opt:  opt,
+		args: parseArgs(opt.Args),
+		scq:  newSingleColQuerier(opt.DB, tbs, cols, colTypes),
+		mciq: newMulColIndexQuerier(opt.DB, idxNames, idxTables, idxCols, idxColTypes),
+	}}
 }
 
 func (ds *datasetZipFX) Name() string {

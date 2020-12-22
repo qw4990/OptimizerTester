@@ -16,9 +16,10 @@ type singleColQuerier struct {
 	colTypes        [][]DATATYPE
 	orderedDistVals [][][]string // ordered distinct values
 	valActRows      [][][]int    // actual row count
+	initOnce        sync.Once
 }
 
-func newSingleColQuerier(ins tidb.Instance, db string, tbs []string, cols [][]string, colTypes [][]DATATYPE) (*singleColQuerier, error) {
+func newSingleColQuerier(db string, tbs []string, cols [][]string, colTypes [][]DATATYPE) *singleColQuerier {
 	distVals := make([][][]string, len(cols))
 	actRows := make([][][]int, len(cols))
 	for i := range cols {
@@ -26,7 +27,7 @@ func newSingleColQuerier(ins tidb.Instance, db string, tbs []string, cols [][]st
 		actRows[i] = make([][]int, len(cols[i]))
 	}
 
-	tv := &singleColQuerier{
+	return &singleColQuerier{
 		db:              db,
 		tbs:             tbs,
 		cols:            cols,
@@ -34,32 +35,34 @@ func newSingleColQuerier(ins tidb.Instance, db string, tbs []string, cols [][]st
 		orderedDistVals: distVals,
 		valActRows:      actRows,
 	}
-	return tv, tv.init(ins)
 }
 
-func (tv *singleColQuerier) init(ins tidb.Instance) error {
-	for i, tb := range tv.tbs {
-		for j, col := range tv.cols[i] {
-			q := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.%v where %v is not null GROUP BY %v ORDER BY COUNT(*)", col, tv.db, tb, col, col)
-			rows, err := ins.Query(q)
-			if err != nil {
-				return err
-			}
-			for rows.Next() {
-				var val string
-				var cnt int
-				if err := rows.Scan(&val, &cnt); err != nil {
-					rows.Close()
-					return err
+func (tv *singleColQuerier) init(ins tidb.Instance) (rerr error) {
+	tv.initOnce.Do(func() {
+		for i, tb := range tv.tbs {
+			for j, col := range tv.cols[i] {
+				q := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.%v where %v is not null GROUP BY %v ORDER BY COUNT(*)", col, tv.db, tb, col, col)
+				rows, err := ins.Query(q)
+				if err != nil {
+					rerr = err
+					return
 				}
-				tv.orderedDistVals[i][j] = append(tv.orderedDistVals[i][j], val)
-				tv.valActRows[i][j] = append(tv.valActRows[i][j], cnt)
-			}
-			if err := rows.Close(); err != nil {
-				return err
+				for rows.Next() {
+					var val string
+					var cnt int
+					if rerr = rows.Scan(&val, &cnt); rerr != nil {
+						rows.Close()
+						return
+					}
+					tv.orderedDistVals[i][j] = append(tv.orderedDistVals[i][j], val)
+					tv.valActRows[i][j] = append(tv.valActRows[i][j], cnt)
+				}
+				if rerr = rows.Close(); rerr != nil {
+					return
+				}
 			}
 		}
-	}
+	})
 	return nil
 }
 
