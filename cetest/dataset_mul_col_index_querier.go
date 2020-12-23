@@ -2,6 +2,8 @@ package cetest
 
 import (
 	"fmt"
+	"math"
+	"math/rand"
 	"strings"
 	"sync"
 
@@ -94,11 +96,12 @@ func (q *mulColIndexQuerier) Collect(qt QueryType, ers []EstResult, ins tidb.Ins
 }
 
 func (q *mulColIndexQuerier) collect(indexIdx int, rangeQuery bool, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
-	for i := 0; i < len(q.valRows[indexIdx]); i++ {
+	nRows := len(q.valRows[indexIdx])
+	for i := 0; i < nRows; i++ {
 		var cond string
 		var act int
 		if rangeQuery {
-			cond, act = q.rangeCond(indexIdx, i)
+			cond, act = q.rangeCond(indexIdx, i, int(math.Min(float64(i+rand.Intn(20)), float64(nRows-1))))
 		} else {
 			cond, act = q.pointCond(indexIdx, i)
 		}
@@ -116,8 +119,38 @@ func (q *mulColIndexQuerier) collect(indexIdx int, rangeQuery bool, ins tidb.Ins
 	return ers, nil
 }
 
-func (q *mulColIndexQuerier) rangeCond(indexIdx, rowIdx int) (string, int) {
-	panic("TODO")
+func (q *mulColIndexQuerier) rangeCond(indexIdx, beginRowIdx, endRowIdx int) (string, int) {
+	beginRowVals := q.orderedVals[indexIdx][beginRowIdx]
+	endRowVals := q.orderedVals[indexIdx][endRowIdx]
+	cond := ""
+	cols := q.indexCols[indexIdx]
+	types := q.colTypes[indexIdx]
+
+	for c := 0; c < len(cols); c++ {
+		if c > 0 {
+			cond += " AND "
+		}
+		if beginRowVals[c] == endRowVals[c] {
+			pattern := "%v=%v"
+			if types[c] == DTString {
+				pattern = "%v='%v'"
+			}
+			cond += fmt.Sprintf(pattern, cols[c], beginRowVals[c])
+		} else {
+			pattern := "%v>=%v AND %v<=%v"
+			if types[c] == DTString {
+				pattern = "%v>='%v' AND %v<='%v'"
+			}
+			cond += fmt.Sprintf(pattern, cols[c], beginRowVals[c], cols[c], endRowVals[c])
+			break
+		}
+	}
+
+	rows := 0
+	for i := beginRowIdx; i <= endRowIdx; i++ {
+		rows += q.valRows[indexIdx][i]
+	}
+	return cond, rows
 }
 
 func (q *mulColIndexQuerier) pointCond(indexIdx, rowIdx int) (string, int) {

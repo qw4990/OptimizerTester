@@ -1,5 +1,6 @@
 # query-types = ["single-col-point-query-on-col", "single-col-point-query-on-index", "single-col-mcv-point-on-col", "single-col-mcv-point-on-index"]
-query-types = ["mul-cols-point-query-on-index"]
+# query-types = ["mul-cols-point-query-on-index"]
+query-types = ["mul-cols-range-query-on-index"]
 report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
 analyze-tables = ["test.tint"]
 
