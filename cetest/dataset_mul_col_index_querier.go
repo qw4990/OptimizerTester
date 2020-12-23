@@ -36,7 +36,7 @@ func newMulColIndexQuerier(
 	distVals := make([][][]string, len(indexCols))
 	actRows := make([][]int, len(indexCols))
 	for i := range indexCols {
-		distVals[i] = make([][]string, len(indexCols[i]))
+		distVals[i] = make([][]string, 0, len(indexCols[i]))
 	}
 
 	return &mulColIndexQuerier{
@@ -54,6 +54,7 @@ func newMulColIndexQuerier(
 func (q *mulColIndexQuerier) init(ins tidb.Instance) (rerr error) {
 	q.initOnce.Do(func() {
 		for i := range q.indexes {
+			nCols := len(q.indexCols[i])
 			cols := strings.Join(q.indexCols[i], ", ")
 			sql := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.%v GROUP BY %v ORDER BY %v", cols, q.db, q.indexTables[i], cols, cols)
 			rows, err := ins.Query(sql)
@@ -62,13 +63,16 @@ func (q *mulColIndexQuerier) init(ins tidb.Instance) (rerr error) {
 				return
 			}
 			for rows.Next() {
-				colVals := make([]string, len(cols))
+				colVals := make([]string, nCols)
 				var cnt int
-				args := make([]interface{}, len(cols)+1)
-				for i := 0; i < len(cols); i++ {
+				args := make([]interface{}, nCols+1)
+				for i := 0; i < nCols; i++ {
 					args[i] = &colVals[i]
 				}
-				args[len(cols)] = &cnt
+				args[nCols] = &cnt
+				if rerr = rows.Scan(args...); rerr != nil {
+					return
+				}
 				q.orderedVals[i] = append(q.orderedVals[i], colVals)
 				q.valRows[i] = append(q.valRows[i], cnt)
 			}
@@ -81,6 +85,9 @@ func (q *mulColIndexQuerier) init(ins tidb.Instance) (rerr error) {
 }
 
 func (q *mulColIndexQuerier) Collect(qt QueryType, ers []EstResult, ins tidb.Instance, ignoreErr bool) ([]EstResult, error) {
+	if err := q.init(ins); err != nil {
+		return nil, err
+	}
 	indexIdx := q.qMap[qt]
 	rangeQuery := qt == QTMulColsRangeQueryOnIndex
 	return q.collect(indexIdx, rangeQuery, ins, ers, ignoreErr)
@@ -117,16 +124,16 @@ func (q *mulColIndexQuerier) pointCond(indexIdx, rowIdx int) (string, int) {
 	cond := ""
 	cols := q.indexCols[indexIdx]
 	types := q.colTypes[indexIdx]
-	vals := q.orderedVals[indexIdx][rowIdx]
+	colVals := q.orderedVals[indexIdx][rowIdx]
 	for i := 0; i < len(cols); i++ {
 		if i > 0 {
-			cond += ", "
+			cond += " AND "
 		}
 		pattern := "%v=%v"
 		if types[i] == DTString {
 			pattern = "%v='%v'"
 		}
-		cond += fmt.Sprintf(pattern, cols[i], vals[i])
+		cond += fmt.Sprintf(pattern, cols[i], colVals[i])
 	}
 	return cond, q.valRows[indexIdx][rowIdx]
 }

@@ -23,7 +23,7 @@ func newDatasetZipFX(opt DatasetOpt) Dataset {
 		QTSingleColMCVPointOnIndex:   {0, 0}, // SELECT * FROM tint WHERE a=?
 	}
 
-	mciqIdxs := []string{"a2"}
+	mciqIdxs := []string{"a_2"}
 	mciqTbs := []string{"tint"}
 	mciqIdxCols := [][]string{{"a", "b"}}
 	mciqColTypes := [][]DATATYPE{{DTInt, DTInt}}
