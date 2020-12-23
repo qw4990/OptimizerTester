@@ -18,12 +18,21 @@ type mulColIndexQuerier struct {
 	indexTables []string
 	indexCols   [][]string   // idID, colNames
 	colTypes    [][]DATATYPE // idxID, colID, type
+	qMap        map[QueryType]int
+
 	orderedVals [][][]string // idxID, rowID, colValues
 	valRows     [][]int      // idxID, rowID, numOfRows
 	initOnce    sync.Once
 }
 
-func newMulColIndexQuerier(db string, indexes, tbs []string, indexCols [][]string, colTypes [][]DATATYPE) *mulColIndexQuerier {
+func newMulColIndexQuerier(
+	db string,              // the database name
+	indexes []string,       // index names
+	tbs []string,           // table names of these indexes
+	indexCols [][]string,   // column names of these indexes
+	colTypes [][]DATATYPE,  // types of these columns
+	qMap map[QueryType]int, //  idxIdx used to generate specified type of SQLs
+) *mulColIndexQuerier {
 	distVals := make([][][]string, len(indexCols))
 	actRows := make([][]int, len(indexCols))
 	for i := range indexCols {
@@ -36,6 +45,7 @@ func newMulColIndexQuerier(db string, indexes, tbs []string, indexCols [][]strin
 		indexTables: tbs,
 		indexCols:   indexCols,
 		colTypes:    colTypes,
+		qMap:        qMap,
 		orderedVals: distVals,
 		valRows:     actRows,
 	}
@@ -70,7 +80,13 @@ func (q *mulColIndexQuerier) init(ins tidb.Instance) (rerr error) {
 	return
 }
 
-func (q *mulColIndexQuerier) collectMulColIndexEstResult(indexIdx int, rangeQuery bool, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
+func (q *mulColIndexQuerier) Collect(qt QueryType, ers []EstResult, ins tidb.Instance, ignoreErr bool) ([]EstResult, error) {
+	indexIdx := q.qMap[qt]
+	rangeQuery := qt == QTMulColsRangeQueryOnIndex
+	return q.collect(indexIdx, rangeQuery, ins, ers, ignoreErr)
+}
+
+func (q *mulColIndexQuerier) collect(indexIdx int, rangeQuery bool, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
 	for i := 0; i < len(q.valRows[indexIdx]); i++ {
 		var cond string
 		var act int

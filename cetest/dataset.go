@@ -59,15 +59,13 @@ type datasetBase struct {
 	scq  *singleColQuerier
 	mciq *mulColIndexQuerier
 
-	// fields for lazy init
+	// fields for lazy Init
 	analyzed map[string]bool // ins+tbl => inited
 	mu       sync.Mutex
 }
 
 func (ds *datasetBase) lazyInit(ins tidb.Instance, qt QueryType) (err error) {
 	switch qt {
-	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex, QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
-		return ds.scq.init(ins)
 	case QTMulColsPointQueryOnIndex, QTMulColsRangeQueryOnIndex:
 		return ds.mciq.init(ins)
 	}
@@ -84,25 +82,10 @@ func (ds *datasetBase) GenEstResults(ins tidb.Instance, qt QueryType) (ers []Est
 	}
 
 	switch qt {
-	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex:
-		var tbIdx, colIdx int
-		if qt == QTSingleColPointQueryOnCol {
-			tbIdx, colIdx = 0, 0 // SELECT * FROM title WHERE phonetic_code = ?
-		} else if qt == QTSingleColPointQueryOnIndex {
-			tbIdx, colIdx = 1, 0 // SELECT * FROM cast_info WHERE movie_id = ?
-		}
-		numNDVs := ds.scq.ndv(tbIdx, colIdx)
-		ers, err = ds.scq.collectPointQueryEstResult(tbIdx, colIdx, 0, numNDVs, ins, ers, ds.args.ignoreError)
-	case QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
-		var tbIdx, colIdx int
-		if qt == QTSingleColMCVPointOnCol {
-			tbIdx, colIdx = 0, 0 // SELECT * FROM title WHERE phonetic_code = ?
-		} else if qt == QTSingleColMCVPointOnIndex {
-			tbIdx, colIdx = 1, 0 // SELECT * FROM cast_info WHERE movie_id = ?
-		}
-		numNDVs := ds.scq.ndv(tbIdx, colIdx)
-		numMCVs := numNDVs * 10 / 100 // 10%
-		ers, err = ds.scq.collectPointQueryEstResult(tbIdx, colIdx, numNDVs-numMCVs, numNDVs, ins, ers, ds.args.ignoreError)
+	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex, QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
+		ers, err = ds.scq.Collect(qt, ers, ins, ds.args.ignoreError)
+	case QTMulColsRangeQueryOnIndex, QTMulColsPointQueryOnIndex:
+		ers, err = ds.mciq.Collect(qt, ers, ins, ds.args.ignoreError)
 	default:
 		return nil, errors.Errorf("unsupported query-type=%v", qt)
 	}

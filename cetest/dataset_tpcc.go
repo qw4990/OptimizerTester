@@ -15,6 +15,6 @@ func newDatasetTPCC(opt DatasetOpt) Dataset {
 		scq: newSingleColQuerier(opt.DB,
 			[]string{"order_line", "customer"},
 			[][]string{{"ol_amount"}, {"c_balance"}},
-			nil),
+			nil, nil),
 	}}
 }

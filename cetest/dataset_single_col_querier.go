@@ -12,16 +12,24 @@ import (
 // It generates queries like:
 //	SELECT * FROM t WHERE col = ?
 type singleColQuerier struct {
-	db              string
-	tbs             []string   // table names
-	cols            [][]string // table columns' names
-	colTypes        [][]DATATYPE
+	db       string
+	tbs      []string   // table names
+	cols     [][]string // table columns' names
+	colTypes [][]DATATYPE
+	qMap     map[QueryType][2]int
+
 	orderedDistVals [][][]string // ordered distinct values
 	valActRows      [][][]int    // actual row count
 	initOnce        sync.Once
 }
 
-func newSingleColQuerier(db string, tbs []string, cols [][]string, colTypes [][]DATATYPE) *singleColQuerier {
+func newSingleColQuerier(
+	db string,                 // the database name
+	tbs []string,              // tables used to generate SQLs
+	cols [][]string,           // column names of these tables
+	colTypes [][]DATATYPE,     // types of these columns
+	qMap map[QueryType][2]int, // tbIdx and colIdx used to generate specified type of SQLs
+) *singleColQuerier {
 	distVals := make([][][]string, len(cols))
 	actRows := make([][][]int, len(cols))
 	for i := range cols {
@@ -34,6 +42,7 @@ func newSingleColQuerier(db string, tbs []string, cols [][]string, colTypes [][]
 		tbs:             tbs,
 		cols:            cols,
 		colTypes:        colTypes,
+		qMap:            qMap,
 		orderedDistVals: distVals,
 		valActRows:      actRows,
 	}
@@ -68,6 +77,21 @@ func (tv *singleColQuerier) init(ins tidb.Instance) (rerr error) {
 	return nil
 }
 
+func (tv *singleColQuerier) Collect(qt QueryType, ers []EstResult, ins tidb.Instance, ignoreErr bool) ([]EstResult, error) {
+	if err := tv.init(ins); err != nil {
+		return nil, err
+	}
+
+	tbIdx, colIdx := tv.qMap[qt][0], tv.qMap[qt][1]
+	rowBegin, rowEnd := 0, tv.ndv(tbIdx, colIdx)
+	if qt == QTSingleColMCVPointOnCol || qt == QTSingleColMCVPointOnIndex {
+		numNDVs := tv.ndv(tbIdx, colIdx)
+		numMCVs := numNDVs * 10 / 100 // 10%
+		rowBegin = rowEnd - numMCVs
+	}
+	return tv.collect(tbIdx, colIdx, rowBegin, rowEnd, ins, ers, ignoreErr)
+}
+
 func (tv *singleColQuerier) ndv(tbIdx, colIdx int) int {
 	return len(tv.orderedDistVals[tbIdx][colIdx])
 }
@@ -86,7 +110,7 @@ func (tv *singleColQuerier) colPlaceHolder(tbIdx, colIdx int) string {
 	return "%v"
 }
 
-func (tv *singleColQuerier) collectPointQueryEstResult(tbIdx, colIdx, rowBegin, rowEnd int, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
+func (tv *singleColQuerier) collect(tbIdx, colIdx, rowBegin, rowEnd int, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
 	begin := time.Now()
 	concurrency := 64
 	var wg sync.WaitGroup

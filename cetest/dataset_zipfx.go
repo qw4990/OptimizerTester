@@ -16,17 +16,27 @@ func newDatasetZipFX(opt DatasetOpt) Dataset {
 	scqTbs := []string{"tint"}
 	scqCols := [][]string{{"a", "b"}}
 	scqColTypes := [][]DATATYPE{{DTInt, DTInt}}
+	scqMap := map[QueryType][2]int{
+		QTSingleColPointQueryOnCol:   {0, 1}, // SELECT * FROM tint WHERE b=?
+		QTSingleColPointQueryOnIndex: {0, 0}, // SELECT * FROM tint WHERE a=?
+		QTSingleColMCVPointOnCol:     {0, 1}, // SELECT * FROM tint WHERE b=?
+		QTSingleColMCVPointOnIndex:   {0, 0}, // SELECT * FROM tint WHERE a=?
+	}
 
 	mciqIdxs := []string{"a2"}
 	mciqTbs := []string{"tint"}
 	mciqIdxCols := [][]string{{"a", "b"}}
 	mciqColTypes := [][]DATATYPE{{DTInt, DTInt}}
+	mciqMap := map[QueryType]int{
+		QTMulColsPointQueryOnIndex: 0, // SELECT * FROM tint WHERE a=? AND b=?
+		QTMulColsRangeQueryOnIndex: 0, // SELECT * FROM tint WHERE a=? AND b>=? AND b<=?
+	}
 
 	return &datasetZipFX{datasetBase{
 		opt:  opt,
 		args: parseArgs(opt.Args),
-		scq:  newSingleColQuerier(opt.DB, scqTbs, scqCols, scqColTypes),
-		mciq: newMulColIndexQuerier(opt.DB, mciqIdxs, mciqTbs, mciqIdxCols, mciqColTypes),
+		scq:  newSingleColQuerier(opt.DB, scqTbs, scqCols, scqColTypes, scqMap),
+		mciq: newMulColIndexQuerier(opt.DB, mciqIdxs, mciqTbs, mciqIdxCols, mciqColTypes, mciqMap),
 	}}
 }
 
