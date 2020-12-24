@@ -3,7 +3,6 @@ package cetest
 import (
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pingcap/errors"
@@ -58,10 +57,6 @@ type datasetBase struct {
 
 	scq  *singleColQuerier
 	mciq *mulColIndexQuerier
-
-	// fields for lazy Init
-	analyzed map[string]bool // ins+tbl => inited
-	mu       sync.Mutex
 }
 
 func (ds *datasetBase) GenEstResults(ins tidb.Instance, qt QueryType) (ers []EstResult, err error) {
