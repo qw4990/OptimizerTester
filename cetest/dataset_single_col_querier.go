@@ -53,6 +53,7 @@ func (tv *singleColQuerier) init(ins tidb.Instance) (rerr error) {
 	tv.initOnce.Do(func() {
 		for i, tb := range tv.tbs {
 			for j, col := range tv.cols[i] {
+				begin := time.Now()
 				q := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.%v where %v is not null GROUP BY %v ORDER BY COUNT(*)", col, tv.db, tb, col, col)
 				rows, err := ins.Query(q)
 				if err != nil {
@@ -72,6 +73,7 @@ func (tv *singleColQuerier) init(ins tidb.Instance) (rerr error) {
 				if rerr = rows.Close(); rerr != nil {
 					return
 				}
+				fmt.Printf("[SingleColQuerier-Init] table=%v, col=%v, sql=%v, cost=%v\n", tb, col, q, time.Since(begin))
 			}
 		}
 	})

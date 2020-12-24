@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/qw4990/OptimizerTester/tidb"
 )
@@ -56,6 +57,7 @@ func newMulColIndexQuerier(
 func (q *mulColIndexQuerier) init(ins tidb.Instance) (rerr error) {
 	q.initOnce.Do(func() {
 		for i := range q.indexes {
+			begin := time.Now()
 			nCols := len(q.indexCols[i])
 			cols := strings.Join(q.indexCols[i], ", ")
 			sql := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.%v GROUP BY %v ORDER BY %v", cols, q.db, q.indexTables[i], cols, cols)
@@ -81,6 +83,7 @@ func (q *mulColIndexQuerier) init(ins tidb.Instance) (rerr error) {
 			if rerr = rows.Close(); rerr != nil {
 				return
 			}
+			fmt.Printf("[MulColIndexQuerier-Init] index=%v, sql=%v, cost=%v\n", q.indexes[i], sql, time.Since(begin))
 		}
 	})
 	return
