@@ -86,18 +86,26 @@ func (q *mulColIndexQuerier) init(ins tidb.Instance) (rerr error) {
 	return
 }
 
-func (q *mulColIndexQuerier) Collect(qt QueryType, ers []EstResult, ins tidb.Instance, ignoreErr bool) ([]EstResult, error) {
+func (q *mulColIndexQuerier) Collect(nSamples int, qt QueryType, ers []EstResult, ins tidb.Instance, ignoreErr bool) ([]EstResult, error) {
 	if err := q.init(ins); err != nil {
 		return nil, err
 	}
 	indexIdx := q.qMap[qt]
 	rangeQuery := qt == QTMulColsRangeQueryOnIndex
-	return q.collect(indexIdx, rangeQuery, ins, ers, ignoreErr)
+	return q.collect(nSamples, indexIdx, rangeQuery, ins, ers, ignoreErr)
 }
 
-func (q *mulColIndexQuerier) collect(indexIdx int, rangeQuery bool, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
+func (q *mulColIndexQuerier) collect(nSamples, indexIdx int, rangeQuery bool, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
 	nRows := len(q.valRows[indexIdx])
+	sampleRate := float64(nSamples) / float64(nRows)
+	if sampleRate > 1 {
+		sampleRate = 1
+	}
 	for i := 0; i < nRows; i++ {
+		if rand.Float64() > sampleRate {
+			continue
+		}
+
 		var cond string
 		var act int
 		if rangeQuery {

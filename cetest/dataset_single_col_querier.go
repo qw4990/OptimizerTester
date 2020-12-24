@@ -2,6 +2,7 @@ package cetest
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -77,7 +78,7 @@ func (tv *singleColQuerier) init(ins tidb.Instance) (rerr error) {
 	return nil
 }
 
-func (tv *singleColQuerier) Collect(qt QueryType, ers []EstResult, ins tidb.Instance, ignoreErr bool) ([]EstResult, error) {
+func (tv *singleColQuerier) Collect(nSamples int, qt QueryType, ers []EstResult, ins tidb.Instance, ignoreErr bool) ([]EstResult, error) {
 	if err := tv.init(ins); err != nil {
 		return nil, err
 	}
@@ -89,7 +90,13 @@ func (tv *singleColQuerier) Collect(qt QueryType, ers []EstResult, ins tidb.Inst
 		numMCVs := numNDVs * 10 / 100 // 10%
 		rowBegin = rowEnd - numMCVs
 	}
-	return tv.collect(tbIdx, colIdx, rowBegin, rowEnd, ins, ers, ignoreErr)
+
+	sampleRate := float64(rowEnd-rowBegin) / float64(nSamples)
+	if sampleRate > 1 {
+		sampleRate = 1
+	}
+
+	return tv.collect(tbIdx, colIdx, rowBegin, rowEnd, sampleRate, ins, ers, ignoreErr)
 }
 
 func (tv *singleColQuerier) ndv(tbIdx, colIdx int) int {
@@ -110,7 +117,7 @@ func (tv *singleColQuerier) colPlaceHolder(tbIdx, colIdx int) string {
 	return "%v"
 }
 
-func (tv *singleColQuerier) collect(tbIdx, colIdx, rowBegin, rowEnd int, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
+func (tv *singleColQuerier) collect(tbIdx, colIdx, rowBegin, rowEnd int, sampleRate float64, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
 	begin := time.Now()
 	concurrency := 64
 	var wg sync.WaitGroup
@@ -143,17 +150,21 @@ func (tv *singleColQuerier) collect(tbIdx, colIdx, rowBegin, rowEnd int, ins tid
 	}
 
 	wg.Add(1)
+	n := 0
 	go func() { // task deliverer
 		defer wg.Done()
 		for i := rowBegin; i < rowEnd; i++ {
-			taskCh <- i
+			if rand.Float64() < sampleRate {
+				taskCh <- i
+				n++
+			}
 		}
 	}()
 
-	for i := rowBegin; i < rowEnd; i++ {
+	for i := 0; i < n; i++ {
 		er := <-resultCh
 		ers = append(ers, er)
-		if i-rowBegin > 0 && (i-rowBegin)%5000 == 0 {
+		if i > 0 && i%5000 == 0 {
 			fmt.Printf("[CollectPointQueryEstResult] access ins=%v, table=%v, col=%v, concurrency=%v, time-cost=%v, progress (%v/%v)\n",
 				ins.Opt().Label, tv.tbs[tbIdx], tv.cols[tbIdx][colIdx], concurrency, time.Since(begin), i-rowBegin, rowEnd-rowBegin)
 		}

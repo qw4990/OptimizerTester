@@ -15,7 +15,7 @@ type Dataset interface {
 	Name() string
 
 	// GenEstResults ...
-	GenEstResults(ins tidb.Instance, qt QueryType) ([]EstResult, error)
+	GenEstResults(ins tidb.Instance, nSamples int, qt QueryType) ([]EstResult, error)
 }
 
 type DATATYPE int
@@ -59,16 +59,16 @@ type datasetBase struct {
 	mciq *mulColIndexQuerier
 }
 
-func (ds *datasetBase) GenEstResults(ins tidb.Instance, qt QueryType) (ers []EstResult, err error) {
+func (ds *datasetBase) GenEstResults(ins tidb.Instance, nSamples int, qt QueryType) (ers []EstResult, err error) {
 	defer func(begin time.Time) {
 		fmt.Printf("[GenEstResults] dataset=%v, ins=%v, qt=%v, cost=%v\n", ds.opt.Label, ins.Opt().Label, qt, time.Since(begin))
 	}(time.Now())
 
 	switch qt {
 	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex, QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
-		ers, err = ds.scq.Collect(qt, ers, ins, ds.args.ignoreError)
+		ers, err = ds.scq.Collect(nSamples, qt, ers, ins, ds.args.ignoreError)
 	case QTMulColsRangeQueryOnIndex, QTMulColsPointQueryOnIndex:
-		ers, err = ds.mciq.Collect(qt, ers, ins, ds.args.ignoreError)
+		ers, err = ds.mciq.Collect(nSamples, qt, ers, ins, ds.args.ignoreError)
 	default:
 		return nil, errors.Errorf("unsupported query-type=%v", qt)
 	}

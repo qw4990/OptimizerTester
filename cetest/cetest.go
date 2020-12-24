@@ -14,11 +14,10 @@ import (
 )
 
 type DatasetOpt struct {
-	Name     string   `toml:"name"`
-	DB       string   `toml:"db"`
-	Label    string   `toml:"label"`
-	Args     []string `toml:"args"`
-	NSamples int      `toml:"n-samples"`
+	Name  string   `toml:"name"`
+	DB    string   `toml:"db"`
+	Label string   `toml:"label"`
+	Args  []string `toml:"args"`
 }
 
 type Option struct {
@@ -27,6 +26,7 @@ type Option struct {
 	Instances  []tidb.Option `toml:"instances"`
 	AnaTables  []string      `toml:"analyze-tables"`
 	ReportDir  string        `toml:"report-dir"`
+	NSamples   int           `toml:"n-samples"`
 }
 
 // DecodeOption decodes option content.
@@ -133,7 +133,7 @@ func RunCETestWithConfig(confPath string) error {
 			for dsIdx := range opt.Datasets {
 				ds := datasets[dsIdx]
 				for qtIdx, qt := range opt.QueryTypes {
-					ers, err := ds.GenEstResults(ins, qt)
+					ers, err := ds.GenEstResults(ins, opt.NSamples, qt)
 					if err != nil {
 						insErrs[insIdx] = fmt.Errorf("GenEstResult ins=%v, ds=%v, qt=%v, err=%v", opt.Instances[insIdx].Label,
 							opt.Datasets[dsIdx].Label, qt.String(), err)
