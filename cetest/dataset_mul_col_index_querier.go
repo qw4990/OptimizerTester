@@ -2,7 +2,6 @@ package cetest
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
 	"strings"
 	"sync"
@@ -128,7 +127,7 @@ func (q *mulColIndexQuerier) Collect(nSamples int, qt QueryType, ers []EstResult
 				var cond string
 				var act int
 				if qt == QTMulColsRangeQueryOnIndex {
-					cond, act = q.rangeCond(indexIdx, rowIdx, int(math.Min(float64(rowIdx+rand.Intn(20)), float64(nRows-1))))
+					cond, act = q.rangeCond(indexIdx, rowIdx)
 				} else {
 					cond, act = q.pointCond(indexIdx, rowIdx)
 				}
@@ -159,35 +158,36 @@ func (q *mulColIndexQuerier) Collect(nSamples int, qt QueryType, ers []EstResult
 	return ers, nil
 }
 
-func (q *mulColIndexQuerier) rangeCond(indexIdx, beginRowIdx, endRowIdx int) (string, int) {
-	beginRowVals := q.orderedVals[indexIdx][beginRowIdx]
-	endRowVals := q.orderedVals[indexIdx][endRowIdx]
-	cond := ""
-	cols := q.indexCols[indexIdx]
-	types := q.colTypes[indexIdx]
-
-	for c := 0; c < len(cols); c++ {
-		if c > 0 {
-			cond += " AND "
-		}
-		if beginRowVals[c] == endRowVals[c] {
-			pattern := "%v=%v"
-			if types[c] == DTString {
-				pattern = "%v='%v'"
-			}
-			cond += fmt.Sprintf(pattern, cols[c], beginRowVals[c])
-		} else {
-			pattern := "%v>=%v AND %v<=%v"
-			if types[c] == DTString {
-				pattern = "%v>='%v' AND %v<='%v'"
-			}
-			cond += fmt.Sprintf(pattern, cols[c], beginRowVals[c], cols[c], endRowVals[c])
+func (q *mulColIndexQuerier) rangeCond(indexIdx, rowIdx int) (string, int) {
+	colVals := q.orderedVals[indexIdx][rowIdx]
+	last2ndColIdx := len(colVals) - 2
+	endRowIdx := rowIdx
+	for ; endRowIdx < len(q.orderedVals[indexIdx]); endRowIdx++ {
+		if colVals[last2ndColIdx] != q.orderedVals[indexIdx][endRowIdx][last2ndColIdx] {
 			break
 		}
 	}
+	endRowIdx--
+
+	cond := ""
+	cols := q.indexCols[indexIdx]
+	types := q.colTypes[indexIdx]
+	for c := 0; c < len(cols)-1; c++ {
+		pattern := "%v=%v AND "
+		if types[c] == DTString {
+			pattern = "%v='%v' AND "
+		}
+		cond += fmt.Sprintf(pattern, cols[c], colVals[c])
+	}
+	pattern := "%v>=%v AND %v<=%v"
+	lastColIdx := len(cols) - 1
+	if types[lastColIdx] == DTString {
+		pattern = "%v>='%v' AND %v<='%v'"
+	}
+	cond += fmt.Sprintf(pattern, cols[lastColIdx], q.orderedVals[indexIdx][rowIdx][lastColIdx], cols[lastColIdx], q.orderedVals[indexIdx][endRowIdx][lastColIdx])
 
 	rows := 0
-	for i := beginRowIdx; i <= endRowIdx; i++ {
+	for i := rowIdx; i <= endRowIdx; i++ {
 		rows += q.valRows[indexIdx][i]
 	}
 	return cond, rows
