@@ -93,12 +93,54 @@ func (tv *singleColQuerier) Collect(nSamples int, qt QueryType, ers []EstResult,
 		rowBegin = rowEnd - numMCVs
 	}
 
+	if nSamples == 0 {
+		nSamples = rowEnd - rowBegin
+	}
 	sampleRate := float64(rowEnd-rowBegin) / float64(nSamples)
 	if sampleRate > 1 {
 		sampleRate = 1
 	}
 
-	return tv.collect(tbIdx, colIdx, rowBegin, rowEnd, sampleRate, ins, ers, ignoreErr)
+	concurrency := 64
+	var wg sync.WaitGroup
+	var resultLock sync.Mutex
+	processed := 0
+
+	begin := time.Now()
+	for workerID := 0; workerID < concurrency; workerID++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for rowIdx := rowBegin + id; rowIdx < rowEnd; rowIdx += concurrency {
+				if rand.Float64() > sampleRate {
+					continue
+				}
+				cond, act := tv.pointCond(tbIdx, colIdx, rowIdx)
+				q := fmt.Sprintf("SELECT * FROM %v.%v WHERE %v", tv.db, tv.tbs[tbIdx], cond)
+				est, err := getEstRowFromExplain(ins, q)
+				if err != nil {
+					if !ignoreErr {
+						panic(err)
+					}
+					fmt.Println(q, err)
+					continue
+
+				}
+				resultLock.Lock()
+				ers = append(ers, EstResult{q, est, float64(act)})
+				processed++
+
+				if processed%5000 == 0 {
+					fmt.Printf("[SingleColQuerier-Process] ins=%v, table=%v, col=%v, qt=%v, concurrency=%v, time-cost=%v, progress (%v/%v)\n",
+						ins.Opt().Label, tv.tbs[tbIdx], tv.cols[tbIdx][colIdx], qt, concurrency, time.Since(begin), processed, nSamples)
+				}
+				resultLock.Unlock()
+			}
+		}(workerID)
+	}
+
+	wg.Wait()
+	return ers, nil
 }
 
 func (tv *singleColQuerier) ndv(tbIdx, colIdx int) int {
@@ -117,62 +159,4 @@ func (tv *singleColQuerier) colPlaceHolder(tbIdx, colIdx int) string {
 		return "'%v'"
 	}
 	return "%v"
-}
-
-func (tv *singleColQuerier) collect(tbIdx, colIdx, rowBegin, rowEnd int, sampleRate float64, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
-	begin := time.Now()
-	concurrency := 64
-	var wg sync.WaitGroup
-	taskCh := make(chan int, concurrency)
-	resultCh := make(chan EstResult, concurrency)
-	for workerID := 0; workerID < concurrency; workerID++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for {
-				rowIdx, ok := <-taskCh
-				if !ok {
-					return
-				}
-
-				cond, act := tv.pointCond(tbIdx, colIdx, rowIdx)
-				q := fmt.Sprintf("SELECT * FROM %v.%v WHERE %v", tv.db, tv.tbs[tbIdx], cond)
-				est, err := getEstRowFromExplain(ins, q)
-				if err != nil {
-					if !ignoreErr {
-						panic(err)
-					}
-					fmt.Println(q, err)
-					continue
-
-				}
-				resultCh <- EstResult{q, est, float64(act)}
-			}
-		}()
-	}
-
-	wg.Add(1)
-	n := 0
-	go func() { // task deliverer
-		defer wg.Done()
-		for i := rowBegin; i < rowEnd; i++ {
-			if rand.Float64() < sampleRate {
-				taskCh <- i
-				n++
-			}
-		}
-	}()
-
-	for i := 0; i < n; i++ {
-		er := <-resultCh
-		ers = append(ers, er)
-		if i > 0 && i%5000 == 0 {
-			fmt.Printf("[CollectPointQueryEstResult] access ins=%v, table=%v, col=%v, concurrency=%v, time-cost=%v, progress (%v/%v)\n",
-				ins.Opt().Label, tv.tbs[tbIdx], tv.cols[tbIdx][colIdx], concurrency, time.Since(begin), i-rowBegin, rowEnd-rowBegin)
-		}
-	}
-
-	close(taskCh)
-	wg.Wait()
-	return ers, nil
 }

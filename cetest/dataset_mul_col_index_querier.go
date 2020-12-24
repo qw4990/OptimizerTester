@@ -100,6 +100,9 @@ func (q *mulColIndexQuerier) Collect(nSamples int, qt QueryType, ers []EstResult
 
 func (q *mulColIndexQuerier) collect(nSamples, indexIdx int, rangeQuery bool, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
 	nRows := len(q.valRows[indexIdx])
+	if nSamples == 0 {
+		nSamples = nRows
+	}
 	sampleRate := float64(nSamples) / float64(nRows)
 	if sampleRate > 1 {
 		sampleRate = 1
