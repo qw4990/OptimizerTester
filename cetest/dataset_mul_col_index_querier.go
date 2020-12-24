@@ -60,7 +60,14 @@ func (q *mulColIndexQuerier) init(ins tidb.Instance) (rerr error) {
 			begin := time.Now()
 			nCols := len(q.indexCols[i])
 			cols := strings.Join(q.indexCols[i], ", ")
-			sql := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.%v GROUP BY %v ORDER BY %v", cols, q.db, q.indexTables[i], cols, cols)
+			whereCond := ""
+			for j, col := range q.indexCols[i] {
+				if j > 0 {
+					whereCond += " AND "
+				}
+				whereCond += fmt.Sprintf("%v IS NOT NULL", col)
+			}
+			sql := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.%v WHERE %v GROUP BY %v ORDER BY %v", cols, q.db, q.indexTables[i], whereCond, cols, cols)
 			rows, err := ins.Query(sql)
 			if err != nil {
 				rerr = err
