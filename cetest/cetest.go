@@ -14,10 +14,11 @@ import (
 )
 
 type DatasetOpt struct {
-	Name  string   `toml:"name"`
-	DB    string   `toml:"db"`
-	Label string   `toml:"label"`
-	Args  []string `toml:"args"`
+	Name     string   `toml:"name"`
+	DB       string   `toml:"db"`
+	Label    string   `toml:"label"`
+	Args     []string `toml:"args"`
+	NSamples int      `toml:"n-samples"`
 }
 
 type Option struct {

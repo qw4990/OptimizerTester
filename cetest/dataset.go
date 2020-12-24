@@ -64,22 +64,10 @@ type datasetBase struct {
 	mu       sync.Mutex
 }
 
-func (ds *datasetBase) lazyInit(ins tidb.Instance, qt QueryType) (err error) {
-	switch qt {
-	case QTMulColsPointQueryOnIndex, QTMulColsRangeQueryOnIndex:
-		return ds.mciq.init(ins)
-	}
-	return
-}
-
 func (ds *datasetBase) GenEstResults(ins tidb.Instance, qt QueryType) (ers []EstResult, err error) {
 	defer func(begin time.Time) {
 		fmt.Printf("[GenEstResults] dataset=%v, ins=%v, qt=%v, cost=%v\n", ds.opt.Label, ins.Opt().Label, qt, time.Since(begin))
 	}(time.Now())
-
-	if err := ds.lazyInit(ins, qt); err != nil {
-		return nil, err
-	}
 
 	switch qt {
 	case QTSingleColPointQueryOnCol, QTSingleColPointQueryOnIndex, QTSingleColMCVPointOnCol, QTSingleColMCVPointOnIndex:
