@@ -129,7 +129,6 @@ func (tv *singleColQuerier) Collect(nSamples int, qt QueryType, ers []EstResult,
 				resultLock.Lock()
 				ers = append(ers, EstResult{q, est, float64(act)})
 				processed++
-
 				if processed%5000 == 0 {
 					fmt.Printf("[SingleColQuerier-Process] ins=%v, table=%v, col=%v, qt=%v, concurrency=%v, time-cost=%v, progress (%v/%v)\n",
 						ins.Opt().Label, tv.tbs[tbIdx], tv.cols[tbIdx][colIdx], qt, concurrency, time.Since(begin), processed, nSamples)

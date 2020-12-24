@@ -94,11 +94,6 @@ func (q *mulColIndexQuerier) Collect(nSamples int, qt QueryType, ers []EstResult
 		return nil, err
 	}
 	indexIdx := q.qMap[qt]
-	rangeQuery := qt == QTMulColsRangeQueryOnIndex
-	return q.collect(nSamples, indexIdx, rangeQuery, ins, ers, ignoreErr)
-}
-
-func (q *mulColIndexQuerier) collect(nSamples, indexIdx int, rangeQuery bool, ins tidb.Instance, ers []EstResult, ignoreErr bool) ([]EstResult, error) {
 	nRows := len(q.valRows[indexIdx])
 	if nSamples == 0 {
 		nSamples = nRows
@@ -107,29 +102,53 @@ func (q *mulColIndexQuerier) collect(nSamples, indexIdx int, rangeQuery bool, in
 	if sampleRate > 1 {
 		sampleRate = 1
 	}
-	for i := 0; i < nRows; i++ {
-		if rand.Float64() > sampleRate {
-			continue
-		}
 
-		var cond string
-		var act int
-		if rangeQuery {
-			cond, act = q.rangeCond(indexIdx, i, int(math.Min(float64(i+rand.Intn(20)), float64(nRows-1))))
-		} else {
-			cond, act = q.pointCond(indexIdx, i)
-		}
-		sql := fmt.Sprintf("SELECT * FROM %v.%v WHERE %v", q.db, q.indexTables[indexIdx], cond)
-		est, err := getEstRowFromExplain(ins, sql)
-		if err != nil {
-			if !ignoreErr {
-				panic(err)
+	begin := time.Now()
+	concurrency := 64
+	var resultLock sync.Mutex
+	processed := 0
+	var wg sync.WaitGroup
+
+	for workID := 0; workID < concurrency; workID++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for rowIdx := id; rowIdx < nRows; rowIdx += concurrency {
+				if rand.Float64() > sampleRate {
+					continue
+				}
+
+				var cond string
+				var act int
+				if qt == QTMulColsRangeQueryOnIndex {
+					cond, act = q.rangeCond(indexIdx, rowIdx, int(math.Min(float64(rowIdx+rand.Intn(20)), float64(nRows-1))))
+				} else {
+					cond, act = q.pointCond(indexIdx, rowIdx)
+				}
+
+				sql := fmt.Sprintf("SELECT * FROM %v.%v WHERE %v", q.db, q.indexTables[indexIdx], cond)
+				est, err := getEstRowFromExplain(ins, sql)
+				if err != nil {
+					if !ignoreErr {
+						panic(err)
+					}
+					fmt.Println(sql, err)
+					continue
+				}
+
+				resultLock.Lock()
+				ers = append(ers, EstResult{sql, est, float64(act)})
+				processed++
+				if processed%5000 == 0 {
+					fmt.Printf("[MulColIndexQuerier-Process] ins=%v, index=%v, qt=%v, concurrency=%v, time-cost=%v, progress (%v/%v)\n",
+						ins.Opt().Label, q.indexTables[indexIdx], qt, concurrency, time.Since(begin), processed, nSamples)
+				}
+				resultLock.Unlock()
 			}
-			fmt.Println(q, err)
-			continue
-		}
-		ers = append(ers, EstResult{sql, est, float64(act)})
+		}(workID)
 	}
+
+	wg.Wait()
 	return ers, nil
 }
 
