@@ -208,6 +208,7 @@ func adaptiveBoundaries(opt Option, collector EstResultCollector, qtIdx, dsIdx i
 	xs = append(xs, x)
 	xs = append(xs, 0)
 	sort.Float64s(xs)
+	xs = append(xs, xs[len(xs)-1])
 	return xs
 }
 
