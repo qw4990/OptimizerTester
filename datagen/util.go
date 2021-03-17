@@ -15,7 +15,7 @@ func prepareIntNDV(ndv int) []int {
 		var data int
 		for {
 			data = rand.Intn(int(2e9))
-			_, ok = intMap[data];
+			_, ok = intMap[data]
 			if !ok {
 				break
 			}
@@ -44,7 +44,6 @@ func prepareDoubleNDV(ndv int) []float64 {
 	}
 	return doubles
 }
-
 
 func uint2Str(v uint64) string {
 	buf := new(bytes.Buffer)

@@ -19,84 +19,84 @@ import (
 type PartType string
 
 const (
-	HashPart PartType = "hash"
+	HashPart  PartType = "hash"
 	RangePart PartType = "range"
 )
 
 type tableMeta struct {
-	name string
-	dataType	 DATAType
-	parCol string
-	parType PartType
+	name     string
+	dataType DATAType
+	parCol   string
+	parType  PartType
 }
 
 var tables = []tableMeta{
 	{
-		name: "p_hash_zint_a",
+		name:     "p_hash_zint_a",
 		dataType: TypeInt,
-		parCol: "a",
-		parType: HashPart,
+		parCol:   "a",
+		parType:  HashPart,
 	},
 	{
-		name: "p_hash_zint_c",
+		name:     "p_hash_zint_c",
 		dataType: TypeInt,
-		parCol: "c",
-		parType: HashPart,
+		parCol:   "c",
+		parType:  HashPart,
 	},
 	{
-		name: "p_range_zint_a",
+		name:     "p_range_zint_a",
 		dataType: TypeInt,
-		parCol: "a",
-		parType: RangePart,
+		parCol:   "a",
+		parType:  RangePart,
 	},
 	{
-		name: "p_range_zint_c",
+		name:     "p_range_zint_c",
 		dataType: TypeInt,
-		parCol: "c",
-		parType: RangePart,
+		parCol:   "c",
+		parType:  RangePart,
 	},
 	{
-		name: "p_range_zdouble_a",
+		name:     "p_range_zdouble_a",
 		dataType: TypeDouble,
-		parCol: "a",
-		parType: RangePart,
+		parCol:   "a",
+		parType:  RangePart,
 	},
 	{
-		name: "p_range_zdouble_c",
+		name:     "p_range_zdouble_c",
 		dataType: TypeDouble,
-		parCol: "c",
-		parType: RangePart,
+		parCol:   "c",
+		parType:  RangePart,
 	},
 	{
-		name: "p_range_zstring_a",
+		name:     "p_range_zstring_a",
 		dataType: TypeString,
-		parCol: "a",
-		parType: RangePart,
+		parCol:   "a",
+		parType:  RangePart,
 	},
 	{
-		name: "p_range_zstring_c",
+		name:     "p_range_zstring_c",
 		dataType: TypeString,
-		parCol: "c",
-		parType: RangePart,
+		parCol:   "c",
+		parType:  RangePart,
 	},
 	{
-		name: "p_range_zdatetime_a",
+		name:     "p_range_zdatetime_a",
 		dataType: TypeDateTime,
-		parCol: "a",
-		parType: RangePart,
+		parCol:   "a",
+		parType:  RangePart,
 	},
 	{
-		name: "p_range_zdatetime_c",
+		name:     "p_range_zdatetime_c",
 		dataType: TypeDateTime,
-		parCol: "c",
-		parType: RangePart,
+		parCol:   "c",
+		parType:  RangePart,
 	},
 }
 
 type pZipfXOpt struct {
-	x float64
-	n int64
-	ndv int64
+	x            float64
+	n            int64
+	ndv          int64
 	partitionNum int64
 }
 
@@ -157,7 +157,7 @@ func genPRangeSchema(opt pZipfXOpt, partCol string) string {
 			s = fmt.Sprintf("%s\n    PARTITION p%d VALUES LESS THAN (%d)",
 				s,
 				i,
-				pMaxValue * int64(i) / opt.partitionNum)
+				pMaxValue*int64(i)/opt.partitionNum)
 			if i == opt.partitionNum {
 				s += ");"
 			} else {
@@ -172,10 +172,10 @@ func genPRangeSchema(opt pZipfXOpt, partCol string) string {
 func genPartitionSchema(t tableMeta, opt pZipfXOpt, ints []int, doubles []float64) (string, error) {
 
 	content := fmt.Sprintf("CREATE TABLE %s (a %s, b %s, c %s, key(a), key(a, b), key(b), key(b, c))\n",
-				t.name,
-				t.dataType,
-				t.dataType,
-				t.dataType)
+		t.name,
+		t.dataType,
+		t.dataType,
+		t.dataType)
 
 	switch t.parType {
 	case HashPart:
@@ -188,7 +188,7 @@ func genPartitionSchema(t tableMeta, opt pZipfXOpt, ints []int, doubles []float6
 		interval := end.Sub(begin)
 
 		var i int64
-		for i = 0; i < opt.partitionNum - 1; i++ {
+		for i = 0; i < opt.partitionNum-1; i++ {
 			var v string
 			switch t.dataType {
 			case TypeInt:
@@ -199,7 +199,7 @@ func genPartitionSchema(t tableMeta, opt pZipfXOpt, ints []int, doubles []float6
 				t := begin.Add(interval * time.Duration(i) / time.Duration(opt.partitionNum))
 				v = t.Format(timeLayout)
 			case TypeString:
-				v = uint2Str(uint64(i+10000))
+				v = uint2Str(uint64(i + 10000))
 			}
 			content = fmt.Sprintf("%s PARTITION p%d VALUES LESS THAN (%s),\n", content, i, v)
 		}
@@ -225,8 +225,6 @@ func GenPZipfXSchema(dir string, opt pZipfXOpt, ints []int, doubles []float64) e
 	return ioutil.WriteFile(schemaFile, []byte(content), 0666)
 }
 
-
-
 func GenPZipfXData(args, dir string) error {
 	opt, err := parsePZipfXOpt(args)
 	if err != nil {
@@ -237,12 +235,12 @@ func GenPZipfXData(args, dir string) error {
 	if opt.partitionNum > opt.ndv {
 		num = opt.partitionNum
 	}
-	ints := prepareIntNDV(int(num+1))
+	ints := prepareIntNDV(int(num + 1))
 	sortedInts := make([]int, len(ints))
 	copy(sortedInts, ints)
 	sort.Ints(sortedInts)
 
-	doubles := prepareDoubleNDV(int(num+1))
+	doubles := prepareDoubleNDV(int(num + 1))
 	sortedDoubles := make([]float64, len(doubles))
 	copy(sortedDoubles, doubles)
 	sort.Float64s(sortedDoubles)
@@ -288,7 +286,7 @@ func GenPZipfXData(args, dir string) error {
 					t := begin.Add(datetimeFactor * time.Duration(c))
 					s = t.Format(timeLayout)
 				case TypeString:
-					s = uint2Str(c+strFactor)
+					s = uint2Str(c + strFactor)
 				}
 				cols = append(cols, s)
 			}
