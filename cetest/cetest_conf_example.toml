@@ -1,12 +1,12 @@
 # query-types = ["single-col-point-query-on-col", "single-col-point-query-on-index", "single-col-mcv-point-on-col", "single-col-mcv-point-on-index"]
-query-types = ["mul-cols-range-query-on-index", "mul-cols-point-query-on-index"]
+query-types = ["single-col-point-query-on-col"]
 report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
-analyze-tables = ["test.tint"]
-n-samples = 5555
+analyze-tables = []
+n-samples = 100
 
 [[datasets]]
-name = "zipfx"
-db = "test"
+name = "imdb"
+db = "imdb"
 label = "zipf-1.5"
 
 [[instances]]
