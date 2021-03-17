@@ -130,45 +130,6 @@ func parsePZipfXOpt(args string) (opt pZipfXOpt, err error) {
 	return
 }
 
-const (
-	tableStruct = `(a %s, b %s, c %s, key(a), key(a, b), key(b), key(b, c))`
-)
-
-func genPRangeSchema(opt pZipfXOpt, partCol string) string {
-	var content string
-	for _, tp := range typeNameMap {
-		if tp != "int" {
-			continue
-		}
-		s := fmt.Sprintf(`CREATE TABLE p_range_z%s_%s `+tableStruct+`PARTITION BY RANGE(%s) (`,
-			tp,
-			partCol,
-			tp,
-			tp,
-			tp,
-			partCol,
-		)
-		pMaxValue := opt.ndv + 1
-		if opt.ndv < opt.partitionNum {
-			pMaxValue = opt.partitionNum + 1
-		}
-		var i int64
-		for i = 1; i <= opt.partitionNum; i++ {
-			s = fmt.Sprintf("%s\n    PARTITION p%d VALUES LESS THAN (%d)",
-				s,
-				i,
-				pMaxValue*int64(i)/opt.partitionNum)
-			if i == opt.partitionNum {
-				s += ");"
-			} else {
-				s += ","
-			}
-		}
-		content = fmt.Sprintf("%s\n%s", content, s)
-	}
-	return content
-}
-
 func genPartitionSchema(t tableMeta, opt pZipfXOpt, ints []int, doubles []float64) (string, error) {
 
 	content := fmt.Sprintf("CREATE TABLE %s (a %s, b %s, c %s, key(a), key(a, b), key(b), key(b, c))\n",
