@@ -51,15 +51,22 @@ func RunCETestPartitionModeWithConfig(confPath string) error {
 		ins.Close()
 	}()
 
+	// enable dynamic pruning
+	if err := ins.ExecInNewSession("SET GLOBAL tidb_analyze_version=2"); err != nil {
+		return err
+	}
+	if err := ins.ExecInNewSession("SET GLOBAL tidb_partition_prune_mode='dynamic'"); err != nil {
+		return err
+	}
 	for _, tbl := range opt.AnaTables {
-		sql := fmt.Sprintf("ANALYZE TABLE %v", tbl)
+		fmt.Printf("start analyzing table %v...\n", tbl)
+		sql := fmt.Sprintf("ANALYZE TABLE %v.`%v`", opt.DB, tbl)
 		if err := ins.Exec(sql); err != nil {
 			panic(fmt.Sprintf("sql=%v, err=%v", sql, err))
 		}
 	}
 
 	collector := NewPEstResultCollector()
-
 	switch strings.ToLower(opt.Dataset) {
 	case "imdb":
 		switch opt.QueryType {

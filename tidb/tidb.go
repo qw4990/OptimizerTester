@@ -1,6 +1,7 @@
 package tidb
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -20,6 +21,7 @@ type Option struct {
 
 type Instance interface {
 	Exec(sql string) error
+	ExecInNewSession(sql string) error
 	Query(query string) (*sql.Rows, error)
 	Version() string
 	Opt() Option
@@ -30,6 +32,20 @@ type instance struct {
 	db  *sql.DB
 	opt Option
 	ver string
+}
+
+func (ins *instance) ExecInNewSession(sql string) error {
+	begin := time.Now()
+	c, err := ins.db.Conn(context.Background())
+	if err != nil {
+		return nil
+	}
+	defer c.Close()
+	_, err = c.ExecContext(context.Background(), sql)
+	if time.Since(begin) > time.Second*3 {
+		fmt.Printf("[SLOW-QUERY] access %v with SQL %v cost %v\n", ins.opt.Label, sql, time.Since(begin))
+	}
+	return errors.Trace(err)
 }
 
 func (ins *instance) Exec(sql string) error {
