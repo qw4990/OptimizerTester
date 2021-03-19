@@ -3,6 +3,8 @@ package cetest
 import (
 	"fmt"
 	"io/ioutil"
+	"math"
+	"sort"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -20,7 +22,7 @@ type POption struct {
 	Tables    []string  `toml:"tables"`
 	Labels    []string  `toml:"labels"`
 
-	Instance tidb.Option `toml:"instances"`
+	Instance tidb.Option `toml:"instance"`
 }
 
 func DecodePOption(content string) (POption, error) {
@@ -58,12 +60,11 @@ func RunCETestPartitionModeWithConfig(confPath string) error {
 
 	collector := NewPEstResultCollector()
 
-	for tblIdx := range opt.Tables {
-		tbl := opt.Tables[tblIdx]
-		switch strings.ToLower(opt.Dataset) {
-		case "imdb":
-			switch opt.QueryType {
-			case QTSingleColPointQueryOnCol:
+	switch strings.ToLower(opt.Dataset) {
+	case "imdb":
+		switch opt.QueryType {
+		case QTSingleColPointQueryOnCol:
+			for _, tbl := range opt.Tables {
 				querier := newSingleColQuerier(opt.DB, []string{tbl}, [][]string{{"phonetic_code"}},
 					[][]DATATYPE{{DTString}}, map[QueryType][2]int{
 						QTSingleColPointQueryOnCol: {0, 0}, // SELECT * FROM title WHERE phonetic_code=?
@@ -73,13 +74,29 @@ func RunCETestPartitionModeWithConfig(confPath string) error {
 					return err
 				}
 				collector.AppendEstResults(ers)
-			default:
-				return fmt.Errorf("unsupported query type %v for imdb", opt.QueryType)
 			}
 		default:
-			return fmt.Errorf("unknown dataset: %v", opt.Dataset)
+			return fmt.Errorf("unsupported query type %v for imdb", opt.QueryType)
 		}
+	case "pzipfx":
+		return fmt.Errorf("unsupported query type %v for imdb", opt.QueryType)
+	default:
+		return fmt.Errorf("unknown dataset: %v", opt.Dataset)
 	}
 
+	if err := PGenPErrorBarChartsReport(opt, collector); err != nil {
+		return err
+	}
+
+	// print the worst 10 cases
+	for idx, label := range opt.Labels {
+		rs := collector.EstResults(idx)
+		sort.Slice(rs, func(i, j int) bool {
+			return math.Abs(PError(rs[i])) > math.Abs(PError(rs[j]))
+		})
+		for i := 0; i < 10 && i < len(rs); i++ {
+			fmt.Printf("[BadCase-%v]: %v, perror=%v\n", label, rs[i].SQL, PError(rs[i]))
+		}
+	}
 	return nil
 }
