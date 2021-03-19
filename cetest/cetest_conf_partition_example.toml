@@ -1,0 +1,15 @@
+report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
+analyze-tables = []
+n-samples = 100
+query-type = "single-col-point-query-on-col"
+dataset = "imdb"
+db = "imdb"
+tables = ["title", "p-title-hash-production_year", "p-title-range-production_year"]
+labels = ["normal", "phash", "prange"]
+
+[instance]
+addr = "127.0.0.1"
+port = 4000
+user = "root"
+password = ""
+
