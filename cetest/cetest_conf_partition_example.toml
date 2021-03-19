@@ -1,12 +1,12 @@
 report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
-analyze-tables = ["title", "p-title-hash-production_year", "p-title-range-production_year"]
-# analyze-tables = []
+# analyze-tables = ["title", "p-title-hash-production_year", "p-title-range-production_year"]
+analyze-tables = []
 n-samples = 0 # test all distinct values
 query-type = "single-col-point-query-on-col"
 dataset = "imdb"
 db = "test"
 tables = ["title", "p-title-hash-production_year", "p-title-range-production_year"]
-labels = ["normal", "hash-partition-n", "range-partition-n"]
+labels = ["non-part", "hash/not-partkey", "range/not-partkey"]
 
 [instance]
 addr = "127.0.0.1"
