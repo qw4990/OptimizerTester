@@ -54,7 +54,7 @@ func (tv *singleColQuerier) init(ins tidb.Instance) (rerr error) {
 		for i, tb := range tv.tbs {
 			for j, col := range tv.cols[i] {
 				begin := time.Now()
-				q := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.%v where %v is not null GROUP BY %v ORDER BY COUNT(*)", col, tv.db, tb, col, col)
+				q := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.`%v` where %v is not null GROUP BY %v ORDER BY COUNT(*)", col, tv.db, tb, col, col)
 				rows, err := ins.Query(q)
 				if err != nil {
 					rerr = err
@@ -116,7 +116,7 @@ func (tv *singleColQuerier) Collect(nSamples int, qt QueryType, ers []EstResult,
 					continue
 				}
 				cond, act := tv.pointCond(tbIdx, colIdx, rowIdx)
-				q := fmt.Sprintf("SELECT * FROM %v.%v WHERE %v", tv.db, tv.tbs[tbIdx], cond)
+				q := fmt.Sprintf("SELECT * FROM %v.`%v` WHERE %v", tv.db, tv.tbs[tbIdx], cond)
 				est, err := getEstRowFromExplain(ins, q)
 				if err != nil {
 					if !ignoreErr {

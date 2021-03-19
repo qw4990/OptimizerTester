@@ -8,6 +8,7 @@ import (
 
 func newCETestCmd() *cobra.Command {
 	var conf string
+	var partitionMode bool
 	cmd := &cobra.Command{
 		Use:   "cetest",
 		Short: "Cardinality Estimation Test",
@@ -15,9 +16,13 @@ func newCETestCmd() *cobra.Command {
 			if conf == "" {
 				return errors.New("no config")
 			}
+			if partitionMode {
+				return cetest.RunCETestPartitionModeWithConfig(conf)
+			}
 			return cetest.RunCETestWithConfig(conf)
 		},
 	}
 	cmd.Flags().StringVar(&conf, "config", "", "CETester config path")
+	cmd.Flags().BoolVar(&partitionMode, "partition-mode", false, "Whether to use partition mode")
 	return cmd
 }

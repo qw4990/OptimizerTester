@@ -138,8 +138,14 @@ func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx
 	p.X.Label.Text = "distribution"
 	p.Y.Label.Text = "frequency of occurrence"
 
+	lower, upper := 1.0, -1.0
+	for insIdx := range opt.Instances {
+		rs := collector.EstResults(insIdx, dsIdx, qtIdx)
+		lower, upper = updateLowerUpper(lower, upper, rs, calFunc)
+	}
+	boundaries := adaptiveBoundaries(lower, upper)
+
 	var w float64 = 20
-	boundaries := adaptiveBoundaries(opt, collector, qtIdx, dsIdx, calFunc)
 	for insIdx, ins := range opt.Instances {
 		rs := collector.EstResults(insIdx, dsIdx, qtIdx)
 		freqs := distribution(rs, boundaries, calFunc)
@@ -173,20 +179,20 @@ func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx
 	return pngName, p.Save(vg.Points(w+(w+5)*float64(len(boundaries)*len(opt.Instances))), 3*vg.Inch, pngPath)
 }
 
-func adaptiveBoundaries(opt Option, collector EstResultCollector, qtIdx, dsIdx int, calFunc func(EstResult) float64) []float64 {
-	lower, upper := 1.0, -1.0
-	for insIdx := range opt.Instances {
-		rs := collector.EstResults(insIdx, dsIdx, qtIdx)
-		for _, r := range rs {
-			v := calFunc(r)
-			if v < lower {
-				lower = v
-			}
-			if v > upper {
-				upper = v
-			}
+func updateLowerUpper(lower, upper float64, rs []EstResult, calFunc func(EstResult) float64) (float64, float64) {
+	for _, r := range rs {
+		v := calFunc(r)
+		if v < lower {
+			lower = v
+		}
+		if v > upper {
+			upper = v
 		}
 	}
+	return lower, upper
+}
+
+func adaptiveBoundaries(lower, upper float64) []float64 {
 	if lower > -2.0 {
 		lower = -2.0
 	}
