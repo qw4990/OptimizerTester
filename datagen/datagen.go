@@ -33,6 +33,8 @@ func Generate(dataset, args, dir string) error {
 	switch strings.ToLower(dataset) {
 	case "zipfx":
 		return GenZipfXData(args, dir)
+	case "pzipfx":
+		return GenPZipfXData(args, dir)
 	}
 	return errors.Errorf("unsupported dataset=%v", dataset)
 }

@@ -110,31 +110,6 @@ func GenZipfXData(args, dir string) error {
 	return GenZipfXLoadSQL(dir)
 }
 
-func prepareIntNDV(ndv int) []int {
-	ints := make([]int, ndv)
-	for i := range ints {
-		ints[i] = rand.Intn(int(2e9))
-	}
-	return ints
-}
-
-func prepareDoubleNDV(ndv int) []float64 {
-	doubles := make([]float64, ndv)
-	for i := range doubles {
-		doubles[i] = rand.Float64() * 2e9
-	}
-	return doubles
-}
-
-func uint2Str(v uint64) string {
-	buf := new(bytes.Buffer)
-	for v > 0 {
-		buf.WriteByte(byte(uint64('a') + (v % 10)))
-		v /= 10
-	}
-	return buf.String()
-}
-
 func GenZipfXSchema(dir string) error {
 	content := `CREATE TABLE tint ( a INT, b INT, KEY(a), KEY(a, b) );
 CREATE TABLE tdouble ( a DOUBLE, b DOUBLE, KEY(a), KEY(a, b) );
