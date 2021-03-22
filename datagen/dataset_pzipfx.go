@@ -32,25 +32,25 @@ type tableMeta struct {
 
 var tables = []tableMeta{
 	{
-		name:     "p-hash-zint-a",
+		name:     "p_hash_zint_a",
 		dataType: TypeInt,
 		parCol:   "a",
 		parType:  HashPart,
 	},
 	{
-		name:     "p-hash-zint-c",
+		name:     "p_hash_zint_c",
 		dataType: TypeInt,
 		parCol:   "c",
 		parType:  HashPart,
 	},
 	{
-		name:     "p-range-zint-a",
+		name:     "p_range_zint_a",
 		dataType: TypeInt,
 		parCol:   "a",
 		parType:  RangePart,
 	},
 	{
-		name:     "p-range-zint-c",
+		name:     "p_range_zint_c",
 		dataType: TypeInt,
 		parCol:   "c",
 		parType:  RangePart,
