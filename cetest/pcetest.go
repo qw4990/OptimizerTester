@@ -86,7 +86,62 @@ func RunCETestPartitionModeWithConfig(confPath string) error {
 			return fmt.Errorf("unsupported query type %v for imdb", opt.QueryType)
 		}
 	case "pzipfx":
-		return fmt.Errorf("unsupported query type %v for imdb", opt.QueryType)
+		switch opt.QueryType {
+		case QTSingleColPointQueryOnCol:
+			for _, tbl := range opt.Tables {
+				querier := newSingleColQuerier(opt.DB, []string{tbl}, [][]string{{"c"}},
+					[][]DATATYPE{{DTInt}}, map[QueryType][2]int{
+						// select * from p-{part-type}-zint-{part-cols} where c = ?
+						QTSingleColPointQueryOnCol: {0, 0},
+					})
+				ers, err := querier.Collect(opt.NSamples, QTSingleColPointQueryOnCol, nil, ins, true)
+				if err != nil {
+					return err
+				}
+				collector.AppendEstResults(ers)
+			}
+		case QTSingleColMCVPointOnCol:
+			for _, tbl := range opt.Tables {
+				querier := newSingleColQuerier(opt.DB, []string{tbl}, [][]string{{"c"}},
+					[][]DATATYPE{{DTInt}}, map[QueryType][2]int{
+						// select * from p-{part-type}-zint-{part-cols} where c = ?
+						QTSingleColMCVPointOnCol: {0, 0},
+					})
+				ers, err := querier.Collect(opt.NSamples, QTSingleColMCVPointOnCol, nil, ins, true)
+				if err != nil {
+					return err
+				}
+				collector.AppendEstResults(ers)
+			}
+		case QTSingleColPointQueryOnIndex:
+			for _, tbl := range opt.Tables {
+				querier := newSingleColQuerier(opt.DB, []string{tbl}, [][]string{{"a"}},
+					[][]DATATYPE{{DTInt}}, map[QueryType][2]int{
+						// select * from p-{part-type}-zint-{part-cols} where a = ?
+						QTSingleColPointQueryOnIndex: {0, 0},
+					})
+				ers, err := querier.Collect(opt.NSamples, QTSingleColPointQueryOnIndex, nil, ins, true)
+				if err != nil {
+					return err
+				}
+				collector.AppendEstResults(ers)
+			}
+		case QTSingleColMCVPointOnIndex:
+			for _, tbl := range opt.Tables {
+				querier := newSingleColQuerier(opt.DB, []string{tbl}, [][]string{{"a"}},
+					[][]DATATYPE{{DTInt}}, map[QueryType][2]int{
+						// select * from p-{part-type}-zint-{part-cols} where a = ?
+						QTSingleColMCVPointOnIndex: {0, 0},
+					})
+				ers, err := querier.Collect(opt.NSamples, QTSingleColMCVPointOnIndex, nil, ins, true)
+				if err != nil {
+					return err
+				}
+				collector.AppendEstResults(ers)
+			}
+		default:
+			return fmt.Errorf("unsupported query type %v for pzipfx", opt.QueryType)
+		}
 	default:
 		return fmt.Errorf("unknown dataset: %v", opt.Dataset)
 	}
