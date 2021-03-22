@@ -82,6 +82,18 @@ func RunCETestPartitionModeWithConfig(confPath string) error {
 				}
 				collector.AppendEstResults(ers)
 			}
+		case QTSingleColPointQueryOnIndex:
+			for _, tbl := range opt.Tables {
+				querier := newSingleColQuerier(opt.DB, []string{tbl}, [][]string{{"person_id"}},
+					[][]DATATYPE{{DTInt}}, map[QueryType][2]int{
+						QTSingleColPointQueryOnIndex: {0, 0}, // SELECT * FROM cast_info WHERE person_id=?
+					})
+				ers, err := querier.Collect(opt.NSamples, QTSingleColPointQueryOnIndex, nil, ins, true)
+				if err != nil {
+					return err
+				}
+				collector.AppendEstResults(ers)
+			}
 		default:
 			return fmt.Errorf("unsupported query type %v for imdb", opt.QueryType)
 		}

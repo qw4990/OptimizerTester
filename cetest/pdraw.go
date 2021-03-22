@@ -25,7 +25,7 @@ func PGenPErrorBarChartsReport(opt POption, collector PEstResultCollector) error
 	md.WriteString(fmt.Sprintf("![pic](%v)\n", picPath))
 
 	md.WriteString("\nOverEstimation Statistics\n")
-	md.WriteString("\n| Instance | Total | P50 | P90 | P99 | Max |\n")
+	md.WriteString("\n| Label | Total | P50 | P90 | P99 | Max |\n")
 	md.WriteString("| ---- | ---- | ---- | ---- | ---- | ---- |\n")
 	for idx, label := range opt.Labels {
 		stats := analyzePError(collector.EstResults(idx), true)
@@ -34,7 +34,7 @@ func PGenPErrorBarChartsReport(opt POption, collector PEstResultCollector) error
 	}
 
 	md.WriteString("\nUnderEstimation Statistics\n")
-	md.WriteString("\n| Instance | Total | P50 | P90 | P99 | Max |\n")
+	md.WriteString("\n| Label | Total | P50 | P90 | P99 | Max |\n")
 	md.WriteString("| ---- | ---- | ---- | ---- | ---- | ---- |\n")
 	for idx, label := range opt.Labels {
 		stats := analyzePError(collector.EstResults(idx), false)

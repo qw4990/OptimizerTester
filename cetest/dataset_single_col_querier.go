@@ -96,7 +96,7 @@ func (tv *singleColQuerier) Collect(nSamples int, qt QueryType, ers []EstResult,
 	if nSamples == 0 {
 		nSamples = rowEnd - rowBegin
 	}
-	sampleRate := float64(rowEnd-rowBegin) / float64(nSamples)
+	sampleRate := float64(nSamples) / float64(rowEnd-rowBegin)
 	if sampleRate > 1 {
 		sampleRate = 1
 	}
