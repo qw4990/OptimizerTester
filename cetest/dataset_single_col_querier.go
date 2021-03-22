@@ -77,7 +77,7 @@ func (tv *singleColQuerier) init(ins tidb.Instance) (rerr error) {
 			}
 		}
 	})
-	return nil
+	return
 }
 
 func (tv *singleColQuerier) Collect(nSamples int, qt QueryType, ers []EstResult, ins tidb.Instance, ignoreErr bool) ([]EstResult, error) {
