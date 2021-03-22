@@ -55,42 +55,42 @@ var tables = []tableMeta{
 		parCol:   "c",
 		parType:  RangePart,
 	},
-	{
-		name:     "p-range-zdouble-a",
-		dataType: TypeDouble,
-		parCol:   "a",
-		parType:  RangePart,
-	},
-	{
-		name:     "p-range-zdouble-c",
-		dataType: TypeDouble,
-		parCol:   "c",
-		parType:  RangePart,
-	},
-	{
-		name:     "p-range-zstring-a",
-		dataType: TypeString,
-		parCol:   "a",
-		parType:  RangePart,
-	},
-	{
-		name:     "p-range-zstring-c",
-		dataType: TypeString,
-		parCol:   "c",
-		parType:  RangePart,
-	},
-	{
-		name:     "p-range-zdatetime-a",
-		dataType: TypeDateTime,
-		parCol:   "a",
-		parType:  RangePart,
-	},
-	{
-		name:     "p-range-zdatetime-c",
-		dataType: TypeDateTime,
-		parCol:   "c",
-		parType:  RangePart,
-	},
+	//{
+	//	name:     "p-range-zdouble-a",
+	//	dataType: TypeDouble,
+	//	parCol:   "a",
+	//	parType:  RangePart,
+	//},
+	//{
+	//	name:     "p-range-zdouble-c",
+	//	dataType: TypeDouble,
+	//	parCol:   "c",
+	//	parType:  RangePart,
+	//},
+	//{
+	//	name:     "p-range-zstring-a",
+	//	dataType: TypeString,
+	//	parCol:   "a",
+	//	parType:  RangePart,
+	//},
+	//{
+	//	name:     "p-range-zstring-c",
+	//	dataType: TypeString,
+	//	parCol:   "c",
+	//	parType:  RangePart,
+	//},
+	//{
+	//	name:     "p-range-zdatetime-a",
+	//	dataType: TypeDateTime,
+	//	parCol:   "a",
+	//	parType:  RangePart,
+	//},
+	//{
+	//	name:     "p-range-zdatetime-c",
+	//	dataType: TypeDateTime,
+	//	parCol:   "c",
+	//	parType:  RangePart,
+	//},
 }
 
 type pZipfXOpt struct {
@@ -140,7 +140,7 @@ func genPartitionSchema(t tableMeta, opt pZipfXOpt, ints []int, doubles []float6
 
 	switch t.parType {
 	case HashPart:
-		content = fmt.Sprintf("%s PARTITION BY HASH(%s) PARTITION %d;", content, t.parCol, opt.partitionNum)
+		content = fmt.Sprintf("%s PARTITION BY HASH(%s) PARTITIONS %d;", content, t.parCol, opt.partitionNum)
 	case RangePart:
 		content = fmt.Sprintf("%s PARTITION BY RANGE(%s) (\n", content, t.parCol)
 
