@@ -21,6 +21,7 @@ type PartType string
 const (
 	HashPart  PartType = "hash"
 	RangePart PartType = "range"
+	NonPart   PartType = "none"
 )
 
 type tableMeta struct {
@@ -54,6 +55,11 @@ var tables = []tableMeta{
 		dataType: TypeInt,
 		parCol:   "c",
 		parType:  RangePart,
+	},
+	{
+		name:     "zint",
+		dataType: TypeInt,
+		parType:  NonPart,
 	},
 	//{
 	//	name:     "p-range-zdouble-a",
@@ -139,6 +145,8 @@ func genPartitionSchema(t tableMeta, opt pZipfXOpt, ints []int, doubles []float6
 		t.dataType)
 
 	switch t.parType {
+	case NonPart:
+		content = fmt.Sprintf("%s;", content)
 	case HashPart:
 		content = fmt.Sprintf("%s PARTITION BY HASH(%s) PARTITIONS %d;", content, t.parCol, opt.partitionNum)
 	case RangePart:
@@ -262,7 +270,7 @@ func GenPZipfXData(args, dir string) error {
 
 func GenPZipfXLoadSQL(dir string) error {
 	var buf bytes.Buffer
-	buf.WriteString("SET @@tidb_dml_batch_size=500000;\n")
+	buf.WriteString("SET @@tidb_dml_batch_size=50000;\n")
 
 	if !path.IsAbs(dir) {
 		absPrefix, err := os.Getwd()
