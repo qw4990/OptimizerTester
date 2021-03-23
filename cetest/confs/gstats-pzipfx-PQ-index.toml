@@ -6,7 +6,7 @@ query-type = "single-col-point-query-on-index"
 dataset = "pzipfx"
 db = "pzipfx"
 
-tables = ["tint", "p_range_zint_a", "p_range_zint_c", "p_hash_zint_a", "p_hash_zint_c"]
+tables = ["zint", "p_range_zint_a", "p_range_zint_c", "p_hash_zint_a", "p_hash_zint_c"]
 labels = ["non-part", "range/partkey", "range/not-partkey", "hash/partkey", "hash/not-partkey"]
 
 [instance]
