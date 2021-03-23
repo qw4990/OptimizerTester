@@ -25,21 +25,21 @@ func PGenPErrorBarChartsReport(opt POption, collector PEstResultCollector) error
 	md.WriteString(fmt.Sprintf("![pic](%v)\n", picPath))
 
 	md.WriteString("\nOverEstimation Statistics\n")
-	md.WriteString("\n| Label | Total | P50 | P90 | P99 | Max |\n")
-	md.WriteString("| ---- | ---- | ---- | ---- | ---- | ---- |\n")
+	md.WriteString("\n| Label | Total | P50 | P90 | P99 | P999 | Max |\n")
+	md.WriteString("| ---- | ---- | ---- | ---- | ---- | ---- | ---- |\n")
 	for idx, label := range opt.Labels {
 		stats := analyzePError(collector.EstResults(idx), true)
-		md.WriteString(fmt.Sprintf("| %v | %v | %v | %v | %v | %v |\n",
-			label, stats["tot"], stats["p50"], stats["p90"], stats["p99"], stats["max"]))
+		md.WriteString(fmt.Sprintf("| %v | %v | %v | %v | %v | %v | %v |\n",
+			label, stats["tot"], stats["p50"], stats["p90"], stats["p99"], stats["p999"], stats["max"]))
 	}
 
 	md.WriteString("\nUnderEstimation Statistics\n")
-	md.WriteString("\n| Label | Total | P50 | P90 | P99 | Max |\n")
-	md.WriteString("| ---- | ---- | ---- | ---- | ---- | ---- |\n")
+	md.WriteString("\n| Label | Total | P50 | P90 | P99 | P999 | Max |\n")
+	md.WriteString("| ---- | ---- | ---- | ---- | ---- | ---- | ---- |\n")
 	for idx, label := range opt.Labels {
 		stats := analyzePError(collector.EstResults(idx), false)
-		md.WriteString(fmt.Sprintf("| %v | %v | %v | %v | %v | %v |\n",
-			label, stats["tot"], stats["p50"], stats["p90"], stats["p99"], stats["max"]))
+		md.WriteString(fmt.Sprintf("| %v | %v | %v | %v | %v | %v | %v |\n",
+			label, stats["tot"], stats["p50"], stats["p90"], stats["p99"], stats["p999"], stats["max"]))
 	}
 	md.WriteString("\n")
 	return ioutil.WriteFile(path.Join(opt.ReportDir, "report.md"), md.Bytes(), 0666)

@@ -169,7 +169,7 @@ func RunCETestPartitionModeWithConfig(confPath string) error {
 			return math.Abs(PError(rs[i])) > math.Abs(PError(rs[j]))
 		})
 		for i := 0; i < 10 && i < len(rs); i++ {
-			fmt.Printf("[BadCase-%v]: %v, perror=%v\n", label, rs[i].SQL, PError(rs[i]))
+			fmt.Printf("[Worst-%v]: %v, perror=%v\n", label, rs[i].SQL, PError(rs[i]))
 		}
 	}
 	return nil

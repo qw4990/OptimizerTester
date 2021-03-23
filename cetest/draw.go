@@ -70,19 +70,21 @@ func analyzePError(results []EstResult, isOverEst bool) map[string]string {
 	n := len(pes)
 	if n == 0 {
 		return map[string]string{
-			"tot": "0",
-			"max": "-",
-			"p50": "-",
-			"p90": "-",
-			"p99": "-",
+			"tot":  "0",
+			"max":  "-",
+			"p50":  "-",
+			"p90":  "-",
+			"p99":  "-",
+			"p999": "-",
 		}
 	}
 	return map[string]string{
-		"tot": fmt.Sprintf("%v", n),
-		"max": fmt.Sprintf("%.3f", pes[n-1]),
-		"p50": fmt.Sprintf("%.3f", pes[n/2]),
-		"p90": fmt.Sprintf("%.3f", pes[(n*9)/10]),
-		"p99": fmt.Sprintf("%.3f", pes[(n*99)/100]),
+		"tot":  fmt.Sprintf("%v", n),
+		"max":  fmt.Sprintf("%.3f", pes[n-1]),
+		"p50":  fmt.Sprintf("%.3f", pes[n/2]),
+		"p90":  fmt.Sprintf("%.3f", pes[(n*9)/10]),
+		"p99":  fmt.Sprintf("%.3f", pes[(n*99)/100]),
+		"p999": fmt.Sprintf("%.3f", pes[(n*999)/1000]),
 	}
 }
 
