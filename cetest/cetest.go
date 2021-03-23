@@ -168,7 +168,7 @@ func printTop10BadCases(opt Option, collector EstResultCollector) error {
 					return math.Abs(PError(ers[i])) > math.Abs(PError(ers[j]))
 				})
 				for i := 0; i < 10 && i < len(ers); i++ {
-					fmt.Printf("[BadCase-%v-%v-%v]: %v, perror=%v\n", opt.Instances[insIdx].Label, opt.Datasets[dsIdx].Label,
+					fmt.Printf("[Worst-%v-%v-%v]: %v, perror=%v\n", opt.Instances[insIdx].Label, opt.Datasets[dsIdx].Label,
 						opt.QueryTypes[qtIdx].String(), ers[i].SQL, PError(ers[i]))
 				}
 			}

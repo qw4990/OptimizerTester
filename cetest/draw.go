@@ -70,19 +70,21 @@ func analyzePError(results []EstResult, isOverEst bool) map[string]string {
 	n := len(pes)
 	if n == 0 {
 		return map[string]string{
-			"tot": "0",
-			"max": "-",
-			"p50": "-",
-			"p90": "-",
-			"p99": "-",
+			"tot":  "0",
+			"max":  "-",
+			"p50":  "-",
+			"p90":  "-",
+			"p99":  "-",
+			"p999": "-",
 		}
 	}
 	return map[string]string{
-		"tot": fmt.Sprintf("%v", n),
-		"max": fmt.Sprintf("%.3f", pes[n-1]),
-		"p50": fmt.Sprintf("%.3f", pes[n/2]),
-		"p90": fmt.Sprintf("%.3f", pes[(n*9)/10]),
-		"p99": fmt.Sprintf("%.3f", pes[(n*99)/100]),
+		"tot":  fmt.Sprintf("%v", n),
+		"max":  fmt.Sprintf("%.3f", pes[n-1]),
+		"p50":  fmt.Sprintf("%.3f", pes[n/2]),
+		"p90":  fmt.Sprintf("%.3f", pes[(n*9)/10]),
+		"p99":  fmt.Sprintf("%.3f", pes[(n*99)/100]),
+		"p999": fmt.Sprintf("%.3f", pes[(n*999)/1000]),
 	}
 }
 
@@ -143,7 +145,7 @@ func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx
 		rs := collector.EstResults(insIdx, dsIdx, qtIdx)
 		lower, upper = updateLowerUpper(lower, upper, rs, calFunc)
 	}
-	boundaries := adaptiveBoundaries(lower, upper)
+	boundaries := AdaptiveBoundaries(lower, upper)
 
 	var w float64 = 20
 	for insIdx, ins := range opt.Instances {
@@ -192,7 +194,7 @@ func updateLowerUpper(lower, upper float64, rs []EstResult, calFunc func(EstResu
 	return lower, upper
 }
 
-func adaptiveBoundaries(lower, upper float64) []float64 {
+func AdaptiveBoundaries(lower, upper float64) []float64 {
 	if lower > -2.0 {
 		lower = -2.0
 	}
@@ -201,15 +203,31 @@ func adaptiveBoundaries(lower, upper float64) []float64 {
 	}
 	xs := make([]float64, 0, 8)
 	x := -1.0
+	cnt := 0
 	for x > lower {
 		xs = append(xs, x)
-		x *= 2
+		cnt++
+		if cnt < 3 {
+			x *= 2
+		} else if cnt < 5 {
+			x *= 4
+		} else {
+			x *= 8
+		}
 	}
 	xs = append(xs, x)
 	x = 1.0
+	cnt = 0
 	for x < upper {
 		xs = append(xs, x)
-		x *= 2
+		cnt++
+		if cnt < 3 {
+			x *= 2
+		} else if cnt < 5 {
+			x *= 4
+		} else {
+			x *= 8
+		}
 	}
 	xs = append(xs, x)
 	xs = append(xs, 0)
