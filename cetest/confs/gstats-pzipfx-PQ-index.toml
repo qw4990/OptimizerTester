@@ -1,0 +1,16 @@
+report-dir = "report/pzipfx-PQ-index"
+# analyze-tables = []
+analyze-tables = ["tint", "p_range_zint_a", "p_range_zint_c", "p_hash_zint_a", "p_hash_zint_c"]
+n-samples = 0 # if it's zero, then test all distinct values
+query-type = "single-col-point-query-on-index"
+dataset = "pzipfx"
+db = "pzipfx"
+
+tables = ["tint", "p_range_zint_a", "p_range_zint_c", "p_hash_zint_a", "p_hash_zint_c"]
+labels = ["non-part", "range/partkey", "range/not-partkey", "hash/partkey", "hash/not-partkey"]
+
+[instance]
+addr = "172.16.4.182"
+port = 4000
+user = "root"
+password = ""
