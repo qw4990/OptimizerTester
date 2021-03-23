@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/qw4990/OptimizerTester/cetest"
-	"github.com/qw4990/OptimizerTester/tidb"
 )
 
 func randEstResult(n int) []cetest.EstResult {
@@ -38,41 +37,46 @@ func randEstResultCollector(opt cetest.Option, n int) cetest.EstResultCollector 
 	return collector
 }
 
-func TestDrawBiasBoxPlotGroupByQueryType(t *testing.T) {
-	opt := cetest.Option{
-		QueryTypes: []cetest.QueryType{cetest.QTMultiColsPointQuery},
-		Datasets: []cetest.DatasetOpt{
-			{Label: "zipfx"},
-			{Label: "tpcc-10G"},
-			{Label: "tpcc-100G"},
-			{Label: "imdb"},
-		},
-		Instances: []tidb.Option{
-			{Label: "v3.0"},
-			{Label: "v4.0"},
-			{Label: "no-CMSketch"},
-		},
-		ReportDir: "./test",
-	}
+//func TestDrawBiasBoxPlotGroupByQueryType(t *testing.T) {
+//	opt := cetest.Option{
+//		QueryTypes: []cetest.QueryType{cetest.QTMultiColsPointQuery},
+//		Datasets: []cetest.DatasetOpt{
+//			{Label: "zipfx"},
+//			{Label: "tpcc-10G"},
+//			{Label: "tpcc-100G"},
+//			{Label: "imdb"},
+//		},
+//		Instances: []tidb.Option{
+//			{Label: "v3.0"},
+//			{Label: "v4.0"},
+//			{Label: "no-CMSketch"},
+//		},
+//		ReportDir: "./test",
+//	}
+//
+//	collector := randEstResultCollector(opt, 100)
+//	fmt.Println(cetest.DrawQErrorBoxPlotGroupByQueryType(opt, collector, 0))
+//}
 
-	collector := randEstResultCollector(opt, 100)
-	fmt.Println(cetest.DrawQErrorBoxPlotGroupByQueryType(opt, collector, 0))
-}
+//func TestDrawBarChartsGroupByQTAndDS(t *testing.T) {
+//	opt := cetest.Option{
+//		QueryTypes: []cetest.QueryType{cetest.QTMultiColsPointQuery},
+//		Datasets: []cetest.DatasetOpt{
+//			{Label: "zipfx"},
+//		},
+//		Instances: []tidb.Option{
+//			{Label: "v3.0"},
+//			{Label: "v4.0"},
+//			{Label: "no-CMSketch"},
+//		},
+//		ReportDir: "./test",
+//	}
+//
+//	collector := randEstResultCollector(opt, 100)
+//	fmt.Println(cetest.DrawBarChartsGroupByQTAndDS(opt, collector, 0, 0, cetest.PError))
+//}
 
-func TestDrawBarChartsGroupByQTAndDS(t *testing.T) {
-	opt := cetest.Option{
-		QueryTypes: []cetest.QueryType{cetest.QTMultiColsPointQuery},
-		Datasets: []cetest.DatasetOpt{
-			{Label: "zipfx"},
-		},
-		Instances: []tidb.Option{
-			{Label: "v3.0"},
-			{Label: "v4.0"},
-			{Label: "no-CMSketch"},
-		},
-		ReportDir: "./test",
-	}
-
-	collector := randEstResultCollector(opt, 100)
-	fmt.Println(cetest.DrawBarChartsGroupByQTAndDS(opt, collector, 0, 0, cetest.PError))
+func TestAdaptiveBoundaries(t *testing.T) {
+	fmt.Println(">>>> ", cetest.AdaptiveBoundaries(-619.0, 132.9))
+	fmt.Println(">>>> ", cetest.AdaptiveBoundaries(-2300.0, 902.9))
 }

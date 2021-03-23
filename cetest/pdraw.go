@@ -59,7 +59,7 @@ func PDrawBarChartsGroup(opt POption, collector PEstResultCollector, calFunc fun
 		rs := collector.EstResults(tblIdx)
 		lower, upper = updateLowerUpper(lower, upper, rs, calFunc)
 	}
-	boundaries := adaptiveBoundaries(lower, upper)
+	boundaries := AdaptiveBoundaries(lower, upper)
 
 	var w float64 = 20
 	for tblIdx, label := range opt.Labels {
