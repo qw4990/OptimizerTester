@@ -1,6 +1,6 @@
 report-dir = "report/pzipfx-PQ-col"
-# analyze-tables = []
-analyze-tables = ["zint", "p_range_zint_a", "p_range_zint_c", "p_hash_zint_a", "p_hash_zint_c"]
+# analyze-tables = ["zint", "p_range_zint_a", "p_range_zint_c", "p_hash_zint_a", "p_hash_zint_c"]
+analyze-tables = []
 n-samples = 0 # if it's zero, then test all distinct values
 query-type = "single-col-point-query-on-col"
 dataset = "pzipfx"
