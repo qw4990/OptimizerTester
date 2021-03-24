@@ -89,6 +89,8 @@ func PDrawBarChartsGroup(opt POption, collector PEstResultCollector, calFunc fun
 		}
 		prefixDir = path.Join(absPrefix, prefixDir)
 	}
+	
+	os.MkdirAll(prefixDir, 0777)
 
 	pngName := fmt.Sprintf("%v-%v-bar.png", opt.QueryType, "partition")
 	pngPath := path.Join(prefixDir, pngName)
