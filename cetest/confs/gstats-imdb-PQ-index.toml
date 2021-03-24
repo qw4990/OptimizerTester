@@ -1,4 +1,4 @@
-report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
+report-dir = "report/imdb-PQ-index"
 analyze-tables = []
 n-samples = 0 # if it's zero, then test all distinct values
 query-type = "single-col-point-query-on-index"
@@ -6,7 +6,7 @@ dataset = "imdb"
 db = "imdb"
 
 tables = ["cast_info", "p-cast_info-hash-movie_id", "p-cast_info-hash-person_id", "p-cast_info-range-movie_id", "p-cast_info-range-person_id"]
-labels = ["non-part", "hash/not-partkey", "hash/not-partkey", "range/not-partkey", "range/not-partkey"]
+labels = ["non-part", "hash/N", "hash/Y", "range/N", "range/Y"]
 
 [instance]
 addr = "172.16.4.182"
