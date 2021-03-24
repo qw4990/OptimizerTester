@@ -77,6 +77,7 @@ func randEstResultCollector(opt cetest.Option, n int) cetest.EstResultCollector 
 //}
 
 func TestAdaptiveBoundaries(t *testing.T) {
+	fmt.Println(">>>> ", cetest.AdaptiveBoundaries(-39.5, 131.2))
 	fmt.Println(">>>> ", cetest.AdaptiveBoundaries(-619.0, 132.9))
 	fmt.Println(">>>> ", cetest.AdaptiveBoundaries(-2300.0, 902.9))
 }
