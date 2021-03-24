@@ -9,7 +9,7 @@ tables = ["p-title-mul", "p-title-mul-hash-n", "p-title-mul-hash-y", "p-title-mu
 labels = ["non-part", "hash/N", "hash/Y", "range/N", "range/Y"]
 
 [instance]
-addr = "127.0.0.1
+addr = "127.0.0.1"
 port = 4000
 user = "root"
 password = ""
