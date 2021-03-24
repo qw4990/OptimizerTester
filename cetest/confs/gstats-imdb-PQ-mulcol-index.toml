@@ -1,4 +1,4 @@
-report-dir = "report/imdb-PQ-col"
+report-dir = "report/imdb-PQ-mulcol-index"
 analyze-tables = []
 n-samples = 0 # if it's zero, then test all distinct values
 query-type = "mul-cols-point-query-on-index"
