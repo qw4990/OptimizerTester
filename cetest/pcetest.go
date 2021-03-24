@@ -151,6 +151,19 @@ func RunCETestPartitionModeWithConfig(confPath string) error {
 				}
 				collector.AppendEstResults(ers)
 			}
+		case QTMulColsPointQueryOnIndex, QTMulColsRangeQueryOnIndex:
+			for _, tbl := range opt.Tables {
+				querier := newMulColIndexQuerier(opt.DB, nil, []string{tbl}, [][]string{{"a", "b"}},
+					[][]DATATYPE{{DTInt, DTInt}},
+					map[QueryType]int{
+						opt.QueryType: 0,
+					})
+				ers, err := querier.Collect(opt.NSamples, opt.QueryType, nil, ins, true)
+				if err != nil {
+					return err
+				}
+				collector.AppendEstResults(ers)
+			}
 		default:
 			return fmt.Errorf("unsupported query type %v for pzipfx", opt.QueryType)
 		}
