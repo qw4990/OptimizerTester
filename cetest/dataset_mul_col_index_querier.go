@@ -66,7 +66,7 @@ func (q *mulColIndexQuerier) init(ins tidb.Instance) (rerr error) {
 				}
 				whereCond += fmt.Sprintf("%v IS NOT NULL", col)
 			}
-			sql := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.%v WHERE %v GROUP BY %v ORDER BY %v", cols, q.db, q.indexTables[i], whereCond, cols, cols)
+			sql := fmt.Sprintf("SELECT %v, COUNT(*) FROM %v.`%v` WHERE %v GROUP BY %v ORDER BY %v", cols, q.db, q.indexTables[i], whereCond, cols, cols)
 			rows, err := ins.Query(sql)
 			if err != nil {
 				rerr = err
@@ -132,7 +132,7 @@ func (q *mulColIndexQuerier) Collect(nSamples int, qt QueryType, ers []EstResult
 					cond, act = q.pointCond(indexIdx, rowIdx)
 				}
 
-				sql := fmt.Sprintf("SELECT * FROM %v.%v WHERE %v", q.db, q.indexTables[indexIdx], cond)
+				sql := fmt.Sprintf("SELECT * FROM %v.`%v` WHERE %v", q.db, q.indexTables[indexIdx], cond)
 				est, err := getEstRowFromExplain(ins, sql)
 				if err != nil {
 					if !ignoreErr {

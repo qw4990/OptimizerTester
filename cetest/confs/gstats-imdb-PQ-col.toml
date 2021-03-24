@@ -1,4 +1,4 @@
-report-dir = "/Users/zhangyuanjia/Workspace/go/src/github.com/qw4990/OptimizerTester/cetest/test"
+report-dir = "report/imdb-PQ-col"
 # analyze-tables = ["title", "p-title-hash-production_year", "p-title-range-production_year"]
 analyze-tables = []
 n-samples = 0 # if it's zero, then test all distinct values
@@ -7,7 +7,7 @@ dataset = "imdb"
 db = "imdb"
 
 tables = ["title", "p-title-hash-production_year", "p-title-range-production_year"]
-labels = ["non-part", "hash/not-partkey", "range/not-partkey"]
+labels = ["non-part", "hash/N", "range/N"]
 
 [instance]
 addr = "172.16.4.182"

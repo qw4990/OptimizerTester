@@ -215,7 +215,7 @@ func AdaptiveBoundaries(lower, upper float64) []float64 {
 			x *= 8
 		}
 	}
-	xs = append(xs, x)
+	xs = append(xs, float64(int(upper)+1))
 	x = 1.0
 	cnt = 0
 	for x < upper {
@@ -229,7 +229,7 @@ func AdaptiveBoundaries(lower, upper float64) []float64 {
 			x *= 8
 		}
 	}
-	xs = append(xs, x)
+	xs = append(xs, float64(int(lower)))
 	xs = append(xs, 0)
 	sort.Float64s(xs)
 	xs = append(xs, xs[len(xs)-1])
