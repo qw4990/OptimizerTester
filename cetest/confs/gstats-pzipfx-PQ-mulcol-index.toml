@@ -7,7 +7,7 @@ dataset = "pzipfx"
 db = "pzipfx"
 
 tables = ["zint", "p_range_zint_a", "p_range_zint_c", "p_hash_zint_a", "p_hash_zint_c"]
-labels = ["non-part", "range/N", "range/Y", "hash/N", "hash/Y"]
+labels = ["non-part", "range/Y", "range/N", "hash/Y", "hash/N"]
 
 [instance]
 addr = "172.16.4.182"

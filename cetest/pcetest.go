@@ -166,7 +166,7 @@ func RunCETestPartitionModeWithConfig(confPath string) error {
 			}
 		case QTMulColsPointQueryOnIndex, QTMulColsRangeQueryOnIndex:
 			for _, tbl := range opt.Tables {
-				querier := newMulColIndexQuerier(opt.DB, nil, []string{tbl}, [][]string{{"a", "b"}},
+				querier := newMulColIndexQuerier(opt.DB, []string{"idx"}, []string{tbl}, [][]string{{"a", "b"}},
 					[][]DATATYPE{{DTInt, DTInt}},
 					map[QueryType]int{
 						opt.QueryType: 0,
