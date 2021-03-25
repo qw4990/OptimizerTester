@@ -1,0 +1,16 @@
+report-dir = "report/imdb-RQ-mulcol-index"
+analyze-tables = []
+n-samples = 0 # if it's zero, then test all distinct values
+query-type = "mul-cols-range-query-on-index"
+dataset = "imdb"
+db = "imdb"
+
+tables = ["p-title-mul", "p-title-mul-hash-n", "p-title-mul-hash-y", "p-title-mul-range-n", "p-title-mul-range-y"]
+labels = ["non-part", "hash/N", "hash/Y", "range/N", "range/Y"]
+
+[instance]
+addr = "127.0.0.1"
+port = 4000
+user = "root"
+password = ""
+
