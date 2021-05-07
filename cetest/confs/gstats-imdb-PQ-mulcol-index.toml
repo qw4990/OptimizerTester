@@ -5,7 +5,7 @@ query-type = "mul-cols-point-query-on-index"
 dataset = "imdb"
 db = "imdb"
 
-tables = ["p-title-mul", "p-title-mul-hash-n", "p-title-mul-hash-y", "p-title-mul-range-n", "p-title-mul-range-y"]
+tables = ["title", "p-title-mul-hash-n", "p-title-mul-hash-y", "p-title-mul-range-n", "p-title-mul-range-y"]
 labels = ["non-part", "hash/N", "hash/Y", "range/N", "range/Y"]
 
 [instance]
