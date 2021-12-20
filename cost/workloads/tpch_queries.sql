@@ -94,3 +94,18 @@ SELECT * FROM lineitem WHERE L_TAX BETWEEN ? AND ?;                             
 SELECT * FROM lineitem WHERE L_COMMITDATE BETWEEN ? AND ?;                      -- find lineitems by commit date
 SELECT * FROM lineitem WHERE L_RECEIPTDATE BETWEEN ? AND ?;                     -- find lineitems by receip date
 
+
+SELECT * FROM lineitem WHERE L_QUANTITY BETWEEN ? AND ? ORDER BY L_QUANTITY;                                -- find lineitems by quantity
+SELECT * FROM lineitem WHERE L_EXTENDEDPRICE BETWEEN ? AND ? ORDER BY L_EXTENDEDPRICE;                      -- find lineitems by price
+SELECT * FROM lineitem WHERE L_DISCOUNT BETWEEN ? AND ? ORDER BY L_DISCOUNT;                                -- find lineitems by discount
+SELECT * FROM lineitem WHERE L_TAX BETWEEN ? AND ? ORDER BY L_TAX;                                          -- find lineitems by tax
+SELECT * FROM lineitem WHERE L_COMMITDATE BETWEEN ? AND ? ORDER BY L_COMMITDATE;                            -- find lineitems by commit date
+SELECT * FROM lineitem WHERE L_RECEIPTDATE BETWEEN ? AND ? ORDER BY L_RECEIPTDATE;                          -- find lineitems by receip date
+
+
+SELECT COUNT(*) FROM lineitem WHERE L_QUANTITY BETWEEN ? AND ?;                        -- find count of lineitems by quantity
+SELECT COUNT(*) FROM lineitem WHERE L_EXTENDEDPRICE BETWEEN ? AND ?;                   -- find count of lineitems by price
+SELECT COUNT(*) FROM lineitem WHERE L_DISCOUNT BETWEEN ? AND ?;                        -- find count of lineitems by discount
+SELECT COUNT(*) FROM lineitem WHERE L_TAX BETWEEN ? AND ?;                             -- find count of lineitems by tax
+SELECT COUNT(*) FROM lineitem WHERE L_COMMITDATE BETWEEN ? AND ?;                      -- find count of lineitems by commit date
+SELECT COUNT(*) FROM lineitem WHERE L_RECEIPTDATE BETWEEN ? AND ?;                     -- find count of lineitems by receip date

@@ -81,7 +81,15 @@ CREATE TABLE `title` (
   KEY `kind_id_title` (`kind_id`)
 );
 
-SELECT * FROM title WHERE id = ?;                                   -- find the title of a movie
-SELECT * FROM title WHERE title = ?;                                -- find a movie by its title
-SELECT * FROM title WHERE production_year = ?;                      -- find movies by year
-SELECT * FROM title WHERE production_year BETWEEN ? AND ?;          -- find movies by year
+
+SELECT * FROM title WHERE id = ?;                                                                   -- find the title of a movie
+SELECT * FROM title WHERE title = ?;                                                                -- find a movie by its title
+SELECT * FROM title WHERE production_year = ?;                                                      -- find movies by year
+SELECT * FROM title WHERE production_year BETWEEN ? AND ?;                                          -- find movies by year
+SELECT * FROM title WHERE production_year BETWEEN ? AND ? ORDER BY production_year;                 -- find movies by year
+SELECT COUNT(*) FROM title WHERE production_year BETWEEN ? AND ?;                                   -- find movies by year
+SELECT * FROM title WHERE episode_nr = ?;                                                           -- find movies by episode_nr
+SELECT * FROM title WHERE episode_nr BETWEEN ? AND ?;                                               -- find movies by episode_nr
+SELECT * FROM title WHERE episode_nr BETWEEN ? AND ? ORDER BY episode_nr;                           -- find movies by episode_nr
+SELECT COUNT(*) FROM title WHERE episode_nr BETWEEN ? AND ?;                                        -- find movies by episode_nr
+
