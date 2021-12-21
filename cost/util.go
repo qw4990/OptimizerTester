@@ -8,7 +8,7 @@ import (
 )
 
 func genPointQueries(ins tidb.Instance, n int, sel, orderby, db, tbl string, cols ...string) []string {
-	rows := sampleRows(ins, n, db, tbl, cols...)
+	rows := sampleCols(ins, n, db, tbl, cols...)
 	queries := make([]string, n)
 	for i, row := range rows {
 		conds := make([]string, len(cols))
@@ -20,7 +20,7 @@ func genPointQueries(ins tidb.Instance, n int, sel, orderby, db, tbl string, col
 	return queries
 }
 
-func sampleRows(ins tidb.Instance, n int, db, tbl string, cols ...string) [][]string {
+func sampleCols(ins tidb.Instance, n int, db, tbl string, cols ...string) [][]string {
 	ins.MustExec(fmt.Sprintf("use %v", db))
 	cs := strings.Join(cols, ", ")
 	m := n * 256 // don't use order by rand() or distinct to avoid OOM

@@ -1,6 +1,9 @@
 package cost
 
 import (
+	"fmt"
+	"math/rand"
+	
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
@@ -24,6 +27,7 @@ SELECT * FROM title WHERE id = ?;                                               
 SELECT * FROM title WHERE title = ?;                                                                -- find a movie by its title
 SELECT * FROM title WHERE production_year = ?;                                                      -- find movies by year
 SELECT * FROM title WHERE episode_nr = ?;                                                           -- find movies by episode_nr
+
 SELECT * FROM title WHERE production_year BETWEEN ? AND ?;                                          -- find movies by year
 SELECT * FROM title WHERE production_year BETWEEN ? AND ? ORDER BY production_year;                 -- find movies by year
 SELECT COUNT(*) FROM title WHERE production_year BETWEEN ? AND ?;                                   -- find movies by year
@@ -35,7 +39,7 @@ SELECT COUNT(*) FROM title WHERE episode_nr BETWEEN ? AND ?;                    
 func genIMDBQueries(ins tidb.Instance, db string) []string {
 	queries := make([]string, 0, 128)
 	n := 5
-	
+
 	// point queries
 	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "movie_id")...)
 	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "person_id")...)
@@ -60,7 +64,43 @@ func genIMDBQueries(ins tidb.Instance, db string) []string {
 	queries = append(queries, genPointQueries(ins, n, "*", "order by episode_nr", db, "title", "episode_nr")...)
 	queries = append(queries, genPointQueries(ins, n, "count(*)", "", db, "title", "production_year")...)
 	queries = append(queries, genPointQueries(ins, n, "count(*)", "", db, "title", "episode_nr")...)
-	
+
 	// range queries
+	queries = append(queries, genIMDBRangeQueries(n, db)...)
+
+	return queries
+}
+
+func genIMDBRangeQueries(n int, db string) []string {
+	queries := make([]string, 0, 128)
+	// range by year or episode_nr
+	for _, sel := range []string{"*", "count(*)"} {
+		for _, ordered := range []bool{true, false} {
+			for _, col := range []string{"production_year", "episode_nr"} {
+				for i := 0; i < n; i++ {
+					orderby := ""
+					if ordered {
+						orderby = "order by " + col
+					}
+
+					var cond string
+					if col == "production_year" {
+						// 1500 ~ 2020
+						l := 1500 + rand.Intn(2020-1500)
+						r := l + rand.Intn(2020-l)
+						cond = fmt.Sprintf("production_year>=%v and production_year<=%v", l, r)
+					} else if col == "episode_nr" {
+						// 0 ~ 2528072
+						l := rand.Intn(2528072)
+						r := l + rand.Intn(2528072-l)
+						cond = fmt.Sprintf("episode_nr>=%v and episode_nr<=%v", l, r)
+					}
+
+					q := fmt.Sprintf("select %v from %v.%v where %v %v", sel, db, "title", cond, orderby)
+					queries = append(queries, q)
+				}
+			}
+		}
+	}
 	return queries
 }
