@@ -1,4 +1,4 @@
-package main
+package cost
 
 import (
 	"github.com/qw4990/OptimizerTester/tidb"
