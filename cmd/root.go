@@ -19,4 +19,5 @@ func init() {
 	cobra.OnInitialize()
 	rootCmd.AddCommand(newCETestCmd())
 	rootCmd.AddCommand(newDatagenCmd())
+	rootCmd.AddCommand(newCEBenchCmd())
 }
