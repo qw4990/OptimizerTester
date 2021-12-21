@@ -7,5 +7,6 @@ require (
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/pingcap/errors v0.11.4
 	github.com/spf13/cobra v1.1.1
+	go.uber.org/atomic v1.4.0
 	gonum.org/v1/plot v0.8.1
 )
