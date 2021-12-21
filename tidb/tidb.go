@@ -59,8 +59,12 @@ func (ins *instance) MustExec(sql string) {
 func (ins *instance) Exec(sql string) error {
 	begin := time.Now()
 	_, err := ins.db.Exec(sql)
+	name := ins.opt.Label
+	if name == "" {
+		name = fmt.Sprintf("%v:%v", ins.opt.Addr, ins.opt.Port)
+	}
 	if time.Since(begin) > time.Second*3 {
-		fmt.Printf("[SLOW-QUERY] access %v with SQL %v cost %v\n", ins.opt.Label, sql, time.Since(begin))
+		fmt.Printf("[SLOW-QUERY] access %v with SQL %v cost %v\n", name, sql, time.Since(begin))
 	}
 	return errors.Trace(err)
 }
@@ -76,8 +80,12 @@ func (ins *instance) MustQuery(query string) *sql.Rows {
 func (ins *instance) Query(query string) (*sql.Rows, error) {
 	begin := time.Now()
 	rows, err := ins.db.Query(query)
+	name := ins.opt.Label
+	if name == "" {
+		name = fmt.Sprintf("%v:%v", ins.opt.Addr, ins.opt.Port)
+	}
 	if time.Since(begin) > time.Second*3 {
-		fmt.Printf("[SLOW-QUERY]access %v with SQL %v cost %v\n", ins.opt.Label, query, time.Since(begin))
+		fmt.Printf("[SLOW-QUERY]access %v with SQL %v cost %v\n", name, query, time.Since(begin))
 	}
 	return rows, errors.Trace(err)
 }

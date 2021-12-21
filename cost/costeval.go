@@ -18,7 +18,7 @@ func CostEval() {
 		Label:    "",
 	}
 
-	opt.Addr = "127.0.0.1"
+	//opt.Addr = "127.0.0.1"
 
 	ins, err := tidb.ConnectTo(opt)
 	if err != nil {
@@ -32,7 +32,7 @@ func CostEval() {
 		fmt.Println("[cost-eval] test query for synthetic: ", q)
 	}
 
-	concurrency := 10
+	concurrency := 2
 	instances := make([]tidb.Instance, concurrency)
 	for i := 0; i < concurrency; i++ {
 		tmp, err := tidb.ConnectTo(ins.Opt())
@@ -43,14 +43,14 @@ func CostEval() {
 	}
 
 	var wg sync.WaitGroup
+	queries := splitQueries(qs, concurrency)
 	rs := make([]records, concurrency)
-	step := len(qs) / concurrency
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
 			defer fmt.Printf("[cost-eval] worker-%v finish\n", id)
-			rs[id] = runCostEvalQueries(id, instances[id], "synthetic", qs[id*step:(id+1)*step])
+			rs[id] = runCostEvalQueries(id, instances[id], "synthetic", queries[id])
 		}(i)
 	}
 	wg.Wait()
@@ -98,7 +98,7 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs []string) recor
 				panic(err)
 			}
 			if actRows != estRows {
-				fmt.Printf(`[cost-eval] worker-%v not true-CE for query=%v, est=%v, act=%v`, id, q, estRows, actRows)
+				fmt.Printf(`[cost-eval] worker-%v not true-CE for query=%v, est=%v, act=%v\n`, id, q, estRows, actRows)
 				//panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, q, estRows, actRows))
 			}
 			if rootExecInfo == "" {
@@ -127,4 +127,12 @@ func parseTimeFromExecInfo(execInfo string) (timeMS float64) {
 		panic(fmt.Sprintf("invalid time %v", timeField))
 	}
 	return float64(dur) / float64(time.Millisecond)
+}
+
+func splitQueries(r []string, n int) [][]string {
+	rs := make([][]string, n)
+	for i, record := range r {
+		rs[i%n] = append(rs[i%n], record)
+	}
+	return rs
 }
