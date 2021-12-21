@@ -21,7 +21,9 @@ type Option struct {
 
 type Instance interface {
 	Exec(sql string) error
+	MustExec(sql string)
 	ExecInNewSession(sql string) error
+	MustQuery(query string) *sql.Rows
 	Query(query string) (*sql.Rows, error)
 	Version() string
 	Opt() Option
@@ -48,6 +50,12 @@ func (ins *instance) ExecInNewSession(sql string) error {
 	return errors.Trace(err)
 }
 
+func (ins *instance) MustExec(sql string) {
+	if err := ins.Exec(sql); err != nil {
+		panic(err)
+	}
+}
+
 func (ins *instance) Exec(sql string) error {
 	begin := time.Now()
 	_, err := ins.db.Exec(sql)
@@ -55,6 +63,14 @@ func (ins *instance) Exec(sql string) error {
 		fmt.Printf("[SLOW-QUERY] access %v with SQL %v cost %v\n", ins.opt.Label, sql, time.Since(begin))
 	}
 	return errors.Trace(err)
+}
+
+func (ins *instance) MustQuery(query string) *sql.Rows {
+	ret, err := ins.Query(query)
+	if err != nil {
+		panic(err)
+	}
+	return ret
 }
 
 func (ins *instance) Query(query string) (*sql.Rows, error) {
