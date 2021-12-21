@@ -30,10 +30,8 @@ SELECT * FROM title WHERE episode_nr = ?;                                       
 
 SELECT * FROM title WHERE production_year BETWEEN ? AND ?;                                          -- find movies by year
 SELECT * FROM title WHERE production_year BETWEEN ? AND ? ORDER BY production_year;                 -- find movies by year
-SELECT COUNT(*) FROM title WHERE production_year BETWEEN ? AND ?;                                   -- find movies by year
 SELECT * FROM title WHERE episode_nr BETWEEN ? AND ?;                                               -- find movies by episode_nr
 SELECT * FROM title WHERE episode_nr BETWEEN ? AND ? ORDER BY episode_nr;                           -- find movies by episode_nr
-SELECT COUNT(*) FROM title WHERE episode_nr BETWEEN ? AND ?;                                        -- find movies by episode_nr
 */
 
 func genIMDBQueries(ins tidb.Instance, db string) []string {
@@ -62,8 +60,8 @@ func genIMDBQueries(ins tidb.Instance, db string) []string {
 	queries = append(queries, genPointQueries(ins, n, "*", "", db, "title", "episode_nr")...)
 	queries = append(queries, genPointQueries(ins, n, "*", "order by production_year", db, "title", "production_year")...)
 	queries = append(queries, genPointQueries(ins, n, "*", "order by episode_nr", db, "title", "episode_nr")...)
-	queries = append(queries, genPointQueries(ins, n, "count(*)", "", db, "title", "production_year")...)
-	queries = append(queries, genPointQueries(ins, n, "count(*)", "", db, "title", "episode_nr")...)
+	//queries = append(queries, genPointQueries(ins, n, "count(*)", "", db, "title", "production_year")...)
+	//queries = append(queries, genPointQueries(ins, n, "count(*)", "", db, "title", "episode_nr")...)
 
 	// range queries
 	queries = append(queries, genIMDBRangeQueries(n, db)...)
@@ -74,7 +72,7 @@ func genIMDBQueries(ins tidb.Instance, db string) []string {
 func genIMDBRangeQueries(n int, db string) []string {
 	queries := make([]string, 0, 128)
 	// range by year or episode_nr
-	for _, sel := range []string{"*", "count(*)"} {
+	for _, sel := range []string{"*"} {
 		for _, ordered := range []bool{true, false} {
 			for _, col := range []string{"production_year", "episode_nr"} {
 				for i := 0; i < n; i++ {
