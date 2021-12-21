@@ -38,7 +38,7 @@ func drawCostRecords(r records) {
 		}
 		s.GlyphStyle.Color = plotutil.DefaultColors[rand.Intn(len(plotutil.DefaultColors))]
 		s.GlyphStyle.Shape = plotutil.DefaultGlyphShapes[rand.Intn(len(plotutil.DefaultGlyphShapes))]
-		s.GlyphStyle.Radius = vg.Points(1)
+		s.GlyphStyle.Radius = vg.Points(3)
 		p.Add(s)
 		p.Legend.Add(label, s)
 	}
