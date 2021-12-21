@@ -68,7 +68,7 @@ func (ins *instance) Exec(sql string) error {
 func (ins *instance) MustQuery(query string) *sql.Rows {
 	ret, err := ins.Query(query)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("%v: %v", query, err))
 	}
 	return ret
 }

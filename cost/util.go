@@ -23,14 +23,15 @@ func genPointQueries(ins tidb.Instance, n int, sel, orderby, db, tbl string, col
 func sampleRows(ins tidb.Instance, n int, db, tbl string, cols ...string) [][]string {
 	ins.MustExec(fmt.Sprintf("use %v", db))
 	cs := strings.Join(cols, ", ")
-	q := fmt.Sprintf(`select distinct(%v) from %v.%v limit %v`, cs, db, tbl, n)
+	m := n * 256 // don't use order by rand() or distinct to avoid OOM
+	q := fmt.Sprintf(`select %v from %v.%v limit %v`, cs, db, tbl, m)
 	r := ins.MustQuery(q)
 	ts, err := r.ColumnTypes()
 	if err != nil {
 		panic(err)
 	}
 
-	rows := make([][]string, 0, n)
+	rows := make([][]string, 0, m)
 	for r.Next() {
 		is := make([]interface{}, len(ts))
 		for i, t := range ts {
@@ -53,13 +54,30 @@ func sampleRows(ins tidb.Instance, n int, db, tbl string, cols ...string) [][]st
 		for i, t := range ts {
 			switch t.DatabaseTypeName() {
 			case "VARCHAR", "TEXT", "NVARCHAR":
-				row[i] = fmt.Sprintf("'%v'", is[i])
-			case "INT", "BIGINT", "DECIMAL":
-				row[i] = fmt.Sprintf("%v", is[i])
+				row[i] = fmt.Sprintf("'%v'", *(is[i].(*string)))
+			case "INT", "BIGINT":
+				row[i] = fmt.Sprintf("%v", *(is[i].(*int)))
+			case "DECIMAL":
+				row[i] = fmt.Sprintf("%v", *(is[i].(*float64)))
 			}
 		}
 		rows = append(rows, row)
 	}
 
-	return rows
+	// select n rows randomly
+	results := make([][]string, 0, n)
+	dup := make(map[string]struct{})
+	for _, row := range rows {
+		key := strings.Join(row, ":")
+		if _, ok := dup[key]; ok {
+			continue
+		}
+		dup[key] = struct{}{}
+		results = append(results, row)
+		if len(results) == n {
+			break
+		}
+	}
+
+	return results
 }
