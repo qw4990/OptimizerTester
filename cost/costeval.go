@@ -2,7 +2,6 @@ package cost
 
 import (
 	"fmt"
-
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
@@ -21,7 +20,9 @@ func CostEval() {
 		panic(err)
 	}
 
-	qs := genIMDBQueries(ins, "imdb")
+	//genSyntheticData(ins, 2000000, "synthetic")
+
+	qs := genSyntheticQueries(ins, "synthetic")
 	for _, q := range qs {
 		fmt.Println(q)
 	}
