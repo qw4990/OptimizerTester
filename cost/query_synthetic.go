@@ -52,7 +52,7 @@ func genSyntheticQueries(ins tidb.Instance, db string) []string {
 		panic(err)
 	}
 
-	repeat := 10
+	repeat := 50
 	qs := make([]string, 0, 1024)
 	qs = append(qs, genSyntheticQuery(n, repeat, db, "a", "primary", "", "a")...)
 	qs = append(qs, genSyntheticQuery(n, repeat, db, "*", "primary", "", "a")...)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/qw4990/OptimizerTester/tidb"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -31,9 +32,34 @@ func CostEval() {
 		fmt.Println("[cost-eval] test query for synthetic: ", q)
 	}
 
-	r := runCostEvalQueries(ins, "synthetic", qs)
+	concurrency := 10
+	instances := make([]tidb.Instance, concurrency)
+	for i := 0; i < concurrency; i++ {
+		tmp, err := tidb.ConnectTo(ins.Opt())
+		if err != nil {
+			panic(err)
+		}
+		instances[i] = tmp
+	}
 
-	drawCostRecords(r)
+	var wg sync.WaitGroup
+	rs := make([]records, concurrency)
+	step := len(qs) / concurrency
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			defer fmt.Printf("[cost-eval] worker-%v finish\n", id)
+			rs[id] = runCostEvalQueries(id, instances[id], "synthetic", qs[id*step:(id+1)*step])
+		}(i)
+	}
+	wg.Wait()
+
+	var all records
+	for _, r := range rs {
+		all = append(all, r...)
+	}
+	drawCostRecords(all)
 }
 
 type record struct {
@@ -43,7 +69,7 @@ type record struct {
 
 type records []record
 
-func runCostEvalQueries(ins tidb.Instance, db string, qs []string) records {
+func runCostEvalQueries(id int, ins tidb.Instance, db string, qs []string) records {
 	beginAt := time.Now()
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	ins.MustExec(`set @@tidb_cost_calibration_mode=2`)
@@ -61,7 +87,7 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs []string) records {
 	//	| └─TableRowIDScan_6(Probe)     | 100109.36 | 5706253.48  | 99986   | cop[tikv] | table:t             | time:592.1ms, loops:109, cop_task: {num: 9, max: 89.2ms, min: 10.4ms, avg: 54.1ms, p95: 89.2ms, tot_proc: 456ms, rpc_num: 9, rpc_time: 486.3ms, copr_cache_hit_ratio: 0.00}, tikv_task:{proc max:15ms, min:2.57ms, p80:10.9ms, p95:15ms, iters:99986, tasks:9} | keep order:false                   | N/A     | N/A  |
 	//	+-------------------------------+-----------+-------------+---------+-----------+---------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+---------+------+
 	for i, q := range qs {
-		fmt.Printf("[cost-eval] run query %v %v/%v %v\n", q, i, len(qs), time.Since(beginAt))
+		fmt.Printf("[cost-eval] worker-%v run query %v %v/%v %v\n", id, q, i, len(qs), time.Since(beginAt))
 
 		rs := ins.MustQuery("explain analyze " + q)
 		var id, task, access, execInfo, opInfo, mem, disk, rootExecInfo string
@@ -72,7 +98,7 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs []string) records {
 				panic(err)
 			}
 			if actRows != estRows {
-				fmt.Printf(`[cost-eval] not true-CE for query=%v, est=%v, act=%v`, q, estRows, actRows)
+				fmt.Printf(`[cost-eval] worker-%v not true-CE for query=%v, est=%v, act=%v`, id, q, estRows, actRows)
 				//panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, q, estRows, actRows))
 			}
 			if rootExecInfo == "" {
