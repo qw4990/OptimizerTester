@@ -20,16 +20,16 @@ func drawCostRecords(r records) {
 	if err != nil {
 		panic(err)
 	}
-	p.Title.Text = "AAAA"
-	p.X.Label.Text = "X"
-	p.Y.Label.Text = "Y"
+	p.Title.Text = "cost model accuracy scatter plot"
+	p.X.Label.Text = "cost estimation"
+	p.Y.Label.Text = "actual exec-time(ms)"
 
 	s, err := plotter.NewScatter(r)
 	if err != nil {
 		panic(err)
 	}
 	s.GlyphStyle.Color = color.RGBA{R: 255, B: 128, A: 255}
-	s.GlyphStyle.Radius = vg.Points(3)
+	s.GlyphStyle.Radius = vg.Points(1)
 	p.Add(s)
 
 	err = p.Save(200, 200, "scatter.png")
