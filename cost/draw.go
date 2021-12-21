@@ -1,10 +1,12 @@
 package cost
 
 import (
+	"math/rand"
+	
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/plotutil"
 	"gonum.org/v1/plot/vg"
-	"image/color"
 )
 
 func (r records) Len() int {
@@ -24,13 +26,22 @@ func drawCostRecords(r records) {
 	p.X.Label.Text = "cost estimation"
 	p.Y.Label.Text = "actual exec-time(ms)"
 
-	s, err := plotter.NewScatter(r)
-	if err != nil {
-		panic(err)
+	labledRecords := make(map[string]records)
+	for _, record := range r {
+		labledRecords[record.label] = append(labledRecords[record.label], record)
 	}
-	s.GlyphStyle.Color = color.RGBA{R: 255, B: 128, A: 255}
-	s.GlyphStyle.Radius = vg.Points(1)
-	p.Add(s)
+
+	for label, r := range labledRecords {
+		s, err := plotter.NewScatter(r)
+		if err != nil {
+			panic(err)
+		}
+		s.GlyphStyle.Color = plotutil.DefaultColors[rand.Intn(len(plotutil.DefaultColors))]
+		s.GlyphStyle.Shape = plotutil.DefaultGlyphShapes[rand.Intn(len(plotutil.DefaultGlyphShapes))]
+		s.GlyphStyle.Radius = vg.Points(1)
+		p.Add(s)
+		p.Legend.Add(label, s)
+	}
 
 	err = p.Save(800, 800, "scatter.png")
 	if err != nil {

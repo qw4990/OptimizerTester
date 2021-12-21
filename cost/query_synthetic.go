@@ -42,7 +42,7 @@ import (
 // select /*+ use_index(t, bcd) */ * from b=? and c>=? and c<=? order by f;								-- Multi-Col IndexLookup + width row + Order
 // select /*+ use_index(t, bcd) */ * from b=? and c=? and d>=? and d<=? order by f;						-- Multi-Col IndexLookup + width row + Order
 
-func genSyntheticQueries(ins tidb.Instance, db string) []string {
+func genSyntheticQueries(ins tidb.Instance, db string) []query {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 
 	rs := ins.MustQuery(`select max(a) from t`)
@@ -53,33 +53,33 @@ func genSyntheticQueries(ins tidb.Instance, db string) []string {
 	}
 
 	repeat := 50
-	qs := make([]string, 0, 1024)
-	qs = append(qs, genSyntheticQuery(n, repeat, db, "a", "primary", "", "a")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, db, "*", "primary", "", "a")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, db, "b", "b", "", "b")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, db, "b, c, d", "bcd", "", "b", "c")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, db, "b, c, d", "bcd", "", "b", "c", "d")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, db, "b, f", "b", "", "b")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, db, "b, c, d, f", "bcd", "", "b", "c")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, db, "b, c, d, f", "bcd", "", "b", "c", "d")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, db, "*", "b", "", "b")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, db, "*", "bcd", "", "b", "c")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, db, "*", "bcd", "", "b", "c", "d")...)
+	qs := make([]query, 0, 1024)
+	qs = append(qs, genSyntheticQuery(n, repeat, "TableScan", db, "a", "primary", "", "a")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "TableScan", db, "*", "primary", "", "a")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan", db, "b", "b", "", "b")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan", db, "b, c, d", "bcd", "", "b", "c")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan", db, "b, c, d", "bcd", "", "b", "c", "d")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookUp", db, "b, f", "b", "", "b")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookUp", db, "b, c, d, f", "bcd", "", "b", "c")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookUp", db, "b, c, d, f", "bcd", "", "b", "c", "d")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookUp", db, "*", "b", "", "b")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookUp", db, "*", "bcd", "", "b", "c")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookUp", db, "*", "bcd", "", "b", "c", "d")...)
 
 	repeatOrder := 5
-	qs = append(qs, genSyntheticQuery(n, repeatOrder, db, "a, f", "primary", "f", "a")...)
-	qs = append(qs, genSyntheticQuery(n, repeatOrder, db, "*", "primary", "f", "a")...)
-	qs = append(qs, genSyntheticQuery(n, repeatOrder, db, "b, f", "b", "f", "b")...)
-	qs = append(qs, genSyntheticQuery(n, repeatOrder, db, "b, c, d, f", "bcd", "f", "b", "c")...)
-	qs = append(qs, genSyntheticQuery(n, repeatOrder, db, "b, c, d, f", "bcd", "f", "b", "c", "d")...)
-	qs = append(qs, genSyntheticQuery(n, repeatOrder, db, "*", "b", "f", "b")...)
-	qs = append(qs, genSyntheticQuery(n, repeatOrder, db, "*", "bcd", "f", "b", "c")...)
-	qs = append(qs, genSyntheticQuery(n, repeatOrder, db, "*", "bcd", "f", "b", "c", "d")...)
+	qs = append(qs, genSyntheticQuery(n, repeatOrder, "Sort", db, "a, f", "primary", "f", "a")...)
+	qs = append(qs, genSyntheticQuery(n, repeatOrder, "Sort", db, "*", "primary", "f", "a")...)
+	qs = append(qs, genSyntheticQuery(n, repeatOrder, "Sort", db, "b, f", "b", "f", "b")...)
+	qs = append(qs, genSyntheticQuery(n, repeatOrder, "Sort", db, "b, c, d, f", "bcd", "f", "b", "c")...)
+	qs = append(qs, genSyntheticQuery(n, repeatOrder, "Sort", db, "b, c, d, f", "bcd", "f", "b", "c", "d")...)
+	qs = append(qs, genSyntheticQuery(n, repeatOrder, "Sort", db, "*", "b", "f", "b")...)
+	qs = append(qs, genSyntheticQuery(n, repeatOrder, "Sort", db, "*", "bcd", "f", "b", "c")...)
+	qs = append(qs, genSyntheticQuery(n, repeatOrder, "Sort", db, "*", "bcd", "f", "b", "c", "d")...)
 	return qs
 }
 
-func genSyntheticQuery(n, repeat int, db, sel, idxhint, orderby string, cols ...string) []string {
-	qs := make([]string, 0, repeat)
+func genSyntheticQuery(n, repeat int, label, db, sel, idxhint, orderby string, cols ...string) []query {
+	qs := make([]query, 0, repeat)
 	if orderby != "" {
 		orderby = "order by " + orderby
 	}
@@ -100,7 +100,7 @@ func genSyntheticQuery(n, repeat int, db, sel, idxhint, orderby string, cols ...
 				conds = append(conds, fmt.Sprintf("%v>=%v and %v<=%v", col, l, col, r))
 			}
 		}
-		qs = append(qs, fmt.Sprintf(`select /*+ use_index(t, %v) */ %v from %v.t where %v %v`, idxhint, sel, db, strings.Join(conds, " and "), orderby))
+		qs = append(qs, query{label: label, sql: fmt.Sprintf(`select /*+ use_index(t, %v) */ %v from %v.t where %v %v`, idxhint, sel, db, strings.Join(conds, " and "), orderby)})
 	}
 	return qs
 }

@@ -18,7 +18,7 @@ func CostEval() {
 		Label:    "",
 	}
 
-	//opt.Addr = "127.0.0.1"
+	opt.Addr = "127.0.0.1"
 
 	ins, err := tidb.ConnectTo(opt)
 	if err != nil {
@@ -62,14 +62,20 @@ func CostEval() {
 	drawCostRecords(all)
 }
 
+type query struct {
+	sql   string
+	label string
+}
+
 type record struct {
 	cost   float64
 	timeMS float64
+	label  string
 }
 
 type records []record
 
-func runCostEvalQueries(id int, ins tidb.Instance, db string, qs []string) records {
+func runCostEvalQueries(id int, ins tidb.Instance, db string, qs []query) records {
 	beginAt := time.Now()
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	ins.MustExec(`set @@tidb_cost_calibration_mode=2`)
@@ -89,7 +95,7 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs []string) recor
 	for i, q := range qs {
 		fmt.Printf("[cost-eval] worker-%v run query %v %v/%v %v\n", id, q, i, len(qs), time.Since(beginAt))
 
-		rs := ins.MustQuery("explain analyze " + q)
+		rs := ins.MustQuery("explain analyze " + q.sql)
 		var id, task, access, execInfo, opInfo, mem, disk, rootExecInfo string
 		var estRows, actRows, cost, rootCost float64
 
@@ -99,7 +105,7 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs []string) recor
 			}
 			if actRows != estRows {
 				fmt.Printf("[cost-eval] worker-%v not true-CE for query=%v, est=%v, act=%v\n", id, q, estRows, actRows)
-				//panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, q, estRows, actRows))
+				panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, q, estRows, actRows))
 			}
 			if rootExecInfo == "" {
 				rootExecInfo, rootCost = execInfo, cost
@@ -112,6 +118,7 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs []string) recor
 		records = append(records, record{
 			cost:   rootCost,
 			timeMS: parseTimeFromExecInfo(rootExecInfo),
+			label:  q.label,
 		})
 	}
 
@@ -129,8 +136,8 @@ func parseTimeFromExecInfo(execInfo string) (timeMS float64) {
 	return float64(dur) / float64(time.Millisecond)
 }
 
-func splitQueries(r []string, n int) [][]string {
-	rs := make([][]string, n)
+func splitQueries(r []query, n int) [][]query {
+	rs := make([][]query, n)
 	for i, record := range r {
 		rs[i%n] = append(rs[i%n], record)
 	}
