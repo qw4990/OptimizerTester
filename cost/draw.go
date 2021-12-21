@@ -32,7 +32,7 @@ func drawCostRecords(r records) {
 	s.GlyphStyle.Radius = vg.Points(1)
 	p.Add(s)
 
-	err = p.Save(200, 200, "scatter.png")
+	err = p.Save(800, 800, "scatter.png")
 	if err != nil {
 		panic(err)
 	}

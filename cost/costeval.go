@@ -25,7 +25,7 @@ func CostEval() {
 		panic(err)
 	}
 
-	//genSyntheticData(ins, 200000, "synthetic")
+	//genSyntheticData(ins, 100000, "synthetic")
 
 	qs := genSyntheticQueries(ins, "synthetic")
 	for _, q := range qs {
@@ -98,7 +98,7 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs []string) recor
 				panic(err)
 			}
 			if actRows != estRows {
-				fmt.Printf(`[cost-eval] worker-%v not true-CE for query=%v, est=%v, act=%v\n`, id, q, estRows, actRows)
+				fmt.Printf("[cost-eval] worker-%v not true-CE for query=%v, est=%v, act=%v\n", id, q, estRows, actRows)
 				//panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, q, estRows, actRows))
 			}
 			if rootExecInfo == "" {

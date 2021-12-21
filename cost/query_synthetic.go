@@ -13,7 +13,7 @@ import (
 //	b int,
 //	c int,
 //	d int,
-//	e varchar(512),
+//	e varchar(128),
 //	f int,
 //	primary key(a),
 //	key b(b),
@@ -112,7 +112,7 @@ func genSyntheticData(ins tidb.Instance, n int, db string) {
 	b int,
 	c int,
 	d int,
-	e varchar(512),
+	e varchar(128),
 	f int,
 	primary key(a),
 	key b(b),
@@ -131,7 +131,7 @@ func genSyntheticData(ins tidb.Instance, n int, db string) {
 		fmt.Printf("[cost-eval] gen synthetic data %v-%v, duration from the beginning %v\n", l, r, time.Since(beginAt))
 		rows = rows[:0]
 		for k := l; k < r; k++ {
-			rows = append(rows, fmt.Sprintf("(%v, %v, %v, %v, %v, %v)", k, rand.Intn(n), rand.Intn(n), rand.Intn(n), "space(512)", rand.Intn(n)))
+			rows = append(rows, fmt.Sprintf("(%v, %v, %v, %v, %v, %v)", k, rand.Intn(n), rand.Intn(n), rand.Intn(n), "space(128)", rand.Intn(n)))
 		}
 		ins.MustExec(fmt.Sprintf(`insert into t values %v`, strings.Join(rows, ", ")))
 	}
