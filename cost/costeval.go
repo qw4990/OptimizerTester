@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/qw4990/OptimizerTester/tidb"
 	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -19,7 +20,6 @@ func CostEval() {
 		Password: "",
 		Label:    "",
 	}
-
 	//opt.Addr = "127.0.0.1"
 
 	ins, err := tidb.ConnectTo(opt)
@@ -28,39 +28,58 @@ func CostEval() {
 	}
 
 	//genSyntheticData(ins, 100000, "synthetic")
+	evalOnSynthetic(ins, "synthetic")
+}
 
-	qs := genSyntheticQueries(ins, "synthetic")
-	for _, q := range qs {
-		fmt.Println("[cost-eval] test query for synthetic: ", q)
-	}
+func evalOnSynthetic(ins tidb.Instance, db string) {
+	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", db))
+	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-records.json", db))
 
-	concurrency := 2
-	instances := make([]tidb.Instance, concurrency)
-	for i := 0; i < concurrency; i++ {
-		tmp, err := tidb.ConnectTo(ins.Opt())
-		if err != nil {
-			panic(err)
+	qs, err := readQueriesFrom(queryFile)
+	if err != nil {
+		fmt.Println("[cost-eval] read queries file error: ", err)
+		qs = genSyntheticQueries(ins, db)
+		for _, q := range qs {
+			fmt.Println("[cost-eval] test query for synthetic: ", q)
 		}
-		instances[i] = tmp
+	} else {
+		fmt.Println("[cost-eval] read queries from file successfully ")
+	}
+	
+	all, err := readRecordsFrom(recordFile)
+	if err != nil {
+		fmt.Println("[cost-eval] read records file error: ", err)
+
+		concurrency := 2
+		instances := make([]tidb.Instance, concurrency)
+		for i := 0; i < concurrency; i++ {
+			tmp, err := tidb.ConnectTo(ins.Opt())
+			if err != nil {
+				panic(err)
+			}
+			instances[i] = tmp
+		}
+		
+		var wg sync.WaitGroup
+		queries := splitQueries(qs, concurrency)
+		rs := make([]Records, concurrency)
+		for i := 0; i < concurrency; i++ {
+			wg.Add(1)
+			go func(id int) {
+				defer wg.Done()
+				defer fmt.Printf("[cost-eval] worker-%v finish\n", id)
+				rs[id] = runCostEvalQueries(id, instances[id], db, queries[id])
+			}(i)
+		}
+		wg.Wait()
+
+		for _, r := range rs {
+			all = append(all, r...)
+		}
+	} else {
+		fmt.Println("[cost-eval] read records from file successfully")
 	}
 
-	var wg sync.WaitGroup
-	queries := splitQueries(qs, concurrency)
-	rs := make([]Records, concurrency)
-	for i := 0; i < concurrency; i++ {
-		wg.Add(1)
-		go func(id int) {
-			defer wg.Done()
-			defer fmt.Printf("[cost-eval] worker-%v finish\n", id)
-			rs[id] = runCostEvalQueries(id, instances[id], "synthetic", queries[id])
-		}(i)
-	}
-	wg.Wait()
-
-	var all Records
-	for _, r := range rs {
-		all = append(all, r...)
-	}
 	drawCostRecords(all)
 }
 
@@ -148,6 +167,28 @@ func splitQueries(r Queries, n int) []Queries {
 	return rs
 }
 
+func saveQueriesTo(q Queries, f string) {
+	data, err := json.Marshal(q)
+	if err != nil {
+		panic(err)
+	}
+	if err := ioutil.WriteFile(f, data, 0666); err != nil {
+		panic(err)
+	}
+}
+
+func readQueriesFrom(f string) (Queries, error) {
+	data, err := ioutil.ReadFile(f)
+	if err != nil {
+		return nil, err
+	}
+	var r Queries
+	if err := json.Unmarshal(data, &r); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 func saveRecordsTo(r Records, f string) {
 	data, err := json.Marshal(r)
 	if err != nil {
@@ -158,14 +199,14 @@ func saveRecordsTo(r Records, f string) {
 	}
 }
 
-func readRecordsFrom(f string) Records {
+func readRecordsFrom(f string) (Records, error) {
 	data, err := ioutil.ReadFile(f)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	var r Records
 	if err := json.Unmarshal(data, &r); err != nil {
-		panic(err)
+		return nil, err
 	}
-	return r
+	return r, nil
 }
