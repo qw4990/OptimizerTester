@@ -26,7 +26,7 @@ import (
 
 // TODO: sort
 
-func genSyntheticQueries(ins tidb.Instance, db string) []query {
+func genSyntheticQueries(ins tidb.Instance, db string) Queries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 
 	rs := ins.MustQuery(`select max(a) from t`)
@@ -37,7 +37,7 @@ func genSyntheticQueries(ins tidb.Instance, db string) []query {
 	}
 
 	repeat := 100
-	qs := make([]query, 0, 1024)
+	qs := make(Queries, 0, 1024)
 	qs = append(qs, genSyntheticQuery(n, repeat, "TableScan", db, "a", "primary", "", "a")...)
 	qs = append(qs, genSyntheticQuery(n, repeat, "TableScan+WideCol", db, "a, c", "primary", "", "a")...)
 	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan", db, "b", "b", "", "b")...)
@@ -46,8 +46,8 @@ func genSyntheticQueries(ins tidb.Instance, db string) []query {
 	return qs
 }
 
-func genSyntheticQuery(n, repeat int, label, db, sel, idxhint, orderby string, cols ...string) []query {
-	qs := make([]query, 0, repeat)
+func genSyntheticQuery(n, repeat int, label, db, sel, idxhint, orderby string, cols ...string) Queries {
+	qs := make(Queries, 0, repeat)
 	if orderby != "" {
 		orderby = "order by " + orderby
 	}
@@ -68,7 +68,7 @@ func genSyntheticQuery(n, repeat int, label, db, sel, idxhint, orderby string, c
 				conds = append(conds, fmt.Sprintf("%v>=%v and %v<=%v", col, l, col, r))
 			}
 		}
-		qs = append(qs, query{label: label, sql: fmt.Sprintf(`select /*+ use_index(t, %v) */ %v from %v.t where %v %v`, idxhint, sel, db, strings.Join(conds, " and "), orderby)})
+		qs = append(qs, Query{Label: label, SQL: fmt.Sprintf(`select /*+ use_index(t, %v) */ %v from %v.t where %v %v`, idxhint, sel, db, strings.Join(conds, " and "), orderby)})
 	}
 	return qs
 }

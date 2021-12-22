@@ -9,15 +9,15 @@ import (
 	"gonum.org/v1/plot/vg"
 )
 
-func (r records) Len() int {
+func (r Records) Len() int {
 	return len(r)
 }
 
-func (r records) XY(k int) (x, y float64) {
-	return r[k].cost, r[k].timeMS
+func (r Records) XY(k int) (x, y float64) {
+	return r[k].Cost, r[k].TimeMS
 }
 
-func drawCostRecords(r records) {
+func drawCostRecords(r Records) {
 	p, err := plot.New()
 	if err != nil {
 		panic(err)
@@ -26,9 +26,9 @@ func drawCostRecords(r records) {
 	p.X.Label.Text = "cost estimation"
 	p.Y.Label.Text = "actual exec-time(ms)"
 
-	labledRecords := make(map[string]records)
+	labledRecords := make(map[string]Records)
 	for _, record := range r {
-		labledRecords[record.label] = append(labledRecords[record.label], record)
+		labledRecords[record.Label] = append(labledRecords[record.Label], record)
 	}
 
 	for label, r := range labledRecords {

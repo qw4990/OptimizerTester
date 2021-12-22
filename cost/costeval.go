@@ -1,8 +1,10 @@
 package cost
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/qw4990/OptimizerTester/tidb"
+	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
@@ -44,7 +46,7 @@ func CostEval() {
 
 	var wg sync.WaitGroup
 	queries := splitQueries(qs, concurrency)
-	rs := make([]records, concurrency)
+	rs := make([]Records, concurrency)
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
 		go func(id int) {
@@ -55,34 +57,36 @@ func CostEval() {
 	}
 	wg.Wait()
 
-	var all records
+	var all Records
 	for _, r := range rs {
 		all = append(all, r...)
 	}
 	drawCostRecords(all)
 }
 
-type query struct {
-	sql   string
-	label string
+type Query struct {
+	SQL   string
+	Label string
 }
 
-type record struct {
-	cost   float64
-	timeMS float64
-	label  string
+type Queries []Query
+
+type Record struct {
+	Cost   float64
+	TimeMS float64
+	Label  string
 }
 
-type records []record
+type Records []Record
 
-func runCostEvalQueries(id int, ins tidb.Instance, db string, qs []query) records {
+func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Records {
 	beginAt := time.Now()
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	ins.MustExec(`set @@tidb_cost_calibration_mode=2`)
 	ins.MustExec(`set @@tidb_distsql_scan_concurrency=1`)
 	ins.MustExec(`set @@tidb_executor_concurrency=1`)
 	ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
-	records := make([]record, 0, len(qs))
+	records := make([]Record, 0, len(qs))
 
 	//mysql> explain analyze select /*+ use_index(t, b) */ * from synthetic.t where b>=1 and b<=100000;
 	//	+-------------------------------+-----------+-------------+---------+-----------+---------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+---------+------+
@@ -95,7 +99,7 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs []query) record
 	for i, q := range qs {
 		fmt.Printf("[cost-eval] worker-%v run query %v %v/%v %v\n", id, q, i, len(qs), time.Since(beginAt))
 
-		rs := ins.MustQuery("explain analyze " + q.sql)
+		rs := ins.MustQuery("explain analyze " + q.SQL)
 		var id, task, access, execInfo, opInfo, mem, disk, rootExecInfo string
 		var estRows, actRows, cost, rootCost float64
 
@@ -115,10 +119,10 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs []query) record
 			panic(err)
 		}
 
-		records = append(records, record{
-			cost:   rootCost,
-			timeMS: parseTimeFromExecInfo(rootExecInfo),
-			label:  q.label,
+		records = append(records, Record{
+			Cost:   rootCost,
+			TimeMS: parseTimeFromExecInfo(rootExecInfo),
+			Label:  q.Label,
 		})
 	}
 
@@ -136,10 +140,32 @@ func parseTimeFromExecInfo(execInfo string) (timeMS float64) {
 	return float64(dur) / float64(time.Millisecond)
 }
 
-func splitQueries(r []query, n int) [][]query {
-	rs := make([][]query, n)
+func splitQueries(r Queries, n int) []Queries {
+	rs := make([]Queries, n)
 	for i, record := range r {
 		rs[i%n] = append(rs[i%n], record)
 	}
 	return rs
+}
+
+func saveRecordsTo(r Records, f string) {
+	data, err := json.Marshal(r)
+	if err != nil {
+		panic(err)
+	}
+	if err := ioutil.WriteFile(f, data, 0666); err != nil {
+		panic(err)
+	}
+}
+
+func readRecordsFrom(f string) Records {
+	data, err := ioutil.ReadFile(f)
+	if err != nil {
+		panic(err)
+	}
+	var r Records
+	if err := json.Unmarshal(data, &r); err != nil {
+		panic(err)
+	}
+	return r
 }
