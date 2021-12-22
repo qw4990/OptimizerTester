@@ -2,7 +2,7 @@ package cost
 
 import (
 	"math/rand"
-	
+
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/plotutil"
@@ -17,7 +17,7 @@ func (r Records) XY(k int) (x, y float64) {
 	return r[k].Cost, r[k].TimeMS
 }
 
-func drawCostRecords(r Records) {
+func drawCostRecordsTo(r Records, f string) {
 	p, err := plot.New()
 	if err != nil {
 		panic(err)
@@ -43,7 +43,7 @@ func drawCostRecords(r Records) {
 		p.Legend.Add(label, s)
 	}
 
-	err = p.Save(800, 800, "scatter.png")
+	err = p.Save(800, 800, f)
 	if err != nil {
 		panic(err)
 	}

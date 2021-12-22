@@ -42,10 +42,11 @@ func evalOnSynthetic(ins tidb.Instance, db string) {
 		for _, q := range qs {
 			fmt.Println("[cost-eval] test query for synthetic: ", q)
 		}
+		saveQueriesTo(qs, queryFile)
 	} else {
 		fmt.Println("[cost-eval] read queries from file successfully ")
 	}
-	
+
 	all, err := readRecordsFrom(recordFile)
 	if err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
@@ -59,7 +60,7 @@ func evalOnSynthetic(ins tidb.Instance, db string) {
 			}
 			instances[i] = tmp
 		}
-		
+
 		var wg sync.WaitGroup
 		queries := splitQueries(qs, concurrency)
 		rs := make([]Records, concurrency)
@@ -76,11 +77,12 @@ func evalOnSynthetic(ins tidb.Instance, db string) {
 		for _, r := range rs {
 			all = append(all, r...)
 		}
+		saveRecordsTo(all, recordFile)
 	} else {
 		fmt.Println("[cost-eval] read records from file successfully")
 	}
 
-	drawCostRecords(all)
+	drawCostRecordsTo(all, fmt.Sprintf("%v-scatter.png", db))
 }
 
 type Query struct {
