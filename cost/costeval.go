@@ -28,20 +28,18 @@ func CostEval() {
 	}
 
 	//genSyntheticData(ins, 100000, "synthetic")
-	evalOnSynthetic(ins, "synthetic")
+	evalOnDataset(ins, "synthetic", genSyntheticQueries)
 }
 
-func evalOnSynthetic(ins tidb.Instance, db string) {
+func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Instance, db string) Queries) {
 	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", db))
 	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-records.json", db))
 
 	qs, err := readQueriesFrom(queryFile)
 	if err != nil {
 		fmt.Println("[cost-eval] read queries file error: ", err)
-		qs = genSyntheticQueries(ins, db)
-		for _, q := range qs {
-			fmt.Println("[cost-eval] test query for synthetic: ", q)
-		}
+		qs = queryGenFunc(ins, db)
+		fmt.Printf("[cost-eval] gen %v queries for %v\n", len(qs), db)
 		saveQueriesTo(qs, queryFile)
 	} else {
 		fmt.Println("[cost-eval] read queries from file successfully ")
@@ -50,7 +48,7 @@ func evalOnSynthetic(ins tidb.Instance, db string) {
 	all, err := readRecordsFrom(recordFile)
 	if err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
-
+		
 		concurrency := 2
 		instances := make([]tidb.Instance, concurrency)
 		for i := 0; i < concurrency; i++ {

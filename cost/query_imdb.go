@@ -3,7 +3,7 @@ package cost
 import (
 	"fmt"
 	"math/rand"
-	
+
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
@@ -34,8 +34,8 @@ SELECT * FROM title WHERE episode_nr BETWEEN ? AND ?;                           
 SELECT * FROM title WHERE episode_nr BETWEEN ? AND ? ORDER BY episode_nr;                           -- find movies by episode_nr
 */
 
-func genIMDBQueries(ins tidb.Instance, db string) []string {
-	queries := make([]string, 0, 128)
+func genIMDBQueries(ins tidb.Instance, db string) Queries {
+	queries := make(Queries, 0, 128)
 	n := 5
 
 	// point queries
@@ -69,8 +69,8 @@ func genIMDBQueries(ins tidb.Instance, db string) []string {
 	return queries
 }
 
-func genIMDBRangeQueries(n int, db string) []string {
-	queries := make([]string, 0, 128)
+func genIMDBRangeQueries(n int, db string) Queries {
+	queries := make(Queries, 0, 128)
 	// range by year or episode_nr
 	for _, sel := range []string{"*"} {
 		for _, ordered := range []bool{true, false} {
@@ -95,7 +95,10 @@ func genIMDBRangeQueries(n int, db string) []string {
 					}
 
 					q := fmt.Sprintf("select %v from %v.%v where %v %v", sel, db, "title", cond, orderby)
-					queries = append(queries, q)
+					queries = append(queries, Query{
+						SQL:   q,
+						Label: "",
+					})
 				}
 			}
 		}
