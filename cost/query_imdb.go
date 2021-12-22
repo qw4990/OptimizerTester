@@ -36,9 +36,9 @@ SELECT * FROM title WHERE episode_nr BETWEEN ? AND ? ORDER BY episode_nr;       
 
 func genIMDBQueries(ins tidb.Instance, db string) Queries {
 	queries := make(Queries, 0, 128)
-	n := 20
 
 	// point queries
+	n := 10
 	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "movie_id")...)
 	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "person_id")...)
 	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "person_id", "movie_id")...)
@@ -62,7 +62,7 @@ func genIMDBQueries(ins tidb.Instance, db string) Queries {
 	queries = append(queries, genPointQueries(ins, n, "*", "order by episode_nr", db, "title", "episode_nr")...)
 
 	// range queries
-	queries = append(queries, genIMDBRangeQueries(n, db)...)
+	queries = append(queries, genIMDBRangeQueries(20, db)...)
 
 	return queries
 }
@@ -73,30 +73,46 @@ func genIMDBRangeQueries(n int, db string) Queries {
 	for _, sel := range []string{"*"} {
 		for _, ordered := range []bool{true, false} {
 			for _, col := range []string{"production_year", "episode_nr"} {
-				for i := 0; i < n; i++ {
-					orderby := ""
-					if ordered {
-						orderby = "order by " + col
+				orderby := ""
+				if ordered {
+					orderby = "order by " + col
+				}
+
+				if col == "production_year" {
+					// 1500 ~ 2020
+					step := (2020 - 1500) / n
+					for i := 0; i < n; i++ {
+						gap := step * (i + 1)
+						l := 1500 + rand.Intn((2020-1500)-gap+1)
+						r := l + gap + rand.Intn(step)
+						if r > 2020 {
+							r = 2020
+						}
+						cond := fmt.Sprintf("production_year>=%v and production_year<=%v", l, r)
+						q := fmt.Sprintf("select %v from %v.%v where %v %v", sel, db, "title", cond, orderby)
+						queries = append(queries, Query{
+							SQL:   q,
+							Label: "",
+						})
+					}
+				} else if col == "episode_nr" {
+					// 0 ~ 2528072
+					step := 2528072 / n
+					for i := 0; i < n; i++ {
+						gap := step * (i + 1)
+						l := rand.Intn(2528072 - gap + 1)
+						r := l + gap + rand.Intn(step)
+						if r > 2528072 {
+							r = 2528072
+						}
+						cond := fmt.Sprintf("episode_nr>=%v and episode_nr<=%v", l, r)
+						q := fmt.Sprintf("select %v from %v.%v where %v %v", sel, db, "title", cond, orderby)
+						queries = append(queries, Query{
+							SQL:   q,
+							Label: "",
+						})
 					}
 
-					var cond string
-					if col == "production_year" {
-						// 1500 ~ 2020
-						l := 1500 + rand.Intn(2020-1500)
-						r := l + rand.Intn(2020-l)
-						cond = fmt.Sprintf("production_year>=%v and production_year<=%v", l, r)
-					} else if col == "episode_nr" {
-						// 0 ~ 2528072
-						l := rand.Intn(2528072)
-						r := l + rand.Intn(2528072-l)
-						cond = fmt.Sprintf("episode_nr>=%v and episode_nr<=%v", l, r)
-					}
-
-					q := fmt.Sprintf("select %v from %v.%v where %v %v", sel, db, "title", cond, orderby)
-					queries = append(queries, Query{
-						SQL:   q,
-						Label: "",
-					})
 				}
 			}
 		}

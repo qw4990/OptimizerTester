@@ -83,15 +83,19 @@ func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Inst
 		fmt.Println("[cost-eval] read records from file successfully")
 	}
 
-	tmp := make(Records, 0, len(all))
-	
 	sort.Slice(all, func(i, j int) bool {
 		return all[i].TimeMS < all[j].TimeMS
 	})
-	
-	for _, r := range all {
-		fmt.Println(">>>> ", r.SQL, r.Cost, r.TimeMS)
 
+	tmp := make(Records, 0, len(all))
+	for _, r := range all {
+		if r.Label == "Point" {
+			continue
+		}
+		//if r.Cost < 4e8 || r.Cost > 7e8 || r.TimeMS > 3500 {
+		//	continue
+		//}
+		fmt.Println(">>>> ", r.SQL, r.Cost, r.TimeMS)
 		//if r.Cost < 1000 { // the cost of PointGet is always zero
 		//	continue
 		//}
