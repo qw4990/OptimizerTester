@@ -6,6 +6,7 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 	"io/ioutil"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -82,7 +83,22 @@ func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Inst
 		fmt.Println("[cost-eval] read records from file successfully")
 	}
 
-	drawCostRecordsTo(all, fmt.Sprintf("%v-scatter.png", db))
+	tmp := make(Records, 0, len(all))
+	
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].TimeMS < all[j].TimeMS
+	})
+	
+	for _, r := range all {
+		fmt.Println(">>>> ", r.SQL, r.Cost, r.TimeMS)
+
+		//if r.Cost < 1000 { // the cost of PointGet is always zero
+		//	continue
+		//}
+		tmp = append(tmp, r)
+	}
+
+	drawCostRecordsTo(tmp, fmt.Sprintf("%v-scatter.png", db))
 }
 
 type Query struct {
@@ -96,6 +112,7 @@ type Record struct {
 	Cost   float64
 	TimeMS float64
 	Label  string
+	SQL    string
 }
 
 type Records []Record
@@ -155,6 +172,7 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Record
 			Cost:   rootCost,
 			TimeMS: parseTimeFromExecInfo(rootExecInfo),
 			Label:  planLabel,
+			SQL:    q.SQL,
 		})
 	}
 

@@ -57,7 +57,9 @@ func sampleCols(ins tidb.Instance, n int, db, tbl string, cols ...string) [][]st
 		for i, t := range ts {
 			switch t.DatabaseTypeName() {
 			case "VARCHAR", "TEXT", "NVARCHAR":
-				row[i] = fmt.Sprintf("'%v'", *(is[i].(*string)))
+				v := *(is[i].(*string))
+				v = strings.Replace(v, "'", "\\'", -1)
+				row[i] = fmt.Sprintf("'%v'", v)
 			case "INT", "BIGINT":
 				row[i] = fmt.Sprintf("%v", *(is[i].(*int)))
 			case "DECIMAL":

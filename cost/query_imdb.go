@@ -36,7 +36,7 @@ SELECT * FROM title WHERE episode_nr BETWEEN ? AND ? ORDER BY episode_nr;       
 
 func genIMDBQueries(ins tidb.Instance, db string) Queries {
 	queries := make(Queries, 0, 128)
-	n := 50
+	n := 20
 
 	// point queries
 	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "movie_id")...)
@@ -60,8 +60,6 @@ func genIMDBQueries(ins tidb.Instance, db string) Queries {
 	queries = append(queries, genPointQueries(ins, n, "*", "", db, "title", "episode_nr")...)
 	queries = append(queries, genPointQueries(ins, n, "*", "order by production_year", db, "title", "production_year")...)
 	queries = append(queries, genPointQueries(ins, n, "*", "order by episode_nr", db, "title", "episode_nr")...)
-	//queries = append(queries, genPointQueries(ins, n, "count(*)", "", db, "title", "production_year")...)
-	//queries = append(queries, genPointQueries(ins, n, "count(*)", "", db, "title", "episode_nr")...)
 
 	// range queries
 	queries = append(queries, genIMDBRangeQueries(n, db)...)
