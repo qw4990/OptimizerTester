@@ -11,36 +11,20 @@ import (
 //create table t (
 //	a int, 
 //	b int,
-//	c int,
+//	c varchar(128), -- always space(128)
 //	d int,
-//	e varchar(128),
-//	f int,
 //	primary key(a),
 //	key b(b),
-//	key bcd(b, c, d),
-//	key de(d, e)
+//	key bc(b, c)
 //);
 
 // select /*+ use_index(t, primary) */ a from t where a>=? and a<=?;						-- TableScan
-// select /*+ use_index(t, primary) */ * from t where a>=? and a<=?;						-- TableScan + width row
-// select /*+ use_index(t, b) */ b from t where b>=? and b<=?;								-- Single-Col IndexScan
-// select /*+ use_index(t, bcd) */ b, c, d from b=? and c>=? and c<=?;						-- Multi-Col IndexScan
-// select /*+ use_index(t, bcd) */ b, c, d from b=? and c=? and d>=? and d<=?;				-- Multi-Col IndexScan
-// select /*+ use_index(t, b) */ b, f from t where b>=? and b<=?; 							-- Single-Col IndexLookup
-// select /*+ use_index(t, bcd) */ b, c, d, f from b=? and c>=? and c<=?;					-- Multi-Col IndexLookup
-// select /*+ use_index(t, bcd) */ b, c, d, f from b=? and c=? and d>=? and d<=?;			-- Multi-Col IndexLookup
-// select /*+ use_index(t, b) */ * from t where b>=? and b<=?; 								-- Single-Col IndexLookup + width row
-// select /*+ use_index(t, bcd) */ * from b=? and c>=? and c<=?;							-- Multi-Col IndexLookup + width row
-// select /*+ use_index(t, bcd) */ * from b=? and c=? and d>=? and d<=?;					-- Multi-Col IndexLookup + width row
+// select /*+ use_index(t, primary) */ a, c from t where a>=? and a<=?;						-- TableScan + WideCol
+// select /*+ use_index(t, b) */ b from t where b>=? and b<=?;								-- IndexScan
+// select /*+ use_index(t, bc) */ b, c from t where b>=? and b<=?;							-- IndexScan + WideCol
+// select /*+ use_index(t, b) */ b, d from t where b>=? and b<=?;							-- IndexLookup
 
-// select /*+ use_index(t, primary) */ a, b from t where a>=? and a<=? order by b;						-- TableScan + Order
-// select /*+ use_index(t, primary) */ * from t where a>=? and a<=? order by b;							-- TableScan + Order + width row
-// select /*+ use_index(t, b) */ b, f from t where b>=? and b<=? order by f; 							-- Single-Col IndexLookup + Order
-// select /*+ use_index(t, bcd) */ b, c, d, f from b=? and c>=? and c<=? order by f;					-- Multi-Col IndexLookup + Order
-// select /*+ use_index(t, bcd) */ b, c, d, f from b=? and c=? and d>=? and d<=? order by f;			-- Multi-Col IndexLookup + Order
-// select /*+ use_index(t, b) */ * from t where b>=? and b<=? order by f; 								-- Single-Col IndexLookup + width row + Order
-// select /*+ use_index(t, bcd) */ * from b=? and c>=? and c<=? order by f;								-- Multi-Col IndexLookup + width row + Order
-// select /*+ use_index(t, bcd) */ * from b=? and c=? and d>=? and d<=? order by f;						-- Multi-Col IndexLookup + width row + Order
+// TODO: sort
 
 func genSyntheticQueries(ins tidb.Instance, db string) []query {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
@@ -52,29 +36,13 @@ func genSyntheticQueries(ins tidb.Instance, db string) []query {
 		panic(err)
 	}
 
-	repeat := 50
+	repeat := 100
 	qs := make([]query, 0, 1024)
 	qs = append(qs, genSyntheticQuery(n, repeat, "TableScan", db, "a", "primary", "", "a")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "TableScan+Width", db, "*", "primary", "", "a")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "TableScan+WideCol", db, "a, c", "primary", "", "a")...)
 	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan", db, "b", "b", "", "b")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan", db, "b, c, d", "bcd", "", "b", "c")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan", db, "b, c, d", "bcd", "", "b", "c", "d")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookUp", db, "b, f", "b", "", "b")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookUp", db, "b, c, d, f", "bcd", "", "b", "c")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookUp", db, "b, c, d, f", "bcd", "", "b", "c", "d")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookUp+Width", db, "*", "b", "", "b")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookUp+Width", db, "*", "bcd", "", "b", "c")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookUp+Width", db, "*", "bcd", "", "b", "c", "d")...)
-
-	//repeatOrder := 10
-	//qs = append(qs, genSyntheticQuery(n, repeatOrder, "TableScan+Sort", db, "a, f", "primary", "f", "a")...)
-	//qs = append(qs, genSyntheticQuery(n, repeatOrder, "TableScan+Sort", db, "*", "primary", "f", "a")...)
-	//qs = append(qs, genSyntheticQuery(n, repeatOrder, "IndexLookUp+Sort", db, "b, f", "b", "f", "b")...)
-	//qs = append(qs, genSyntheticQuery(n, repeatOrder, "IndexLookUp+Sort", db, "b, c, d, f", "bcd", "f", "b", "c")...)
-	//qs = append(qs, genSyntheticQuery(n, repeatOrder, "IndexLookUp+Sort", db, "b, c, d, f", "bcd", "f", "b", "c", "d")...)
-	//qs = append(qs, genSyntheticQuery(n, repeatOrder, "IndexLookUp+Sort", db, "*", "b", "f", "b")...)
-	//qs = append(qs, genSyntheticQuery(n, repeatOrder, "IndexLookUp+Sort", db, "*", "bcd", "f", "b", "c")...)
-	//qs = append(qs, genSyntheticQuery(n, repeatOrder, "IndexLookUp+Sort", db, "*", "bcd", "f", "b", "c", "d")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan+WideCol", db, "b, c", "bc", "", "b")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookup", db, "b, d", "b", "", "b")...)
 	return qs
 }
 
@@ -108,19 +76,16 @@ func genSyntheticQuery(n, repeat int, label, db, sel, idxhint, orderby string, c
 func genSyntheticData(ins tidb.Instance, n int, db string) {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	ins.MustExec(`create table if not exists t (
-	a int, 
-	b int,
-	c int,
-	d int,
-	e varchar(128),
-	f int,
-	primary key(a),
-	key b(b),
-	key bcd(b, c, d),
-	key de(d, e))`)
+		a int, 
+		b int,
+		c varchar(128), -- always space(128)
+		d int,
+		primary key(a),
+		key b(b),
+		key bc(b, c))`)
 
 	beginAt := time.Now()
-	batch := 400
+	batch := 500
 	rows := make([]string, 0, batch)
 	for i := 0; i < n; i += batch {
 		l := i
@@ -131,7 +96,7 @@ func genSyntheticData(ins tidb.Instance, n int, db string) {
 		fmt.Printf("[cost-eval] gen synthetic data %v-%v, duration from the beginning %v\n", l, r, time.Since(beginAt))
 		rows = rows[:0]
 		for k := l; k < r; k++ {
-			rows = append(rows, fmt.Sprintf("(%v, %v, %v, %v, %v, %v)", k, rand.Intn(n), rand.Intn(n), rand.Intn(n), "space(128)", rand.Intn(n)))
+			rows = append(rows, fmt.Sprintf("(%v, %v, %v, %v)", k, rand.Intn(n), "space(128)", rand.Intn(n)))
 		}
 		ins.MustExec(fmt.Sprintf(`insert into t values %v`, strings.Join(rows, ", ")))
 	}
