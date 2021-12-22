@@ -28,10 +28,12 @@ func CostEval() {
 	}
 
 	//genSyntheticData(ins, 100000, "synthetic")
-	evalOnDataset(ins, "synthetic", genSyntheticQueries)
+	//evalOnDataset(ins, "synthetic", genSyntheticQueries)
+	evalOnDataset(ins, "imdb", genIMDBQueries)
 }
 
 func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Instance, db string) Queries) {
+	fmt.Println("[cost-eval] start to eval on ", db)
 	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", db))
 	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-records.json", db))
 
@@ -48,7 +50,7 @@ func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Inst
 	all, err := readRecordsFrom(recordFile)
 	if err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
-		
+
 		concurrency := 2
 		instances := make([]tidb.Instance, concurrency)
 		for i := 0; i < concurrency; i++ {
@@ -121,27 +123,38 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Record
 		rs := ins.MustQuery("explain analyze " + q.SQL)
 		var id, task, access, execInfo, opInfo, mem, disk, rootExecInfo string
 		var estRows, actRows, cost, rootCost float64
+		planLabel := "Unmatched"
 
 		for rs.Next() {
 			if err := rs.Scan(&id, &estRows, &cost, &actRows, &task, &access, &execInfo, &opInfo, &mem, &disk); err != nil {
 				panic(err)
 			}
 			if actRows != estRows {
-				fmt.Printf("[cost-eval] worker-%v not true-CE for query=%v, est=%v, act=%v\n", id, q, estRows, actRows)
+				//fmt.Printf("[cost-eval] worker-%v not true-CE for query=%v, est=%v, act=%v\n", id, q, estRows, actRows)
 				panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, q, estRows, actRows))
 			}
 			if rootExecInfo == "" {
 				rootExecInfo, rootCost = execInfo, cost
+			}
+			if planLabel == "Unmatched" {
+				for _, operator := range []string{"Point", "Batch", "IndexReader", "IndexLookup", "TableReader", "Sort"} {
+					if strings.Contains(strings.ToLower(id), strings.ToLower(operator)) {
+						planLabel = operator
+					}
+				}
 			}
 		}
 		if err := rs.Close(); err != nil {
 			panic(err)
 		}
 
+		if q.Label != "" {
+			planLabel = q.Label
+		}
 		records = append(records, Record{
 			Cost:   rootCost,
 			TimeMS: parseTimeFromExecInfo(rootExecInfo),
-			Label:  q.Label,
+			Label:  planLabel,
 		})
 	}
 

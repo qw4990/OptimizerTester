@@ -9,16 +9,16 @@ import (
 
 func genPointQueries(ins tidb.Instance, n int, sel, orderby, db, tbl string, cols ...string) Queries {
 	rows := sampleCols(ins, n, db, tbl, cols...)
-	queries := make(Queries, n)
-	for i, row := range rows {
+	queries := make(Queries, 0, n)
+	for _, row := range rows {
 		conds := make([]string, len(cols))
 		for j, col := range cols {
 			conds[j] = fmt.Sprintf("%v=%v", col, row[j])
 		}
-		queries[i] = Query{
-			SQL:   fmt.Sprintf(`select %v from %v.%v where %v %v`, sel, db, tbl, strings.Join(conds, "and"), orderby),
+		queries = append(queries, Query{
+			SQL:   fmt.Sprintf(`select %v from %v.%v where %v %v`, sel, db, tbl, strings.Join(conds, " and "), orderby),
 			Label: "",
-		}
+		})
 	}
 	return queries
 }
