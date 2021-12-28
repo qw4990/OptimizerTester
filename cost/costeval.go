@@ -21,7 +21,7 @@ func CostEval() {
 		Password: "",
 		Label:    "",
 	}
-	//opt.Addr = "127.0.0.1"
+	opt.Addr = "127.0.0.1"
 
 	ins, err := tidb.ConnectTo(opt)
 	if err != nil {
@@ -29,8 +29,8 @@ func CostEval() {
 	}
 
 	//genSyntheticData(ins, 100000, "synthetic")
-	//evalOnDataset(ins, "synthetic", genSyntheticQueries)
-	evalOnDataset(ins, "imdb", genIMDBQueries)
+	evalOnDataset(ins, "synthetic", genSyntheticQueries)
+	//evalOnDataset(ins, "imdb", genIMDBQueries)
 }
 
 func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Instance, db string) Queries) {
