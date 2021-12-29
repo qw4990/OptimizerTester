@@ -3,7 +3,7 @@ package cost
 import (
 	"fmt"
 	"math"
-	
+
 	"gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
 )
@@ -13,10 +13,13 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 	g := gorgonia.NewGraph()
 	xNode := gorgonia.NodeFromAny(g, x, gorgonia.WithName("x"))
 	yNode := gorgonia.NodeFromAny(g, y, gorgonia.WithName("y"))
+
+	fmt.Println("--->>> ", xNode.Value().Data(), yNode.Value().Data())
+
 	costFactor := gorgonia.NewVector(g, gorgonia.Float64,
 		gorgonia.WithName("cost-factor"),
 		gorgonia.WithShape(xNode.Shape()[1]),
-		gorgonia.WithInit(gorgonia.Uniform(0, 20)))
+		gorgonia.WithInit(gorgonia.Uniform(0, 1)))
 
 	pred := must(gorgonia.Mul(xNode, costFactor))
 	var predicated gorgonia.Value
@@ -24,17 +27,20 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 
 	squaredError := must(gorgonia.Square(must(gorgonia.Sub(pred, yNode))))
 	loss := must(gorgonia.Mean(squaredError))
-	if _, err := gorgonia.Grad(loss, costFactor); err != nil {
+	_, err := gorgonia.Grad(loss, costFactor)
+	if err != nil {
 		panic(fmt.Sprintf("Failed to backpropagate: %v", err))
 	}
 
-	solver := gorgonia.NewVanillaSolver(gorgonia.WithLearnRate(0.001))
+	solver := gorgonia.NewVanillaSolver(gorgonia.WithLearnRate(0.0000000000001))
 	model := []gorgonia.ValueGrad{costFactor}
 
 	machine := gorgonia.NewTapeMachine(g, gorgonia.BindDualValues(costFactor))
 	defer machine.Close()
 
-	iter := 1000
+	fmt.Println("init theta: ", costFactor.Value())
+
+	iter := 100
 	for i := 0; i < iter; i++ {
 		if err := machine.RunAll(); err != nil {
 			panic(fmt.Sprintf("Error during iteration: %v: %v\n", i, err))
@@ -45,10 +51,11 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 		}
 
 		machine.Reset()
-		fmt.Printf("theta: %2.2f  Iter: %v Cost: %2.3f Accuracy: %2.2f \r",
+		fmt.Printf("theta: %v, Iter: %v Loss: %v, Pred: %v Accuracy: %v \n",
 			costFactor.Value(),
 			i,
 			loss.Value(),
+			predicated.Data(),
 			accuracy(predicated.Data().([]float64), yNode.Value().Data().([]float64)))
 	}
 

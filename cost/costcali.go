@@ -89,5 +89,12 @@ func CostCalibration() {
 		fmt.Println("[cost-eval] read cali-records from file successfully")
 	}
 
+	rs = rs[:1]
+	
+	for i := range rs {
+		rs[i].TimeMS = rs[i].TimeMS * 1000000
+		fmt.Println(">>>>>>>>>>>>> RS >>>> ", rs[i].Weights, rs[i].TimeMS)
+	}
+	
 	regressionCostFactors(rs)
 }
