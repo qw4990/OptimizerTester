@@ -76,15 +76,11 @@ func CostCalibration() {
 
 			fmt.Printf("[cost-eval] run %v/%v %v %v\n", i, len(qs), timeCost, qs[i].SQL)
 		}
-		rs = nil
 		fmt.Printf("[cost-eval] gen %v cali-records for %v\n", len(qs), db)
 		saveTo(recordFile, rs)
 	} else {
 		fmt.Println("[cost-eval] read cali-records from file successfully")
 	}
 
-	//regressionCostFactors(CaliRecords{
-	//	{FactorWeightsVector{0, 0, 1, 1, 0, 0}, 1},
-	//	{FactorWeightsVector{0, 0, 1, 2, 0, 0}, 2},
-	//})
+	regressionCostFactors(rs)
 }
