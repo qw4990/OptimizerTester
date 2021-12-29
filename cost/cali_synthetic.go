@@ -21,7 +21,7 @@ import (
 
 func genSyntheticCalibrationQueries(ins tidb.Instance, db string) CaliQueries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
-	n := 1
+	n := 20
 	var ret CaliQueries
 	ret = append(ret, genSyntheticCaliScanQueries(ins, n)...)
 	ret = append(ret, genSyntheticCaliWideScanQueries(ins, n)...)
