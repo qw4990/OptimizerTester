@@ -1,6 +1,9 @@
 package cost
 
-import "github.com/qw4990/OptimizerTester/tidb"
+import (
+	"fmt"
+	"github.com/qw4990/OptimizerTester/tidb"
+)
 
 type CaliQuery struct {
 	SQL          string
@@ -32,4 +35,7 @@ func CostCalibration() {
 	}
 
 	qs := genSyntheticCalibrationQueries(ins, "synthetic")
+	for _, q := range qs {
+		fmt.Println(q.SQL, q.FactorVector)
+	}
 }

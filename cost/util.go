@@ -90,7 +90,8 @@ func sampleCols(ins tidb.Instance, n int, db, tbl string, cols ...string) [][]st
 func mustReadOneLine(ins tidb.Instance, q string, ret ...interface{}) {
 	rs := ins.MustQuery(q)
 	rs.Next()
-	if err := rs.Scan(ret); err != nil {
+	defer rs.Close()
+	if err := rs.Scan(ret...); err != nil {
 		panic(err)
 	}
 }

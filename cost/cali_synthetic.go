@@ -23,7 +23,7 @@ import (
 
 func genSyntheticCalibrationQueries(ins tidb.Instance, db string) CaliQueries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
-	n := 100
+	n := 1
 	var ret CaliQueries
 	ret = append(ret, genSyntheticCaliScanQueries(ins, n, false)...)
 	ret = append(ret, genSyntheticCaliScanQueries(ins, n, true)...)
@@ -95,15 +95,15 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int, wide bool) CaliQuerie
 		}
 
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", lb, rb))
-		scanW := float64(rowCount) * (getSyntheticIndexRowSize("b", "for-scan") + getSyntheticTableRowSize(readCols, "for-scan"))
-		netW := float64(rowCount) * (getSyntheticIndexRowSize("b", "for-net") + getSyntheticTableRowSize(readCols, "for-net"))
+		scanW := float64(rowCount) * (getSyntheticIndexRowSize(readCols, "for-scan") + getSyntheticTableRowSize(readCols, "for-scan"))
+		netW := float64(rowCount) * (getSyntheticIndexRowSize(readCols, "for-net") + getSyntheticTableRowSize(readCols, "for-net"))
 		qs = append(qs, CaliQuery{
 			SQL:          fmt.Sprintf("select /*+ use_index(t, b) */ %v from t where b>=%v and b<=%v", readCols, lb, rb),
 			Label:        "",
 			FactorVector: [6]float64{0, 0, netW, scanW, 0, 0},
 		})
 	}
-	
+
 	return qs
 }
 
@@ -112,19 +112,39 @@ func genSyntheticCaliDescScanQueries() {
 }
 
 func getSyntheticTableRowSize(cols, typ string) float64 {
-	if cols == "a" && typ == "for-scan" {
-		return 0
-	} else if cols == "a" && typ == "for-net" {
-		return 0
-	}
-	panic(fmt.Sprintf("%v %v", cols, typ))
+	//if cols == "a" && typ == "for-scan" {
+	//	return 20
+	//} else if cols == "a" && typ == "for-net" {
+	//	return 8.125
+	//} else if cols == "b, d" && typ == "for-scan" {
+	//	return 20
+	//} else if cols == "b, d" && typ == "for-net" {
+	//	return 16.5
+	//} else if cols == "a, c" && typ == "for-scan" {
+	//	return 20
+	//} else if cols == "a, c" && typ == "for-net" {
+	//	return 139.23
+	//} else if cols == "b, c" && typ == "for-scan" {
+	//	return 1
+	//} else if cols == "b, c" && typ == "for-net" {
+	//	return 1
+	//}
+	panic(fmt.Sprintf("%v, %v", cols, typ))
 }
 
 func getSyntheticIndexRowSize(cols, typ string) float64 {
-	if cols == "b" && typ == "for-scan" {
-		return 0
-	} else if cols == "b" && typ == "for-net" {
-		return 0
-	}
+	//if cols == "b" && typ == "for-scan" {
+	//	return 29
+	//} else if cols == "b" && typ == "for-net" {
+	//	return 8.125
+	//} else if cols == "b, c" && typ == "for-scan" {
+	//	return 160
+	//} else if cols == "b, c" && typ == "for-net" {
+	//	return 139.23
+	//} else if cols == "b, d" && typ == "for-scan" {
+	//	return 38
+	//} else if cols == "b, d" && typ == "for-net" {
+	//	return 16.5
+	//}
 	panic(fmt.Sprintf("%v %v", cols, typ))
 }
