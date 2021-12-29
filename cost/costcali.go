@@ -60,6 +60,13 @@ func CostCalibration() {
 	var rs CaliRecords
 	if err := readFrom(recordFile, &rs); err != nil {
 		fmt.Println("[cost-eval] read cali-records file error: ", err)
+
+		ins.MustExec(fmt.Sprintf(`use %v`, db))
+		ins.MustExec(`set @@tidb_cost_calibration_mode=2`)
+		ins.MustExec(`set @@tidb_distsql_scan_concurrency=1`)
+		ins.MustExec(`set @@tidb_executor_concurrency=1`)
+		ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
+		
 		rs = make(CaliRecords, 0, len(qs))
 		for i := range qs {
 			begin := time.Now()
