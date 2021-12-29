@@ -108,10 +108,7 @@ func RunCEBench(queryLocation string, dsns []string, outDir string) error {
 	// Bar chart
 	chartFileName := fmt.Sprintf(chartFileTemplate, "All")
 	chartPath := filepath.Join(outDir, chartFileName)
-	p, err := plot.New()
-	if err != nil {
-		panic(err)
-	}
+	p := plot.New()
 	chartVals := distribution(allEstInfos)
 	bar, err := plotter.NewBarChart(plotter.Values(chartVals), vg.Points(25))
 	if err != nil {
@@ -159,10 +156,7 @@ func RunCEBench(queryLocation string, dsns []string, outDir string) error {
 		// Bar chart
 		chartFileName := strings.ReplaceAll(fmt.Sprintf(chartFileTemplate, tp), " ", "-")
 		chartPath := filepath.Join(outDir, chartFileName)
-		p, err := plot.New()
-		if err != nil {
-			panic(err)
-		}
+		p := plot.New()
 		chartVals := distribution(infos)
 		bar, err := plotter.NewBarChart(plotter.Values(chartVals), vg.Points(25))
 		if err != nil {

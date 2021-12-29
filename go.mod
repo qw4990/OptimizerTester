@@ -10,7 +10,7 @@ require (
 	go.uber.org/atomic v1.4.0
 	golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6 // indirect
 	gonum.org/v1/gonum v0.9.3 // indirect
-	gonum.org/v1/plot v0.9.0
+	gonum.org/v1/plot v0.10.0
 	gorgonia.org/gorgonia v0.9.17
 	gorgonia.org/tensor v0.9.17
 )

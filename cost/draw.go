@@ -18,10 +18,7 @@ func (r Records) XY(k int) (x, y float64) {
 }
 
 func drawCostRecordsTo(r Records, f string) {
-	p, err := plot.New()
-	if err != nil {
-		panic(err)
-	}
+	p := plot.New()
 	p.Title.Text = "cost model accuracy scatter plot"
 	p.X.Label.Text = "cost estimation"
 	p.Y.Label.Text = "actual exec-time(ms)"
@@ -43,7 +40,7 @@ func drawCostRecordsTo(r Records, f string) {
 		p.Legend.Add(label, s)
 	}
 
-	err = p.Save(800, 800, f)
+	err := p.Save(800, 800, f)
 	if err != nil {
 		panic(err)
 	}

@@ -46,10 +46,7 @@ func PGenPErrorBarChartsReport(opt POption, collector PEstResultCollector) error
 }
 
 func PDrawBarChartsGroup(opt POption, collector PEstResultCollector, calFunc func(EstResult) float64) (string, error) {
-	p, err := plot.New()
-	if err != nil {
-		return "", errors.Trace(err)
-	}
+	p := plot.New()
 	p.Title.Text = "PError distribution"
 	p.X.Label.Text = "distribution"
 	p.Y.Label.Text = "frequency of occurrence"
@@ -89,7 +86,7 @@ func PDrawBarChartsGroup(opt POption, collector PEstResultCollector, calFunc fun
 		}
 		prefixDir = path.Join(absPrefix, prefixDir)
 	}
-	
+
 	os.MkdirAll(prefixDir, 0777)
 
 	pngName := fmt.Sprintf("%v-%v-bar.png", opt.QueryType, "partition")

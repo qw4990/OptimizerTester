@@ -132,10 +132,7 @@ func analyzeQError(results []EstResult) map[string]float64 {
 
 // DrawBarChartsGroupByQTAndDS ...
 func DrawBarChartsGroupByQTAndDS(opt Option, collector EstResultCollector, qtIdx, dsIdx int, calFunc func(EstResult) float64) (string, error) {
-	p, err := plot.New()
-	if err != nil {
-		return "", errors.Trace(err)
-	}
+	p := plot.New()
 	p.Title.Text = fmt.Sprintf("PError distribution on %v", opt.Datasets[dsIdx].Label)
 	p.X.Label.Text = "distribution"
 	p.Y.Label.Text = "frequency of occurrence"
@@ -253,10 +250,7 @@ func distribution(rs []EstResult, boundaries []float64, calFunc func(EstResult) 
 
 // DrawQErrorBoxPlotGroupByQueryType draws a box plot and returns the picture's path.
 func DrawQErrorBoxPlotGroupByQueryType(opt Option, collector EstResultCollector, qtIdx int) (string, error) {
-	p, err := plot.New()
-	if err != nil {
-		return "", errors.Trace(err)
-	}
+	p := plot.New()
 	p.Title.Text = "QError Box Plot: " + opt.QueryTypes[qtIdx].String()
 	p.Y.Label.Text = "QError Values"
 	boxes := make([]plot.Plotter, 0, len(opt.Datasets)*len(opt.Instances))
