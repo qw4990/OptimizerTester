@@ -2,13 +2,18 @@ package cost
 
 import (
 	"fmt"
+
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
+type FactorVector [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
+
+type FactorWeightsVector [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
+
 type CaliQuery struct {
-	SQL          string
-	Label        string
-	FactorVector [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
+	SQL     string
+	Label   string
+	Weights FactorWeightsVector
 }
 
 type CaliQueries []CaliQuery
@@ -17,6 +22,8 @@ type CaliRecord struct {
 	CaliQuery
 	TimeMS float64
 }
+
+type CaliRecords []CaliRecord
 
 // CostCalibration ...
 func CostCalibration() {
@@ -36,6 +43,10 @@ func CostCalibration() {
 
 	qs := genSyntheticCalibrationQueries(ins, "synthetic")
 	for _, q := range qs {
-		fmt.Println(q.SQL, q.FactorVector)
+		fmt.Println(q.SQL, q.Weights)
 	}
+
+	// TODO: run qs and get rs
+
+	// TODO: do regression over rs
 }

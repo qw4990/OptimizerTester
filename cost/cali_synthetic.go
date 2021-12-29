@@ -54,7 +54,6 @@ func getSyntheticRowSize(key string) float64 {
 	return hackRowSize[key]
 }
 
-
 func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 	var qs CaliQueries
 	var minA, maxA, minB, maxB int
@@ -67,9 +66,9 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 		scanW := float64(rowCount) * getSyntheticRowSize("WideScan-TableScan-scan")
 		netW := float64(rowCount) * getSyntheticRowSize("WideScan-TableScan-net")
 		qs = append(qs, CaliQuery{
-			SQL:          fmt.Sprintf("select /*+ use_index(t, primary) */ a, c from t where a>=%v and a<=%v", l, r),
-			Label:        "",
-			FactorVector: [6]float64{0, 0, netW, scanW, 0, 0},
+			SQL:     fmt.Sprintf("select /*+ use_index(t, primary) */ a, c from t where a>=%v and a<=%v", l, r),
+			Label:   "",
+			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
 		})
 	}
 
@@ -80,9 +79,9 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 		scanW := float64(rowCount) * getSyntheticRowSize("WideScan-IndexScan-scan")
 		netW := float64(rowCount) * getSyntheticRowSize("WideScan-IndexScan-net")
 		qs = append(qs, CaliQuery{
-			SQL:          fmt.Sprintf("select /*+ use_index(t, bc) */ b, c from t where b>=%v and b<=%v", l, r),
-			Label:        "",
-			FactorVector: [6]float64{0, 0, netW, scanW, 0, 0},
+			SQL:     fmt.Sprintf("select /*+ use_index(t, bc) */ b, c from t where b>=%v and b<=%v", l, r),
+			Label:   "",
+			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
 		})
 	}
 
@@ -93,15 +92,14 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 		scanW := float64(rowCount) * getSyntheticRowSize("WideScan-IndexLookup-scan")
 		netW := float64(rowCount) * getSyntheticRowSize("WideScan-IndexLookup-net")
 		qs = append(qs, CaliQuery{
-			SQL:          fmt.Sprintf("select /*+ use_index(t, b) */ b, c from t where b>=%v and b<=%v", l, r),
-			Label:        "",
-			FactorVector: [6]float64{0, 0, netW, scanW, 0, 0},
+			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, c from t where b>=%v and b<=%v", l, r),
+			Label:   "",
+			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
 		})
 	}
 
 	return qs
 }
-
 
 func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 	var qs CaliQueries
@@ -115,9 +113,9 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 		scanW := float64(rowCount) * getSyntheticRowSize("Scan-TableScan-scan")
 		netW := float64(rowCount) * getSyntheticRowSize("Scan-TableScan-net")
 		qs = append(qs, CaliQuery{
-			SQL:          fmt.Sprintf("select /*+ use_index(t, primary) */ a from t where a>=%v and a<=%v", l, r),
-			Label:        "",
-			FactorVector: [6]float64{0, 0, netW, scanW, 0, 0},
+			SQL:     fmt.Sprintf("select /*+ use_index(t, primary) */ a from t where a>=%v and a<=%v", l, r),
+			Label:   "",
+			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
 		})
 	}
 
@@ -128,9 +126,9 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 		scanW := float64(rowCount) * getSyntheticRowSize("Scan-IndexScan-scan")
 		netW := float64(rowCount) * getSyntheticRowSize("Scan-IndexScan-net")
 		qs = append(qs, CaliQuery{
-			SQL:          fmt.Sprintf("select /*+ use_index(t, b) */ b from t where b>=%v and b<=%v", l, r),
-			Label:        "",
-			FactorVector: [6]float64{0, 0, netW, scanW, 0, 0},
+			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b from t where b>=%v and b<=%v", l, r),
+			Label:   "",
+			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
 		})
 	}
 
@@ -141,9 +139,9 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 		scanW := float64(rowCount) * getSyntheticRowSize("Scan-IndexLookup-scan")
 		netW := float64(rowCount) * getSyntheticRowSize("Scan-IndexLookup-net")
 		qs = append(qs, CaliQuery{
-			SQL:          fmt.Sprintf("select /*+ use_index(t, b) */ b, d from t where b>=%v and b<=%v", l, r),
-			Label:        "",
-			FactorVector: [6]float64{0, 0, netW, scanW, 0, 0},
+			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, d from t where b>=%v and b<=%v", l, r),
+			Label:   "",
+			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
 		})
 	}
 
