@@ -211,37 +211,3 @@ func saveQueriesTo(q Queries, f string) {
 		panic(err)
 	}
 }
-
-func readQueriesFrom(f string) (Queries, error) {
-	data, err := ioutil.ReadFile(f)
-	if err != nil {
-		return nil, err
-	}
-	var r Queries
-	if err := json.Unmarshal(data, &r); err != nil {
-		return nil, err
-	}
-	return r, nil
-}
-
-func saveRecordsTo(r Records, f string) {
-	data, err := json.Marshal(r)
-	if err != nil {
-		panic(err)
-	}
-	if err := ioutil.WriteFile(f, data, 0666); err != nil {
-		panic(err)
-	}
-}
-
-func readRecordsFrom(f string) (Records, error) {
-	data, err := ioutil.ReadFile(f)
-	if err != nil {
-		return nil, err
-	}
-	var r Records
-	if err := json.Unmarshal(data, &r); err != nil {
-		return nil, err
-	}
-	return r, nil
-}

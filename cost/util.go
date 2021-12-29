@@ -1,7 +1,9 @@
 package cost
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"strings"
 
@@ -111,4 +113,59 @@ func randRange(minVal, maxVal, iter, totalRepeat int) (int, int) {
 		r = maxVal
 	}
 	return l, r
+}
+
+func saveTo(f string, r interface{}) {
+	data, err := json.Marshal(r)
+	if err != nil {
+		panic(err)
+	}
+	if err := ioutil.WriteFile(f, data, 0666); err != nil {
+		panic(err)
+	}
+}
+
+func readFrom(f string, r interface{}) error {
+	data, err := ioutil.ReadFile(f)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, r); err != nil {
+		return err
+	}
+	return nil
+}
+
+func readQueriesFrom(f string) (Queries, error) {
+	data, err := ioutil.ReadFile(f)
+	if err != nil {
+		return nil, err
+	}
+	var r Queries
+	if err := json.Unmarshal(data, &r); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func saveRecordsTo(r Records, f string) {
+	data, err := json.Marshal(r)
+	if err != nil {
+		panic(err)
+	}
+	if err := ioutil.WriteFile(f, data, 0666); err != nil {
+		panic(err)
+	}
+}
+
+func readRecordsFrom(f string) (Records, error) {
+	data, err := ioutil.ReadFile(f)
+	if err != nil {
+		return nil, err
+	}
+	var r Records
+	if err := json.Unmarshal(data, &r); err != nil {
+		return nil, err
+	}
+	return r, nil
 }
