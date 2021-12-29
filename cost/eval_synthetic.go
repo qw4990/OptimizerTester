@@ -28,13 +28,8 @@ import (
 
 func genSyntheticQueries(ins tidb.Instance, db string) Queries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
-
-	rs := ins.MustQuery(`select max(a) from t`)
 	var n int
-	rs.Next()
-	if err := rs.Scan(&n); err != nil {
-		panic(err)
-	}
+	mustReadOneLine(ins, `select max(a) from t`, &n)
 
 	repeat := 100
 	qs := make(Queries, 0, 1024)
