@@ -2,6 +2,7 @@ package cost
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/qw4990/OptimizerTester/tidb"
@@ -100,4 +101,14 @@ func mustGetRowCount(ins tidb.Instance, q string) int {
 	var cnt int
 	mustReadOneLine(ins, q, &cnt)
 	return cnt
+}
+
+func randRange(minVal, maxVal, iter, totalRepeat int) (int, int) {
+	step := (maxVal - minVal) / totalRepeat
+	l := rand.Intn(step)
+	r := rand.Intn(step) + step*(iter+1)
+	if r > maxVal {
+		r = maxVal
+	}
+	return l, r
 }
