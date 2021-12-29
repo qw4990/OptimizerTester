@@ -52,7 +52,7 @@ func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Inst
 	if err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
 
-		concurrency := 2
+		concurrency := 1
 		instances := make([]tidb.Instance, concurrency)
 		for i := 0; i < concurrency; i++ {
 			tmp, err := tidb.ConnectTo(ins.Opt())
@@ -128,6 +128,9 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Record
 	ins.MustExec(`set @@tidb_distsql_scan_concurrency=1`)
 	ins.MustExec(`set @@tidb_executor_concurrency=1`)
 	ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
+	
+	ins.MustExec(`set @@tidb_opt_scan_factor=20`)
+	ins.MustExec(`set @@tidb_opt_network_factor=8`)
 	records := make([]Record, 0, len(qs))
 
 	//mysql> explain analyze select /*+ use_index(t, b) */ * from synthetic.t where b>=1 and b<=100000;

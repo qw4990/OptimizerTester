@@ -40,7 +40,7 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 
 	fmt.Println("init theta: ", costFactor.Value())
 
-	iter := 100
+	iter := 10000
 	for i := 0; i < iter; i++ {
 		if err := machine.RunAll(); err != nil {
 			panic(fmt.Sprintf("Error during iteration: %v: %v\n", i, err))

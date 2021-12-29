@@ -8,6 +8,7 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
+// [ 0 0    14.86664827011213    35.78735527338983  0 0]
 type FactorVector [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
 
 type FactorWeightsVector [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
@@ -62,11 +63,10 @@ func CostCalibration() {
 		fmt.Println("[cost-eval] read cali-records file error: ", err)
 
 		ins.MustExec(fmt.Sprintf(`use %v`, db))
-		ins.MustExec(`set @@tidb_cost_calibration_mode=2`)
+		ins.MustExec(`set @@tidb_cost_calibration_mode=0`)
 		ins.MustExec(`set @@tidb_distsql_scan_concurrency=1`)
 		ins.MustExec(`set @@tidb_executor_concurrency=1`)
 		ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
-		
 		rs = make(CaliRecords, 0, len(qs))
 		for i := range qs {
 			begin := time.Now()
@@ -90,11 +90,11 @@ func CostCalibration() {
 	}
 
 	rs = rs[:1]
-	
+
 	for i := range rs {
 		rs[i].TimeMS = rs[i].TimeMS * 1000000
 		fmt.Println(">>>>>>>>>>>>> RS >>>> ", rs[i].Weights, rs[i].TimeMS)
 	}
-	
+
 	regressionCostFactors(rs)
 }
