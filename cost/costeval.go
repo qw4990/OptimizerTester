@@ -129,8 +129,12 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Record
 	ins.MustExec(`set @@tidb_executor_concurrency=1`)
 	ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
 	
-	ins.MustExec(`set @@tidb_opt_scan_factor=20`)
-	ins.MustExec(`set @@tidb_opt_network_factor=8`)
+	ins.MustExec(`set @@tidb_opt_cpu_factor=230`)
+	ins.MustExec(`set @@tidb_opt_copcpu_factor=0`)
+	ins.MustExec(`set @@tidb_opt_network_factor=6`)
+	ins.MustExec(`set @@tidb_opt_scan_factor=7`)
+	ins.MustExec(`set @@tidb_opt_desc_factor=0`)
+	ins.MustExec(`set @@tidb_opt_memory_factor=0`)
 	records := make([]Record, 0, len(qs))
 
 	//mysql> explain analyze select /*+ use_index(t, b) */ * from synthetic.t where b>=1 and b<=100000;
