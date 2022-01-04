@@ -9,7 +9,31 @@ import (
 	"gorgonia.org/tensor"
 )
 
+func minMaxNormalization(rs CaliRecords) (ret CaliRecords) {
+	minY, maxY := rs[0].TimeNS, rs[0].TimeNS
+	for _, r := range rs {
+		if r.TimeNS < minY {
+			minY = r.TimeNS
+		}
+		if r.TimeNS > maxY {
+			maxY = r.TimeNS
+		}
+	}
+
+	for _, r := range rs {
+		//r.TimeNS = (r.TimeNS - minY) / (maxY - minY)
+		r.TimeNS /= 1e6
+		for i := range r.Weights {
+			r.Weights[i] /= 1e6
+		}
+		fmt.Println(">>>>>>>>>>>>>>> RS >>>> ", r.Weights.String(), r.TimeNS)
+		ret = append(ret, r)
+	}
+	return
+}
+
 func regressionCostFactors(rs CaliRecords) FactorVector {
+	rs = minMaxNormalization(rs)
 	x, y := convert2XY(rs)
 	g := gorgonia.NewGraph()
 	xNode := gorgonia.NodeFromAny(g, x, gorgonia.WithName("x"))
@@ -18,7 +42,11 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 	costFactor := gorgonia.NewVector(g, gorgonia.Float64,
 		gorgonia.WithName("cost-factor"),
 		gorgonia.WithShape(xNode.Shape()[1]),
-		gorgonia.WithInit(gorgonia.Uniform(0, 100)))
+		gorgonia.WithInit(gorgonia.Uniform(0, 1)))
+	//strictFactor, err := gorgonia.LeakyRelu(costFactor, 0)
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	pred := must(gorgonia.Mul(xNode, costFactor))
 	var predicated gorgonia.Value
@@ -31,7 +59,7 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 		panic(fmt.Sprintf("Failed to backpropagate: %v", err))
 	}
 
-	solver := gorgonia.NewVanillaSolver(gorgonia.WithLearnRate(0.000000000000015))
+	solver := gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.001))
 	model := []gorgonia.ValueGrad{costFactor}
 
 	machine := gorgonia.NewTapeMachine(g, gorgonia.BindDualValues(costFactor))
@@ -39,7 +67,7 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 
 	fmt.Println("init theta: ", costFactor.Value())
 
-	iter := 100
+	iter := 100000
 	for i := 0; i < iter; i++ {
 		if err := machine.RunAll(); err != nil {
 			panic(fmt.Sprintf("Error during iteration: %v: %v\n", i, err))
@@ -52,12 +80,14 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 		machine.Reset()
 		lossV := loss.Value().Data().(float64)
 		lossMs := lossV / float64(time.Millisecond)
-		fmt.Printf("theta: %v, Iter: %v Loss: %v(%.2fms), Pred: - Accuracy: %v \n",
-			costFactor.Value(),
-			i,
-			lossV, lossMs,
-			//predicated.Data(),
-			accuracy(predicated.Data().([]float64), yNode.Value().Data().([]float64)))
+		if i%1000 == 0 {
+			fmt.Printf("theta: %v, Iter: %v Loss: %v(%.2fms), Pred: - Accuracy: %v \n",
+				costFactor.Value(),
+				i,
+				lossV, lossMs,
+				//predicated.Data(),
+				accuracy(predicated.Data().([]float64), yNode.Value().Data().([]float64)))
+		}
 	}
 
 	return FactorVector{}
