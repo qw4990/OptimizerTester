@@ -9,7 +9,7 @@ import (
 	"gorgonia.org/tensor"
 )
 
-func minMaxNormalization(rs CaliRecords) (ret CaliRecords) {
+func normalization(rs CaliRecords) (ret CaliRecords) {
 	minY, maxY := rs[0].TimeNS, rs[0].TimeNS
 	for _, r := range rs {
 		if r.TimeNS < minY {
@@ -26,14 +26,14 @@ func minMaxNormalization(rs CaliRecords) (ret CaliRecords) {
 		for i := range r.Weights {
 			r.Weights[i] /= 1e6
 		}
-		fmt.Println(">>>>>>>>>>>>>>> RS >>>> ", r.Weights.String(), r.TimeNS)
+		fmt.Println("Record>> ", r.Label, r.SQL, r.Weights.String(), r.TimeNS)
 		ret = append(ret, r)
 	}
 	return
 }
 
 func regressionCostFactors(rs CaliRecords) FactorVector {
-	rs = minMaxNormalization(rs)
+	rs = normalization(rs)
 	x, y := convert2XY(rs)
 	g := gorgonia.NewGraph()
 	xNode := gorgonia.NodeFromAny(g, x, gorgonia.WithName("x"))

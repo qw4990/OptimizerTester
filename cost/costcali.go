@@ -78,7 +78,7 @@ func CostCalibration() {
 		rs = make(CaliRecords, 0, len(qs))
 		for i := range qs {
 			begin := time.Now()
-			query := "explain analyze " + qs[i].SQL
+			query := "explain analyze " + qs[i].SQL // TODO: use server-time, run it multiple times
 			rows := ins.MustQuery(query)
 			timeCost := time.Since(begin) // client-time
 			if err := rows.Close(); err != nil {
