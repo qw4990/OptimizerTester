@@ -30,7 +30,7 @@ type CaliQueries []CaliQuery
 
 type CaliRecord struct {
 	CaliQuery
-	TimeMS float64
+	TimeNS float64
 }
 
 type CaliRecords []CaliRecord
@@ -85,7 +85,7 @@ func CostCalibration() {
 			}
 			rs = append(rs, CaliRecord{
 				CaliQuery: qs[i],
-				TimeMS:    float64(timeCost) / float64(time.Millisecond),
+				TimeNS:    float64(timeCost) / float64(time.Nanosecond),
 			})
 
 			fmt.Printf("[cost-eval] run %v/%v %v %v\n", i, len(qs), timeCost, qs[i].SQL)
@@ -99,9 +99,9 @@ func CostCalibration() {
 	rs = rs[:1]
 
 	for i := range rs {
-		rs[i].TimeMS = rs[i].TimeMS * 1000000
-		fmt.Println(">>>>>>>>>>>>> RS >>>> ", rs[i].Weights, rs[i].TimeMS)
+		rs[i].TimeNS = rs[i].TimeNS * 1000000
+		fmt.Println(">>>>>>>>>>>>> RS >>>> ", rs[i].Weights.String(), rs[i].TimeNS)
 	}
 
-	regressionCostFactors(rs)
+	//regressionCostFactors(rs)
 }
