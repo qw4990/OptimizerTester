@@ -8,10 +8,17 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
-// [ 0 0    14.86664827011213    35.78735527338983  0 0]
 type FactorVector [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
 
+func (fv FactorVector) String() string {
+	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5])
+}
+
 type FactorWeightsVector [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
+
+func (fv FactorWeightsVector) String() string {
+	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5])
+}
 
 type CaliQuery struct {
 	SQL     string

@@ -3,7 +3,7 @@ package cost
 import (
 	"fmt"
 	"math"
-
+	
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
@@ -23,7 +23,7 @@ import (
 
 func genSyntheticCalibrationQueries(ins tidb.Instance, db string) CaliQueries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
-	n := 50
+	n := 20
 	var ret CaliQueries
 	ret = append(ret, genSyntheticCaliScanQueries(ins, n)...)
 	ret = append(ret, genSyntheticCaliWideScanQueries(ins, n)...)
@@ -73,7 +73,7 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
 		})
 	}
-
+	
 	// index scan
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
