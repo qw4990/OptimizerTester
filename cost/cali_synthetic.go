@@ -2,6 +2,8 @@ package cost
 
 import (
 	"fmt"
+	"math"
+
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
@@ -91,10 +93,11 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
 		scanW := float64(rowCount) * getSyntheticRowSize("WideScan-IndexLookup-scan")
 		netW := float64(rowCount) * getSyntheticRowSize("WideScan-IndexLookup-net")
+		cpuW := float64(rowCount) * (1.0 + math.Log2(math.Min(float64(rowCount), float64(20000))))
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, c from t where b>=%v and b<=%v", l, r),
 			Label:   "",
-			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
+			Weights: [6]float64{cpuW, 0, netW, scanW, 0, 0},
 		})
 	}
 
@@ -138,10 +141,11 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
 		scanW := float64(rowCount) * getSyntheticRowSize("Scan-IndexLookup-scan")
 		netW := float64(rowCount) * getSyntheticRowSize("Scan-IndexLookup-net")
+		cpuW := float64(rowCount) * (1.0 + math.Log2(math.Min(float64(rowCount), float64(20000))))
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, d from t where b>=%v and b<=%v", l, r),
 			Label:   "",
-			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
+			Weights: [6]float64{cpuW, 0, netW, scanW, 0, 0},
 		})
 	}
 
