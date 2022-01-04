@@ -3,6 +3,7 @@ package cost
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/qw4990/OptimizerTester/tidb"
@@ -96,9 +97,23 @@ func CostCalibration() {
 		fmt.Println("[cost-eval] read cali-records from file successfully")
 	}
 
+	rs = filterCaliRecordsByLabel(rs, "TableScan")
 	for i := range rs {
 		fmt.Println(">>>>>>>>>>>>> RS >>>> ", rs[i].Weights.String(), rs[i].TimeNS)
 	}
 
 	regressionCostFactors(rs)
+}
+
+func filterCaliRecordsByLabel(rs CaliRecords, labels ...string) CaliRecords {
+	ret := make(CaliRecords, 0, len(rs)) 
+	for _, r := range rs {
+		for _, label := range labels {
+			if strings.ToLower(r.Label) == strings.ToLower(label) {
+				ret = append(ret, r)
+				break
+			}
+		}
+	}
+	return ret
 }
