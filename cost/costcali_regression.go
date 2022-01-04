@@ -3,6 +3,7 @@ package cost
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
@@ -14,12 +15,10 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 	xNode := gorgonia.NodeFromAny(g, x, gorgonia.WithName("x"))
 	yNode := gorgonia.NodeFromAny(g, y, gorgonia.WithName("y"))
 
-	fmt.Println("--->>> ", xNode.Value().Data(), yNode.Value().Data())
-
 	costFactor := gorgonia.NewVector(g, gorgonia.Float64,
 		gorgonia.WithName("cost-factor"),
 		gorgonia.WithShape(xNode.Shape()[1]),
-		gorgonia.WithInit(gorgonia.Uniform(0, 1)))
+		gorgonia.WithInit(gorgonia.Uniform(0, 100)))
 
 	pred := must(gorgonia.Mul(xNode, costFactor))
 	var predicated gorgonia.Value
@@ -32,7 +31,7 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 		panic(fmt.Sprintf("Failed to backpropagate: %v", err))
 	}
 
-	solver := gorgonia.NewVanillaSolver(gorgonia.WithLearnRate(0.0000000000001))
+	solver := gorgonia.NewVanillaSolver(gorgonia.WithLearnRate(0.000000000000015))
 	model := []gorgonia.ValueGrad{costFactor}
 
 	machine := gorgonia.NewTapeMachine(g, gorgonia.BindDualValues(costFactor))
@@ -40,7 +39,7 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 
 	fmt.Println("init theta: ", costFactor.Value())
 
-	iter := 10000
+	iter := 100
 	for i := 0; i < iter; i++ {
 		if err := machine.RunAll(); err != nil {
 			panic(fmt.Sprintf("Error during iteration: %v: %v\n", i, err))
@@ -51,11 +50,13 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 		}
 
 		machine.Reset()
-		fmt.Printf("theta: %v, Iter: %v Loss: %v, Pred: %v Accuracy: %v \n",
+		lossV := loss.Value().Data().(float64)
+		lossMs := lossV / float64(time.Millisecond)
+		fmt.Printf("theta: %v, Iter: %v Loss: %v(%.2fms), Pred: - Accuracy: %v \n",
 			costFactor.Value(),
 			i,
-			loss.Value(),
-			predicated.Data(),
+			lossV, lossMs,
+			//predicated.Data(),
 			accuracy(predicated.Data().([]float64), yNode.Value().Data().([]float64)))
 	}
 
@@ -65,7 +66,7 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 func convert2XY(rs CaliRecords) (*tensor.Dense, *tensor.Dense) {
 	by := make([]float64, 0, len(rs))
 	for _, r := range rs {
-		by = append(by, r.TimeMS)
+		by = append(by, r.TimeNS)
 	}
 	y := tensor.New(tensor.WithShape(len(rs)), tensor.WithBacking(by))
 
