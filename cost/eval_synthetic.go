@@ -31,7 +31,7 @@ func genSyntheticQueries(ins tidb.Instance, db string) Queries {
 	var n int
 	mustReadOneLine(ins, `select max(a) from t`, &n)
 
-	repeat := 20
+	repeat := 50
 	qs := make(Queries, 0, 1024)
 	qs = append(qs, genSyntheticQuery(n, repeat, "TableScan", db, "a", "primary", "", "a")...)
 	qs = append(qs, genSyntheticQuery(n, repeat, "TableScan+WideCol", db, "a, c", "primary", "", "a")...)

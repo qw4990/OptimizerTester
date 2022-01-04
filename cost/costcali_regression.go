@@ -42,7 +42,8 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 	costFactor := gorgonia.NewVector(g, gorgonia.Float64,
 		gorgonia.WithName("cost-factor"),
 		gorgonia.WithShape(xNode.Shape()[1]),
-		gorgonia.WithInit(gorgonia.Uniform(0, 1)))
+		gorgonia.WithInit(gorgonia.Zeroes()))
+	//gorgonia.WithInit(gorgonia.Uniform(0, 300)))
 	//strictFactor, err := gorgonia.LeakyRelu(costFactor, 0)
 	//if err != nil {
 	//	panic(err)
