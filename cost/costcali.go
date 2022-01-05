@@ -78,7 +78,7 @@ func CostCalibration() {
 		ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
 		rs = make(CaliRecords, 0, len(qs))
 		for i := range qs {
-			planCost, timeMS := extractCostTimeFromQuery(ins, qs[i].SQL, 3, false)
+			planCost, timeMS := extractCostTimeFromQuery(ins, qs[i].SQL, 10, false)
 			rs = append(rs, CaliRecord{
 				CaliQuery: qs[i],
 				Cost:      planCost,

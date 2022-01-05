@@ -5,7 +5,6 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 	"path/filepath"
 	"sort"
-	"sync"
 	"time"
 )
 
@@ -35,8 +34,8 @@ func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Inst
 	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", db))
 	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-records.json", db))
 
-	qs, err := readQueriesFrom(queryFile)
-	if err != nil {
+	var qs Queries
+	if err := readFrom(queryFile, &qs); err != nil {
 		fmt.Println("[cost-eval] read queries file error: ", err)
 		qs = queryGenFunc(ins, db)
 		fmt.Printf("[cost-eval] gen %v queries for %v\n", len(qs), db)
@@ -45,47 +44,21 @@ func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Inst
 		fmt.Println("[cost-eval] read queries from file successfully ")
 	}
 
-	all, err := readRecordsFrom(recordFile)
-	if err != nil {
+	var rs Records
+	if err := readFrom(recordFile, &rs); err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
-
-		concurrency := 1
-		instances := make([]tidb.Instance, concurrency)
-		for i := 0; i < concurrency; i++ {
-			tmp, err := tidb.ConnectTo(ins.Opt())
-			if err != nil {
-				panic(err)
-			}
-			instances[i] = tmp
-		}
-
-		var wg sync.WaitGroup
-		queries := splitQueries(qs, concurrency)
-		rs := make([]Records, concurrency)
-		for i := 0; i < concurrency; i++ {
-			wg.Add(1)
-			go func(id int) {
-				defer wg.Done()
-				defer fmt.Printf("[cost-eval] worker-%v finish\n", id)
-				rs[id] = runCostEvalQueries(id, instances[id], db, queries[id])
-			}(i)
-		}
-		wg.Wait()
-
-		for _, r := range rs {
-			all = append(all, r...)
-		}
-		saveRecordsTo(all, recordFile)
+		rs = runCostEvalQueries(0, ins, db, qs)
+		saveTo(recordFile, rs)
 	} else {
 		fmt.Println("[cost-eval] read records from file successfully")
 	}
 
-	sort.Slice(all, func(i, j int) bool {
-		return all[i].TimeMS < all[j].TimeMS
+	sort.Slice(rs, func(i, j int) bool {
+		return rs[i].TimeMS < rs[j].TimeMS
 	})
 
-	tmp := make(Records, 0, len(all))
-	for _, r := range all {
+	tmp := make(Records, 0, len(rs))
+	for _, r := range rs {
 		if r.Label == "Point" {
 			continue
 		}
@@ -126,18 +99,18 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Record
 	ins.MustExec(`set @@tidb_executor_concurrency=1`)
 	ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
 
-	ins.MustExec(`set @@tidb_opt_cpu_factor=123`)
-	ins.MustExec(`set @@tidb_opt_copcpu_factor=0`)
-	ins.MustExec(`set @@tidb_opt_network_factor=3.37`)
-	ins.MustExec(`set @@tidb_opt_scan_factor=3.98`)
-	ins.MustExec(`set @@tidb_opt_desc_factor=0`)
-	ins.MustExec(`set @@tidb_opt_memory_factor=0`)
+	//ins.MustExec(`set @@tidb_opt_cpu_factor=123`)
+	//ins.MustExec(`set @@tidb_opt_copcpu_factor=0`)
+	//ins.MustExec(`set @@tidb_opt_network_factor=3.37`)
+	//ins.MustExec(`set @@tidb_opt_scan_factor=3.98`)
+	//ins.MustExec(`set @@tidb_opt_desc_factor=0`)
+	//ins.MustExec(`set @@tidb_opt_memory_factor=0`)
 	records := make([]Record, 0, len(qs))
 
 	for i, q := range qs {
 		fmt.Printf("[cost-eval] worker-%v run query %v %v/%v %v\n", id, q, i, len(qs), time.Since(beginAt))
 		planLabel := "Unmatched"
-		planCost, timeMS := extractCostTimeFromQuery(ins, q.SQL, 3, true)
+		planCost, timeMS := extractCostTimeFromQuery(ins, q.SQL, 10, true)
 
 		if q.Label != "" {
 			planLabel = q.Label
@@ -151,12 +124,4 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Record
 	}
 
 	return records
-}
-
-func splitQueries(r Queries, n int) []Queries {
-	rs := make([]Queries, n)
-	for i, record := range r {
-		rs[i%n] = append(rs[i%n], record)
-	}
-	return rs
 }
