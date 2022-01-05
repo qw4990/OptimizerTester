@@ -72,7 +72,7 @@ func CostCalibration() {
 		fmt.Println("[cost-eval] read cali-records file error: ", err)
 
 		ins.MustExec(fmt.Sprintf(`use %v`, db))
-		ins.MustExec(`set @@tidb_cost_calibration_mode=0`)
+		ins.MustExec(`set @@tidb_cost_calibration_mode=2`)
 		ins.MustExec(`set @@tidb_distsql_scan_concurrency=1`)
 		ins.MustExec(`set @@tidb_executor_concurrency=1`)
 		ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
@@ -92,8 +92,8 @@ func CostCalibration() {
 		fmt.Println("[cost-eval] read cali-records from file successfully")
 	}
 
-	rs = filterCaliRecordsByLabel(rs, "Wide-IndexScan", "Wide-TableScan")
-	//rs = filterCaliRecordsByLabel(rs, "IndexScan", "Wide-IndexScan", "TableScan", "Wide-TableScan")
+	rs = filterCaliRecordsByLabel(rs, "IndexScan", "wide-tablescan", "wide-indexscan")
+	//rs = filterCaliRecordsByLabel(rs, "IndexScan", "TableScan", "IndexLookup", "wide-tablescan", "wide-indexscan")
 	//rs = rs[:2]
 
 	regressionCostFactors(rs)

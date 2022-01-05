@@ -23,7 +23,7 @@ import (
 
 func genSyntheticCalibrationQueries(ins tidb.Instance, db string) CaliQueries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
-	n := 50
+	n := 30
 	var ret CaliQueries
 	ret = append(ret, genSyntheticCaliScanQueries(ins, n)...)
 	ret = append(ret, genSyntheticCaliWideScanQueries(ins, n)...)
@@ -38,14 +38,14 @@ func init() {
 	hackRowSize["Scan-TableScan-net"] = 8.125
 	hackRowSize["Scan-IndexScan-scan"] = 29
 	hackRowSize["Scan-IndexScan-net"] = 8.125
-	hackRowSize["Scan-IndexLookup-scan"] = 38 + 20
+	hackRowSize["Scan-IndexLookup-scan"] = 38 + 178
 	hackRowSize["Scan-IndexLookup-net"] = 16.25 + 16.25
 
-	hackRowSize["WideScan-TableScan-scan"] = 20
+	hackRowSize["WideScan-TableScan-scan"] = 158.83
 	hackRowSize["WideScan-TableScan-net"] = 139.23
 	hackRowSize["WideScan-IndexScan-scan"] = 160
 	hackRowSize["WideScan-IndexScan-net"] = 139.23
-	hackRowSize["WideScan-IndexLookup-scan"] = 38 + 20
+	hackRowSize["WideScan-IndexLookup-scan"] = 38 + 178
 	hackRowSize["WideScan-IndexLookup-net"] = 16.25 + 139.23
 }
 

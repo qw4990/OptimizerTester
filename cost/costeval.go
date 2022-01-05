@@ -5,6 +5,7 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -43,6 +44,17 @@ func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Inst
 	} else {
 		fmt.Println("[cost-eval] read queries from file successfully ")
 	}
+
+	tmpQS := make(Queries, 0, len(qs))
+	for _, q := range qs {
+		for _, label := range []string{"tablescan", "wide-tablescan"} {
+			if strings.ToLower(label) == strings.ToLower(q.Label) {
+				tmpQS = append(tmpQS, q)
+				break
+			}
+		}
+	}
+	qs = tmpQS
 
 	var rs Records
 	if err := readFrom(recordFile, &rs); err != nil {
@@ -99,10 +111,11 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Record
 	ins.MustExec(`set @@tidb_executor_concurrency=1`)
 	ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
 
-	//ins.MustExec(`set @@tidb_opt_cpu_factor=123`)
+	// theta: [               0                 0  3.85636587180801  1.74185850293384                 0                 0]
+	//ins.MustExec(`set @@tidb_opt_cpu_factor=0`)
 	//ins.MustExec(`set @@tidb_opt_copcpu_factor=0`)
-	//ins.MustExec(`set @@tidb_opt_network_factor=3.37`)
-	//ins.MustExec(`set @@tidb_opt_scan_factor=3.98`)
+	//ins.MustExec(`set @@tidb_opt_network_factor=2`)
+	//ins.MustExec(`set @@tidb_opt_scan_factor=15`)
 	//ins.MustExec(`set @@tidb_opt_desc_factor=0`)
 	//ins.MustExec(`set @@tidb_opt_memory_factor=0`)
 	records := make([]Record, 0, len(qs))

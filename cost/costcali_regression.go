@@ -53,8 +53,8 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 	var predicated gorgonia.Value
 	gorgonia.Read(pred, &predicated)
 
-	squaredError := must(gorgonia.Abs(must(gorgonia.Sub(pred, yNode))))
-	loss := must(gorgonia.Mean(squaredError))
+	diff := must(gorgonia.Abs(must(gorgonia.Sub(pred, yNode))))
+	loss := must(gorgonia.Mean(diff))
 	_, err := gorgonia.Grad(loss, costFactor)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to backpropagate: %v", err))
