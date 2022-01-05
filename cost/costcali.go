@@ -32,6 +32,7 @@ type CaliQueries []CaliQuery
 type CaliRecord struct {
 	CaliQuery
 	TimeNS float64
+	Cost   float64
 }
 
 type CaliRecords []CaliRecord
@@ -77,19 +78,13 @@ func CostCalibration() {
 		ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
 		rs = make(CaliRecords, 0, len(qs))
 		for i := range qs {
-			begin := time.Now()
-			query := "explain analyze " + qs[i].SQL // TODO: use server-time, run it multiple times
-			rows := ins.MustQuery(query)
-			timeCost := time.Since(begin) // client-time
-			if err := rows.Close(); err != nil {
-				panic(err)
-			}
+			planCost, timeMS := extractCostTimeFromQuery(ins, qs[i].SQL, 3, false)
 			rs = append(rs, CaliRecord{
 				CaliQuery: qs[i],
-				TimeNS:    float64(timeCost) / float64(time.Nanosecond),
+				Cost:      planCost,
+				TimeNS:    timeMS * float64(time.Millisecond/time.Nanosecond),
 			})
-
-			fmt.Printf("[cost-eval] run %v/%v %v %v\n", i, len(qs), timeCost, qs[i].SQL)
+			fmt.Printf("[cost-eval] run %v/%v %v %v\n", i, len(qs), timeMS, qs[i].SQL)
 		}
 		fmt.Printf("[cost-eval] gen %v cali-records for %v\n", len(qs), db)
 		saveTo(recordFile, rs)
@@ -104,7 +99,7 @@ func CostCalibration() {
 }
 
 func filterCaliRecordsByLabel(rs CaliRecords, labels ...string) CaliRecords {
-	ret := make(CaliRecords, 0, len(rs)) 
+	ret := make(CaliRecords, 0, len(rs))
 	for _, r := range rs {
 		for _, label := range labels {
 			if strings.ToLower(r.Label) == strings.ToLower(label) {
