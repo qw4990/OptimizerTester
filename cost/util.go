@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -109,8 +108,8 @@ func mustGetRowCount(ins tidb.Instance, q string) int {
 
 func randRange(minVal, maxVal, iter, totalRepeat int) (int, int) {
 	step := (maxVal - minVal) / totalRepeat
-	l := rand.Intn(step)
-	r := rand.Intn(step) + step*(iter+1)
+	l := 1
+	r := step*(iter+1) + 1
 	if r > maxVal {
 		r = maxVal
 	}
