@@ -92,7 +92,8 @@ func CostCalibration() {
 		fmt.Println("[cost-eval] read cali-records from file successfully")
 	}
 
-	//rs = filterCaliRecordsByLabel(rs, "IndexScan")
+	rs = filterCaliRecordsByLabel(rs, "Wide-IndexScan", "Wide-TableScan")
+	//rs = filterCaliRecordsByLabel(rs, "IndexScan", "Wide-IndexScan", "TableScan", "Wide-TableScan")
 	//rs = rs[:2]
 
 	regressionCostFactors(rs)
