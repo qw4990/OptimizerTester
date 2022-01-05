@@ -107,7 +107,7 @@ func mustGetRowCount(ins tidb.Instance, q string) int {
 }
 
 func randRange(minVal, maxVal, iter, totalRepeat int) (int, int) {
-	step := (maxVal - minVal) / totalRepeat
+	step := (maxVal - minVal + 1) / totalRepeat
 	l := 1
 	r := step*(iter+1) + 1
 	if r > maxVal {
