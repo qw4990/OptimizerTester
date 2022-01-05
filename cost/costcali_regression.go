@@ -53,14 +53,14 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 	var predicated gorgonia.Value
 	gorgonia.Read(pred, &predicated)
 
-	squaredError := must(gorgonia.Square(must(gorgonia.Sub(pred, yNode))))
+	squaredError := must(gorgonia.Abs(must(gorgonia.Sub(pred, yNode))))
 	loss := must(gorgonia.Mean(squaredError))
 	_, err := gorgonia.Grad(loss, costFactor)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to backpropagate: %v", err))
 	}
 
-	solver := gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.001))
+	solver := gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.01))
 	model := []gorgonia.ValueGrad{costFactor}
 
 	machine := gorgonia.NewTapeMachine(g, gorgonia.BindDualValues(costFactor))

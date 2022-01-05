@@ -174,10 +174,15 @@ func readRecordsFrom(f string) (Records, error) {
 
 func extractCostTimeFromQuery(ins tidb.Instance, query string, repeat int, checkRowCount bool) (avgPlanCost, avgTimeMS float64) {
 	query = "explain analyze " + query
+	repeat += 1
 	var totalPlanCost, totalTimeMS float64
 	for i := 0; i < repeat; i++ {
 		rs := ins.MustQuery(query)
 		planCost, timeMS := extractCostTime(rs, query, checkRowCount)
+		fmt.Printf("[cost-eval/cali] iter: %v, cost: %v, timeMS: %v, query: %v\n", i, planCost, timeMS, query)
+		if i == 0 {
+			continue // ignore the first processing
+		}
 		totalPlanCost += planCost
 		totalTimeMS += timeMS
 	}
