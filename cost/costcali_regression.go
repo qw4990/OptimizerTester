@@ -26,7 +26,7 @@ func normalization(rs CaliRecords) (ret CaliRecords) {
 		for i := range r.Weights {
 			r.Weights[i] /= 1e6
 		}
-		fmt.Println("Record>> ", r.Label, r.SQL, r.Weights.String(), r.TimeNS)
+		fmt.Println("Record>> ", r.Label, r.SQL, r.Weights.String(), r.Cost, r.TimeNS)
 		ret = append(ret, r)
 	}
 	return
@@ -54,7 +54,8 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 	gorgonia.Read(pred, &predicated)
 
 	diff := must(gorgonia.Abs(must(gorgonia.Sub(pred, yNode))))
-	loss := must(gorgonia.Mean(diff))
+	relativeDiff := must(gorgonia.Div(diff, yNode))
+	loss := must(gorgonia.Mean(relativeDiff))
 	_, err := gorgonia.Grad(loss, costFactor)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to backpropagate: %v", err))

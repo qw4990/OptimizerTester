@@ -5,7 +5,6 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -45,16 +44,16 @@ func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Inst
 		fmt.Println("[cost-eval] read queries from file successfully ")
 	}
 
-	tmpQS := make(Queries, 0, len(qs))
-	for _, q := range qs {
-		for _, label := range []string{"tablescan", "wide-tablescan"} {
-			if strings.ToLower(label) == strings.ToLower(q.Label) {
-				tmpQS = append(tmpQS, q)
-				break
-			}
-		}
-	}
-	qs = tmpQS
+	//tmpQS := make(Queries, 0, len(qs))
+	//for _, q := range qs {
+	//	for _, label := range []string{"tablescan", "wide-tablescan"} {
+	//		if strings.ToLower(label) == strings.ToLower(q.Label) {
+	//			tmpQS = append(tmpQS, q)
+	//			break
+	//		}
+	//	}
+	//}
+	//qs = tmpQS
 
 	var rs Records
 	if err := readFrom(recordFile, &rs); err != nil {
