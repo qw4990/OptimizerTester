@@ -10,7 +10,18 @@ func newCostEvalCmd() *cobra.Command {
 		Use:   "cost-eval",
 		Short: "Cost Model Evaluation",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			//cost.CostEval()
+			cost.CostEval()
+			return nil
+		},
+	}
+	return cmd
+}
+
+func newCostCaliCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "cost-cali",
+		Short: "Cost Model Calibration",
+		RunE: func(cmd *cobra.Command, args []string) error {
 			cost.CostCalibration()
 			return nil
 		},

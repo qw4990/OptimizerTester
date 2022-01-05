@@ -21,4 +21,5 @@ func init() {
 	rootCmd.AddCommand(newDatagenCmd())
 	rootCmd.AddCommand(newCEBenchCmd())
 	rootCmd.AddCommand(newCostEvalCmd())
+	rootCmd.AddCommand(newCostCaliCmd())
 }
