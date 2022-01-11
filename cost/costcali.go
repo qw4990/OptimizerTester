@@ -2,7 +2,6 @@ package cost
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -66,11 +65,11 @@ func CostCalibration() {
 	} else {
 		fmt.Println("[cost-eval] read cali-queries from file successfully ")
 	}
-	
-	for _, q := range qs {
-		fmt.Println(q.SQL, q.Weights)
-	}
-	os.Exit(0)
+
+	//for _, q := range qs {
+	//	fmt.Println(q.SQL, q.Weights)
+	//}
+	//os.Exit(0)
 
 	var rs CaliRecords
 	if err := readFrom(recordFile, &rs); err != nil {
@@ -98,11 +97,17 @@ func CostCalibration() {
 		fmt.Println("[cost-eval] read cali-records from file successfully")
 	}
 
-	rs = filterCaliRecordsByLabel(rs, "IndexScan",  "wide-indexscan")
+	for _, r := range rs {
+		fmt.Println(r.SQL, r.Weights, r.Cost, time.Duration(r.TimeNS)*time.Nanosecond)
+	}
+	//os.Exit(0)
+
+	//rs = filterCaliRecordsByLabel(rs, "IndexScan", "wide-indexscan")
 	//rs = filterCaliRecordsByLabel(rs, "IndexScan", "TableScan", "IndexLookup", "wide-tablescan", "wide-indexscan")
 	//rs = rs[:2]
 
-	regressionCostFactors(rs)
+	ret := regressionCostFactors(rs)
+	fmt.Println(ret.String())
 }
 
 func filterCaliRecordsByLabel(rs CaliRecords, labels ...string) CaliRecords {

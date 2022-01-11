@@ -92,7 +92,12 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 		}
 	}
 
-	return FactorVector{}
+	var fv FactorVector
+	for i := range fv {
+		fv[i] = costFactor.Value().Data().([]float64)[i]
+	}
+
+	return fv
 }
 
 func convert2XY(rs CaliRecords) (*tensor.Dense, *tensor.Dense) {
