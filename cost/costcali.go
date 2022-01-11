@@ -2,6 +2,7 @@ package cost
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -65,6 +66,11 @@ func CostCalibration() {
 	} else {
 		fmt.Println("[cost-eval] read cali-queries from file successfully ")
 	}
+	
+	for _, q := range qs {
+		fmt.Println(q.SQL, q.Weights)
+	}
+	os.Exit(0)
 
 	var rs CaliRecords
 	if err := readFrom(recordFile, &rs); err != nil {
@@ -75,6 +81,7 @@ func CostCalibration() {
 		ins.MustExec(`set @@tidb_distsql_scan_concurrency=1`)
 		ins.MustExec(`set @@tidb_executor_concurrency=1`)
 		ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
+		ins.MustExec(`set @@tidb_cost_variant=1`)
 		rs = make(CaliRecords, 0, len(qs))
 		for i := range qs {
 			planCost, timeMS := extractCostTimeFromQuery(ins, qs[i].SQL, 10, false)

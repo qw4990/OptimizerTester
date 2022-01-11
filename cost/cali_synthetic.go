@@ -2,9 +2,8 @@ package cost
 
 import (
 	"fmt"
-	"math"
-
 	"github.com/qw4990/OptimizerTester/tidb"
+	"math"
 )
 
 // Scan
@@ -34,18 +33,18 @@ var hackRowSize map[string]float64
 
 func init() {
 	hackRowSize = make(map[string]float64)
-	hackRowSize["Scan-TableScan-scan"] = 20
+	hackRowSize["Scan-TableScan-scan"] = 4.321928094887363
 	hackRowSize["Scan-TableScan-net"] = 8.125
-	hackRowSize["Scan-IndexScan-scan"] = 29
+	hackRowSize["Scan-IndexScan-scan"] = 4.857980995127573
 	hackRowSize["Scan-IndexScan-net"] = 8.125
-	hackRowSize["Scan-IndexLookup-scan"] = 38 + 178
+	hackRowSize["Scan-IndexLookup-scan"] = 12.723660944409982
 	hackRowSize["Scan-IndexLookup-net"] = 16.25 + 16.25
 
-	hackRowSize["WideScan-TableScan-scan"] = 158.83
+	hackRowSize["WideScan-TableScan-scan"] = 7.311339625955218
 	hackRowSize["WideScan-TableScan-net"] = 139.23
-	hackRowSize["WideScan-IndexScan-scan"] = 160
+	hackRowSize["WideScan-IndexScan-scan"] = 7.321928094887362
 	hackRowSize["WideScan-IndexScan-net"] = 139.23
-	hackRowSize["WideScan-IndexLookup-scan"] = 38 + 178
+	hackRowSize["WideScan-IndexLookup-scan"] = 12.723660944409982
 	hackRowSize["WideScan-IndexLookup-net"] = 16.25 + 139.23
 }
 
@@ -54,9 +53,6 @@ func getSyntheticRowSize(key string, costVariant int) float64 {
 		panic(key)
 	}
 	rowSize := hackRowSize[key]
-	if costVariant == 1 {
-		rowSize = math.Log2(rowSize)
-	}
 	return rowSize
 }
 
