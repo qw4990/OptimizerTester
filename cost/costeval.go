@@ -2,10 +2,11 @@ package cost
 
 import (
 	"fmt"
-	"github.com/qw4990/OptimizerTester/tidb"
 	"path/filepath"
 	"sort"
 	"time"
+
+	"github.com/qw4990/OptimizerTester/tidb"
 )
 
 // CostEval ...
