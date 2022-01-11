@@ -69,6 +69,7 @@ func genSyntheticQuery(n, repeat int, label, db, sel, idxhint, orderby string, c
 }
 
 func genSyntheticData(ins tidb.Instance, n int, db string) {
+	ins.MustExec(fmt.Sprintf(`create database if not exists %v`, db))
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	ins.MustExec(`create table if not exists t (
 		a int, 
