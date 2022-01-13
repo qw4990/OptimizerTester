@@ -3,6 +3,7 @@ package cebench
 import (
 	"bufio"
 	"fmt"
+	"github.com/qw4990/OptimizerTester/tidb"
 	"os"
 	"regexp"
 	"strings"
@@ -17,7 +18,7 @@ func (s *originalSQL) SQL() string {
 	return s.sql
 }
 
-func SQLProvider(paths []string, queryTaskChan chan<- *QueryTask, destChan chan<- *QueryResult) {
+func SQLProvider(paths []string, queryTaskChan chan<- *tidb.QueryTask, destChan chan<- *tidb.QueryResult) {
 	isTracePlanStmt := regexp.MustCompile("(?i)^trace plan")
 	isSelectStmt := regexp.MustCompile("(?i)^select")
 	isDropStmt := regexp.MustCompile("(?i)^drop")
@@ -26,6 +27,7 @@ func SQLProvider(paths []string, queryTaskChan chan<- *QueryTask, destChan chan<
 	taskCnt := 0
 	var lastPayloads []*originalSQL
 	for _, path := range paths {
+		fmt.Printf("[%s] Read SQL from %s.\n", logTime(), path)
 		file, err := os.Open(path)
 		if err != nil {
 			// TODO
@@ -76,10 +78,10 @@ func SQLProvider(paths []string, queryTaskChan chan<- *QueryTask, destChan chan<
 			}
 			if needWait {
 				tmpFinishChan := make(chan struct{}, 1)
-				queryTaskChan <- &QueryTask{&payload, destChan, tmpFinishChan, false}
-
+				queryTaskChan <- &tidb.QueryTask{&payload, destChan, tmpFinishChan, false}
+				<-tmpFinishChan
 			} else {
-				queryTaskChan <- &QueryTask{&payload, destChan, finishChan, false}
+				queryTaskChan <- &tidb.QueryTask{&payload, destChan, finishChan, false}
 			}
 		FORLOOP:
 			for {
@@ -96,9 +98,10 @@ func SQLProvider(paths []string, queryTaskChan chan<- *QueryTask, destChan chan<
 			panic(err)
 		}
 	}
+	fmt.Printf("[%s] All SQLs are read.\n", logTime())
 	for _, payload := range lastPayloads {
 		tmpFinishChan := make(chan struct{}, 1)
-		queryTaskChan <- &QueryTask{payload, destChan, tmpFinishChan, false}
+		queryTaskChan <- &tidb.QueryTask{payload, destChan, tmpFinishChan, false}
 		<-tmpFinishChan
 	}
 	if taskCnt > 0 {
@@ -109,6 +112,6 @@ func SQLProvider(paths []string, queryTaskChan chan<- *QueryTask, destChan chan<
 			}
 		}
 	}
-	queryTaskChan <- &QueryTask{nil, destChan, nil, true}
+	queryTaskChan <- &tidb.QueryTask{nil, destChan, nil, true}
 	fmt.Printf("[%s] SQL provider exited.\n", logTime())
 }

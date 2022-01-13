@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/qw4990/OptimizerTester/tidb"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
@@ -45,11 +46,11 @@ func RunCEBench(queryLocation string, dsns []string, outDir string) error {
 		return err
 	}
 	fmt.Printf("[%s] %d sql files found.\n", logTime(), len(files))
-	queryTaskChan := make(chan *QueryTask, 100)
-	tracePlanResChan := make(chan *QueryResult, 100)
-	actualCntResChan := make(chan *QueryResult, 100)
+	queryTaskChan := make(chan *tidb.QueryTask, 100)
+	tracePlanResChan := make(chan *tidb.QueryResult, 100)
+	actualCntResChan := make(chan *tidb.QueryResult, 100)
 	for i, dsn := range dsns {
-		err = StartQueryRunner(dsn, queryTaskChan, concurrencyForEachDSN, 2, uint(i))
+		err = tidb.StartQueryRunner(dsn, queryTaskChan, concurrencyForEachDSN, 2, uint(i))
 		if err != nil {
 			return err
 		}
@@ -215,16 +216,16 @@ func (s EstInfos) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-func CollectEstInfo(inChan <-chan *QueryResult) (map[string]EstInfos, EstInfos) {
+func CollectEstInfo(inChan <-chan *tidb.QueryResult) (map[string]EstInfos, EstInfos) {
 	res := make(map[string]EstInfos)
 	allEstInfos := make(EstInfos, 0, 8)
 	for queryRes := range inChan {
-		queryResVal := queryRes.result[0][0].([]uint8)
+		queryResVal := queryRes.Result[0][0].([]uint8)
 		actualCnt, err := strconv.ParseUint(string(queryResVal), 10, 64)
 		if err != nil {
 			panic(err)
 		}
-		traceRecord := queryRes.payload.(*CETraceRecord)
+		traceRecord := queryRes.Payload.(*CETraceRecord)
 		estRes := EstInfo{
 			Expr:   traceRecord.Expr,
 			Type:   traceRecord.Type,
