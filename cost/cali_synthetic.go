@@ -2,23 +2,27 @@ package cost
 
 import (
 	"fmt"
-	"github.com/qw4990/OptimizerTester/tidb"
 	"math"
+
+	"github.com/qw4990/OptimizerTester/tidb"
 )
 
-// Scan
-//   select /*+ use_index(t, primary) */ a from t where a>=? and a<=?										(0, 0, estRow*estColSize, estRow*estColSize, 0, 0)
-//   select /*+ use_index(t, b) */ b from t where b>=? and b<=?												(0, 0, estRow*estIdxSize, estRow*estIdxSize, 0, 0)
-//   select /*+ use_index(t, b) */ b, d from t where b>=? and b<=?											(0, 0, estRow*estColSize+ estRow*estIdxSize, estRow*estColSize+estRow*estIdxSize, 0, 0)
-// WideScan
-//   select /*+ use_index(t, primary) */ a, c from t where a>=? and a<=?									(0, 0, estRow*estColSize, estRow*estColSize, 0, 0)
-//   select /*+ use_index(t, bc) */ b, c from t where b>=? and b<=?											(0, 0, estRow*estIdxSize, estRow*estIdxSize, 0, 0)
-//   select /*+ use_index(t, b) */ b, c from t where b>=? and b<=?											(0, 0, estRow*estColSize+ estRow*estIdxSize, estRow*estColSize+estRow*estIdxSize, 0, 0)
-// DescScan
-//   select /*+ use_index(t, primary), no_reorder() */ a from t where a>=? and a<=? order by a desc			(0, 0, estRow*estColSize, 0, estRow*estColSize, 0)
-//   select /*+ use_index(t, b), no_reorder() */ b from t where b>=? and b<=? order by b desc				(0, 0, estRow*estColSize, 0, estRow*estIdxSize, 0)
-// Cop-CPU Operations: TODO
-// TiDB-CPU Operations: TODO
+// Scan: scanFactor, netFactor																				(CPU, CopCPU, Net, Scan, DescScan, Mem)
+//   select /*+ use_index(t, primary) */ a from t where a>=? and a<=?										(0, 0, estRow*log(rowSize), estRow*rowSize, 0, 0)
+//   select /*+ use_index(t, b) */ b from t where b>=? and b<=?												(0, 0, estRow*log(rowSize), estRow*rowSize, 0, 0)
+//   select /*+ use_index(t, b) */ b, d from t where b>=? and b<=?											(estRow*(1+ log2(Min(estRow, lookupBatchSize))), 0, estRow*log(tblRowSize)+estRow*log(idxRowSize), estRow*tblRowSize+estRow*idxRowSize, 0, 0)
+// WideScan: scanFactor, netFactor
+//   select /*+ use_index(t, primary) */ a, c from t where a>=? and a<=?									(0, 0, estRow*log(rowSize), estRow*rowSize, 0, 0)
+//   select /*+ use_index(t, bc) */ b, c from t where b>=? and b<=?											(0, 0, estRow*log(rowSize), estRow*rowSize, 0, 0)
+//   select /*+ use_index(t, b) */ b, c from t where b>=? and b<=?											(estRow*(1+ log2(Min(estRow, lookupBatchSize))), 0, estRow*log(tblRowSize)+estRow*log(idxRowSize), estRow*tblRowSize+estRow*idxRowSize, 0, 0)
+// DescScan: descScanFactor, netFactor
+//   select /*+ use_index(t, primary), no_reorder() */ a from t where a>=? and a<=? order by a desc			(0, 0, estRow*rowSize, 0, estRow*log(rowSize), 0)
+//   select /*+ use_index(t, b), no_reorder() */ b from t where b>=? and b<=? order by b desc				(0, 0, estRow*rowSize, 0, estRow*log(rowSize), 0)
+// AGG: CPUFactor, copCPUFactor
+//   select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=? and b<=?			(0, estRow, 0, estRow*log(rowSize), 0, 0)
+//   select /*+ use_index(t, b), stream_agg(), agg_not_to_cop */ count(1) from t where b>=? and b<=?		(estRow, 0, estRow*rowSize, estRow*log(rowSize), 0, 0)
+// Sort: CPUFactor, MemFactor
+//   select /*+ use_index(t, b), must_reorder() */ b from t where b>=? and b<=? order by b					(estRow*log(estRow), 0, estRow*rowSize, estRow*log(rowSize), 0, estRow)
 
 func genSyntheticCalibrationQueries(ins tidb.Instance, db string) CaliQueries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
@@ -26,6 +30,7 @@ func genSyntheticCalibrationQueries(ins tidb.Instance, db string) CaliQueries {
 	var ret CaliQueries
 	ret = append(ret, genSyntheticCaliScanQueries(ins, n)...)
 	ret = append(ret, genSyntheticCaliWideScanQueries(ins, n)...)
+	ret = append(ret, genSyntheticCaliDescScanQueries(ins, n)...)
 	return ret
 }
 
@@ -152,6 +157,34 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 	return qs
 }
 
-func genSyntheticCaliDescScanQueries() {
+func genSyntheticCaliDescScanQueries(ins tidb.Instance, n int) CaliQueries {
+	var qs CaliQueries
+	var minA, maxA, minB, maxB int
+	mustReadOneLine(ins, `select min(a), max(a), min(b), max(b) from t`, &minA, &maxA, &minB, &maxB)
 
+	// table scan
+	for i := 0; i < n; i++ {
+		l, r := randRange(minA, maxA, i, n)
+		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where a>=%v and b<=%v", l, r))
+		descScanW := float64(rowCount) * getSyntheticRowSize("DescScan-TableScan-scan", 1)
+		netW := float64(rowCount) * getSyntheticRowSize("DescScan-TableScan-net", 1)
+		qs = append(qs, CaliQuery{
+			SQL:     fmt.Sprintf("select /*+ use_index(t, primary), no_reorder() */ a from t where a>=%v and a<=%v order by a desc", l, r),
+			Label:   "IndexLookup",
+			Weights: [6]float64{0, 0, netW, 0, descScanW, 0},
+		})
+	}
+
+	// index scan
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n)
+		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where a>=%v and b<=%v", l, r))
+		descScanW := float64(rowCount) * getSyntheticRowSize("DescScan-IndexScan-scan", 1)
+		netW := float64(rowCount) * getSyntheticRowSize("DescScan-IndexScan-net", 1)
+		qs = append(qs, CaliQuery{
+			SQL:     fmt.Sprintf("select /*+ use_index(t, b), no_reorder() */ b from t where b>=%v and b<=%v order by b desc", l, r),
+			Label:   "IndexLookup",
+			Weights: [6]float64{0, 0, netW, 0, descScanW, 0},
+		})
+	}
 }
