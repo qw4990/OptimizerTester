@@ -39,7 +39,16 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 	costFactor := gorgonia.NewVector(g, gorgonia.Float64,
 		gorgonia.WithName("cost-factor"),
 		gorgonia.WithShape(xNode.Shape()[1]),
-		gorgonia.WithInit(gorgonia.Zeroes()))
+		gorgonia.WithInit(func(dt tensor.Dtype, s ...int) interface{} {
+			switch dt {
+			case tensor.Float64: // (CPU, CopCPU, Net, Scan, DescScan, Mem)
+				return []float64{430, 430, 4, 120, 180, 1}
+			default:
+				panic("invalid type")
+			}
+			return nil
+		}))
+	//gorgonia.WithInit(gorgonia.Zeroes()))
 	//gorgonia.WithInit(gorgonia.Uniform(0, 300)))
 	//strictFactor, err := gorgonia.LeakyRelu(costFactor, 0)
 	//if err != nil {
@@ -82,7 +91,7 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 			fmt.Printf("theta: %v, Iter: %v Loss: %.4f%%\n",
 				costFactor.Value(),
 				i,
-				lossV)
+				lossV*100)
 		}
 	}
 
