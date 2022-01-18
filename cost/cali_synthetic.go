@@ -26,7 +26,7 @@ import (
 
 func genSyntheticCalibrationQueries(ins tidb.Instance, db string) CaliQueries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
-	n := 2
+	n := 5
 	var ret CaliQueries
 	ret = append(ret, genSyntheticCaliScanQueries(ins, n)...)
 	ret = append(ret, genSyntheticCaliWideScanQueries(ins, n)...)
@@ -249,6 +249,7 @@ func genSyntheticCaliAGGQueries(ins tidb.Instance, n int) CaliQueries {
 }
 
 func genSyntheticCaliSortQueries(ins tidb.Instance, n int) CaliQueries {
+	n *= 2
 	var qs CaliQueries
 	var minB, maxB int
 	mustReadOneLine(ins, `select  min(b), max(b) from t`, &minB, &maxB)
