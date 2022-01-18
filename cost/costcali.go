@@ -108,16 +108,16 @@ func CostCalibration() {
 	}
 
 	whilteList := []string{
-		"DescIndexScan",
-		"Agg-PushedDown",
-		"Agg-NotPushedDown",
 		"TableScan",
 		"IndexScan",
 		"IndexLookup",
 		"Wide-IndexLookup",
 		"Wide-TableScan",
 		"Wide-IndexScan",
+		"DescIndexScan",
 		"DescTableScan",
+		"Agg-PushedDown",
+		"Agg-NotPushedDown",
 		"Sort",
 	}
 
