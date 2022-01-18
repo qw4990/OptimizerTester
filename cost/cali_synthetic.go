@@ -34,79 +34,53 @@ func genSyntheticCalibrationQueries(ins tidb.Instance, db string) CaliQueries {
 	return ret
 }
 
-var hackRowSize map[string]float64
+var syntheticScanRowSize, syntheticNetRowSize map[string]float64
 
 func init() {
-	hackRowSize = make(map[string]float64)
-	hackRowSize["Scan-TableScan-scan"] = 4.321928094887363
-	hackRowSize["Scan-TableScan-net"] = 8.125
-	hackRowSize["Scan-IndexScan-scan"] = 4.857980995127573
-	hackRowSize["Scan-IndexScan-net"] = 8.125
-	hackRowSize["Scan-IndexLookup-scan"] = 12.723660944409982
-	hackRowSize["Scan-IndexLookup-net"] = 16.25 + 16.25
+	syntheticScanRowSize = map[string]float64{
+		"tbl-scan(a)":          20,
+		"idx-scan(b)":          29,
+		"lookup-idx(b,d)":      38,
+		"lookup-tbl(b,d)":      179,
+		"wide-tbl-scan(a,c)":   172,
+		"wide-idx-scan(b,c)":   161,
+		"wide-lookup-idx(b,c)": 39,
+		"wide-lookup-tbl(b,c)": 179,
+		"desc-tbl-scan(a)":     20,
+		"desc-idx-scan(b)":     29,
+	}
 
-	hackRowSize["WideScan-TableScan-scan"] = 7.311339625955218
-	hackRowSize["WideScan-TableScan-net"] = 139.23
-	hackRowSize["WideScan-IndexScan-scan"] = 7.321928094887362
-	hackRowSize["WideScan-IndexScan-net"] = 139.23
-	hackRowSize["WideScan-IndexLookup-scan"] = 12.723660944409982
-	hackRowSize["WideScan-IndexLookup-net"] = 16.25 + 139.23
+	syntheticNetRowSize = map[string]float64{
+		"tbl-scan(a)":          8.125,
+		"idx-scan(b)":          8.125,
+		"lookup-idx(b,d)":      16.25,
+		"lookup-tbl(b,d)":      16.25,
+		"wide-tbl-scan(a)":     140.22,
+		"wide-idx-scan(b,c)":   140.22,
+		"wide-lookup-idx(b,c)": 16.25,
+		"wide-lookup-tbl(b,c)": 140.22,
+		"desc-tbl-scan(a)":     8.125,
+		"desc-idx-scan(b)":     8.125,
+	}
 }
 
-func getSyntheticRowSize(key string, costVariant int) float64 {
-	if _, ok := hackRowSize[key]; !ok {
+func getSyntheticRowSize(key, forWhat string, modelVariant int) float64 {
+	if forWhat == "net" {
+		if v, ok := syntheticNetRowSize[key]; ok {
+			return v
+		}
 		panic(key)
 	}
-	rowSize := hackRowSize[key]
-	return rowSize
-}
-
-func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
-	var qs CaliQueries
-	var minA, maxA, minB, maxB int
-	mustReadOneLine(ins, `select min(a), max(a), min(b), max(b) from t`, &minA, &maxA, &minB, &maxB)
-
-	// PK scan
-	for i := 0; i < n; i++ {
-		l, r := randRange(minA, maxA, i, n)
-		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where a>=%v and a<=%v", l, r))
-		scanW := float64(rowCount) * getSyntheticRowSize("WideScan-TableScan-scan", 1)
-		netW := float64(rowCount) * getSyntheticRowSize("WideScan-TableScan-net", 1)
-		qs = append(qs, CaliQuery{
-			SQL:     fmt.Sprintf("select /*+ use_index(t, primary) */ a, c from t where a>=%v and a<=%v", l, r),
-			Label:   "Wide-TableScan",
-			Weights: CostWeights{0, 0, netW, scanW, 0, 0},
-		})
+	if forWhat == "scan" {
+		if v, ok := syntheticScanRowSize[key]; ok {
+			if modelVariant == 1 {
+				v = math.Log2(v)
+			}
+			return v
+		}
+		panic(key)
 	}
-
-	// index scan
-	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n)
-		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
-		scanW := float64(rowCount) * getSyntheticRowSize("WideScan-IndexScan-scan", 1)
-		netW := float64(rowCount) * getSyntheticRowSize("WideScan-IndexScan-net", 1)
-		qs = append(qs, CaliQuery{
-			SQL:     fmt.Sprintf("select /*+ use_index(t, bc) */ b, c from t where b>=%v and b<=%v", l, r),
-			Label:   "Wide-IndexScan",
-			Weights: CostWeights{0, 0, netW, scanW, 0, 0},
-		})
-	}
-
-	// index lookup
-	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n)
-		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
-		scanW := float64(rowCount) * getSyntheticRowSize("WideScan-IndexLookup-scan", 1)
-		netW := float64(rowCount) * getSyntheticRowSize("WideScan-IndexLookup-net", 1)
-		cpuW := float64(rowCount) * (1.0 + math.Log2(math.Min(float64(rowCount), float64(20000))))
-		qs = append(qs, CaliQuery{
-			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, c from t where b>=%v and b<=%v", l, r),
-			Label:   "Wide-IndexLookup",
-			Weights: CostWeights{cpuW, 0, netW, scanW, 0, 0},
-		})
-	}
-
-	return qs
+	panic(forWhat)
 }
 
 func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
@@ -118,8 +92,8 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where a>=%v and a<=%v", l, r))
-		scanW := float64(rowCount) * getSyntheticRowSize("Scan-TableScan-scan", 1)
-		netW := float64(rowCount) * getSyntheticRowSize("Scan-TableScan-net", 1)
+		scanW := float64(rowCount) * getSyntheticRowSize("tbl-scan(a)", "scan", 1)
+		netW := float64(rowCount) * getSyntheticRowSize("tbl-scan(a)", "net", 1)
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, primary) */ a from t where a>=%v and a<=%v", l, r),
 			Label:   "TableScan",
@@ -131,8 +105,8 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
-		scanW := float64(rowCount) * getSyntheticRowSize("Scan-IndexScan-scan", 1)
-		netW := float64(rowCount) * getSyntheticRowSize("Scan-IndexScan-net", 1)
+		scanW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "scan", 1)
+		netW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "net", 1)
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b from t where b>=%v and b<=%v", l, r),
 			Label:   "IndexScan",
@@ -144,12 +118,60 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
-		scanW := float64(rowCount) * getSyntheticRowSize("Scan-IndexLookup-scan", 1)
-		netW := float64(rowCount) * getSyntheticRowSize("Scan-IndexLookup-net", 1)
+		scanW := float64(rowCount) * (getSyntheticRowSize("lookup-idx(b,d)", "scan", 1) + getSyntheticRowSize("lookup-tbl(b,d)", "scan", 1))
+		netW := float64(rowCount) * (getSyntheticRowSize("lookup-idx(b,d)", "net", 1) + getSyntheticRowSize("lookup-tbl(b,d)", "net", 1))
 		cpuW := float64(rowCount) * (1.0 + math.Log2(math.Min(float64(rowCount), float64(20000))))
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, d from t where b>=%v and b<=%v", l, r),
 			Label:   "IndexLookup",
+			Weights: CostWeights{cpuW, 0, netW, scanW, 0, 0},
+		})
+	}
+
+	return qs
+}
+
+func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
+	var qs CaliQueries
+	var minA, maxA, minB, maxB int
+	mustReadOneLine(ins, `select min(a), max(a), min(b), max(b) from t`, &minA, &maxA, &minB, &maxB)
+
+	// PK scan
+	for i := 0; i < n; i++ {
+		l, r := randRange(minA, maxA, i, n)
+		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where a>=%v and a<=%v", l, r))
+		scanW := float64(rowCount) * getSyntheticRowSize("wide-tbl-scan(a,c)", "scan", 1)
+		netW := float64(rowCount) * getSyntheticRowSize("wide-tbl-scan(a,c)", "net", 1)
+		qs = append(qs, CaliQuery{
+			SQL:     fmt.Sprintf("select /*+ use_index(t, primary) */ a, c from t where a>=%v and a<=%v", l, r),
+			Label:   "Wide-TableScan",
+			Weights: CostWeights{0, 0, netW, scanW, 0, 0},
+		})
+	}
+
+	// index scan
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n)
+		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
+		scanW := float64(rowCount) * getSyntheticRowSize("wide-idx-scan(b,c)", "scan", 1)
+		netW := float64(rowCount) * getSyntheticRowSize("wide-idx-scan(b,c)", "net", 1)
+		qs = append(qs, CaliQuery{
+			SQL:     fmt.Sprintf("select /*+ use_index(t, bc) */ b, c from t where b>=%v and b<=%v", l, r),
+			Label:   "Wide-IndexScan",
+			Weights: CostWeights{0, 0, netW, scanW, 0, 0},
+		})
+	}
+
+	// index lookup
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n)
+		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
+		scanW := float64(rowCount) * (getSyntheticRowSize("wide-lookup-idx(b,c)", "scan", 1) + getSyntheticRowSize("wide-lookup-tbl(b,c)", "scan", 1))
+		netW := float64(rowCount) * (getSyntheticRowSize("wide-lookup-idx(b,c)", "net", 1) + getSyntheticRowSize("wide-lookup-tbl(b,c)", "net", 1))
+		cpuW := float64(rowCount) * (1.0 + math.Log2(math.Min(float64(rowCount), float64(20000))))
+		qs = append(qs, CaliQuery{
+			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, c from t where b>=%v and b<=%v", l, r),
+			Label:   "Wide-IndexLookup",
 			Weights: CostWeights{cpuW, 0, netW, scanW, 0, 0},
 		})
 	}
@@ -166,8 +188,8 @@ func genSyntheticCaliDescScanQueries(ins tidb.Instance, n int) CaliQueries {
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where a>=%v and b<=%v", l, r))
-		descScanW := float64(rowCount) * getSyntheticRowSize("DescScan-TableScan-scan", 1)
-		netW := float64(rowCount) * getSyntheticRowSize("DescScan-TableScan-net", 1)
+		descScanW := float64(rowCount) * getSyntheticRowSize("desc-tbl-scan(a)", "scan", 1)
+		netW := float64(rowCount) * getSyntheticRowSize("desc-tbl-scan(a)", "net", 1)
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, primary), no_reorder() */ a from t where a>=%v and a<=%v order by a desc", l, r),
 			Label:   "IndexLookup",
@@ -178,9 +200,9 @@ func genSyntheticCaliDescScanQueries(ins tidb.Instance, n int) CaliQueries {
 	// index scan
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
-		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where a>=%v and b<=%v", l, r))
-		descScanW := float64(rowCount) * getSyntheticRowSize("DescScan-IndexScan-scan", 1)
-		netW := float64(rowCount) * getSyntheticRowSize("DescScan-IndexScan-net", 1)
+		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
+		descScanW := float64(rowCount) * getSyntheticRowSize("desc-idx-scan(b)", "scan", 1)
+		netW := float64(rowCount) * getSyntheticRowSize("desc-idx-scan(b)", "net", 1)
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b), no_reorder() */ b from t where b>=%v and b<=%v order by b desc", l, r),
 			Label:   "IndexLookup",
