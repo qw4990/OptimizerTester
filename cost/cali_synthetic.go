@@ -75,7 +75,7 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, primary) */ a, c from t where a>=%v and a<=%v", l, r),
 			Label:   "Wide-TableScan",
-			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
+			Weights: CostWeights{0, 0, netW, scanW, 0, 0},
 		})
 	}
 
@@ -88,7 +88,7 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, bc) */ b, c from t where b>=%v and b<=%v", l, r),
 			Label:   "Wide-IndexScan",
-			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
+			Weights: CostWeights{0, 0, netW, scanW, 0, 0},
 		})
 	}
 
@@ -102,7 +102,7 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, c from t where b>=%v and b<=%v", l, r),
 			Label:   "Wide-IndexLookup",
-			Weights: [6]float64{cpuW, 0, netW, scanW, 0, 0},
+			Weights: CostWeights{cpuW, 0, netW, scanW, 0, 0},
 		})
 	}
 
@@ -123,7 +123,7 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, primary) */ a from t where a>=%v and a<=%v", l, r),
 			Label:   "TableScan",
-			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
+			Weights: CostWeights{0, 0, netW, scanW, 0, 0},
 		})
 	}
 
@@ -136,7 +136,7 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b from t where b>=%v and b<=%v", l, r),
 			Label:   "IndexScan",
-			Weights: [6]float64{0, 0, netW, scanW, 0, 0},
+			Weights: CostWeights{0, 0, netW, scanW, 0, 0},
 		})
 	}
 
@@ -150,7 +150,7 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, d from t where b>=%v and b<=%v", l, r),
 			Label:   "IndexLookup",
-			Weights: [6]float64{cpuW, 0, netW, scanW, 0, 0},
+			Weights: CostWeights{cpuW, 0, netW, scanW, 0, 0},
 		})
 	}
 
@@ -171,7 +171,7 @@ func genSyntheticCaliDescScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, primary), no_reorder() */ a from t where a>=%v and a<=%v order by a desc", l, r),
 			Label:   "IndexLookup",
-			Weights: [6]float64{0, 0, netW, 0, descScanW, 0},
+			Weights: CostWeights{0, 0, netW, 0, descScanW, 0},
 		})
 	}
 
@@ -184,7 +184,8 @@ func genSyntheticCaliDescScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b), no_reorder() */ b from t where b>=%v and b<=%v order by b desc", l, r),
 			Label:   "IndexLookup",
-			Weights: [6]float64{0, 0, netW, 0, descScanW, 0},
+			Weights: CostWeights{0, 0, netW, 0, descScanW, 0},
 		})
 	}
+	return qs
 }
