@@ -141,7 +141,7 @@ var costFactorVars = []string{"tidb_opt_cpu_factor",
 	"tidb_opt_copcpu_factor", "tidb_opt_network_factor",
 	"tidb_opt_scan_factor", "tidb_opt_desc_factor", "tidb_opt_memory_factor"}
 
-func setCostFactors(ins tidb.Instance, factors [6]float64) {
+func setCostFactors(ins tidb.Instance, factors CostFactors) {
 	fmt.Println("SET COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem):", factors)
 	for i := 0; i < 6; i++ {
 		ins.MustExec(fmt.Sprintf("set @@%v=%v", costFactorVars[i], factors[i]))
@@ -164,7 +164,7 @@ func readCostFactors(ins tidb.Instance) (factors [6]float64) {
 	return
 }
 
-func calculateCost(weights FactorWeightsVector, factors [6]float64) float64 {
+func calculateCost(weights CostWeights, factors CostFactors) float64 {
 	var cost float64
 	for i := range factors {
 		cost += weights[i] * factors[i]

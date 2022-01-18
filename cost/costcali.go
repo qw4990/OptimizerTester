@@ -10,22 +10,22 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
-type FactorVector [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
+type CostFactors [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
 
-func (fv FactorVector) String() string {
+func (fv CostFactors) String() string {
 	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5])
 }
 
-type FactorWeightsVector [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
+type CostWeights [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
 
-func (fv FactorWeightsVector) String() string {
+func (fv CostWeights) String() string {
 	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5])
 }
 
 type CaliQuery struct {
 	SQL     string
 	Label   string
-	Weights FactorWeightsVector
+	Weights CostWeights
 }
 
 type CaliQueries []CaliQuery

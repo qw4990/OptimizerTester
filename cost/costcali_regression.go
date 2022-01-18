@@ -32,7 +32,7 @@ func normalization(rs CaliRecords) (ret CaliRecords) {
 	return
 }
 
-func regressionCostFactors(rs CaliRecords) FactorVector {
+func regressionCostFactors(rs CaliRecords) CostFactors {
 	rs = normalization(rs)
 	x, y := convert2XY(rs)
 	g := gorgonia.NewGraph()
@@ -92,7 +92,7 @@ func regressionCostFactors(rs CaliRecords) FactorVector {
 		}
 	}
 
-	var fv FactorVector
+	var fv CostFactors
 	for i := range fv {
 		fv[i] = costFactor.Value().Data().([]float64)[i]
 	}
