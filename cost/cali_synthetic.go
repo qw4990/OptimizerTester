@@ -194,7 +194,7 @@ func genSyntheticCaliDescScanQueries(ins tidb.Instance, n int) CaliQueries {
 		netW := float64(rowCount) * getSyntheticRowSize("desc-tbl-scan(a)", "net", 1)
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, primary), no_reorder() */ a from t where a>=%v and a<=%v order by a desc", l, r),
-			Label:   "IndexLookup",
+			Label:   "DescTableScan",
 			Weights: CostWeights{0, 0, netW, 0, descScanW, 0},
 		})
 	}
@@ -207,7 +207,7 @@ func genSyntheticCaliDescScanQueries(ins tidb.Instance, n int) CaliQueries {
 		netW := float64(rowCount) * getSyntheticRowSize("desc-idx-scan(b)", "net", 1)
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b), no_reorder() */ b from t where b>=%v and b<=%v order by b desc", l, r),
-			Label:   "IndexLookup",
+			Label:   "DescIndexScan",
 			Weights: CostWeights{0, 0, netW, 0, descScanW, 0},
 		})
 	}

@@ -112,7 +112,7 @@ func CostCalibration() {
 	}
 	//os.Exit(0)
 
-	//rs = filterCaliRecordsByLabel(rs, "IndexScan", "wide-indexscan")
+	rs = filterCaliRecordsByLabel(rs, "DescIndexScan", "Agg-PushedDown", "Sort")
 	//rs = filterCaliRecordsByLabel(rs, "IndexScan", "TableScan", "IndexLookup", "wide-tablescan", "wide-indexscan")
 	//rs = rs[:2]
 
