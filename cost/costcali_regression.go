@@ -2,8 +2,6 @@ package cost
 
 import (
 	"fmt"
-	"time"
-
 	"gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
 )
@@ -80,12 +78,11 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 
 		machine.Reset()
 		lossV := loss.Value().Data().(float64)
-		lossMs := lossV / float64(time.Millisecond)
 		if i%1000 == 0 {
-			fmt.Printf("theta: %v, Iter: %v Loss: %v(%.2fms)\n",
+			fmt.Printf("theta: %v, Iter: %v Loss: %.4f%%\n",
 				costFactor.Value(),
 				i,
-				lossV, lossMs)
+				lossV)
 		}
 	}
 
