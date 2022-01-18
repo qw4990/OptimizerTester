@@ -102,6 +102,16 @@ func CostCalibration() {
 		fmt.Println("[cost-eval] read cali-records from file successfully")
 	}
 
+	/*
+		CPU = Net * 100
+		CPU = CopCPU
+		CPU = 4 * Scan
+		DescScan = 1.5 * Scan
+		Mem = 0
+		
+		Net = 4
+		(CPU, CopCPU, Net, Scan, DescScan, Mem) = (400, 400, 4, 100, 150, 0)
+	 */
 	whilteList := []string{
 		"TableScan",
 		"IndexScan",
@@ -111,7 +121,7 @@ func CostCalibration() {
 		"Wide-IndexScan",
 		"DescIndexScan",
 		"DescTableScan",
-		//"Agg-PushedDown",
+		"Agg-PushedDown",
 		"Agg-NotPushedDown",
 		//"Sort",
 	}
