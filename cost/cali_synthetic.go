@@ -26,7 +26,7 @@ import (
 
 func genSyntheticCalibrationQueries(ins tidb.Instance, db string) CaliQueries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
-	n := 5
+	n := 2
 	var ret CaliQueries
 	ret = append(ret, genSyntheticCaliScanQueries(ins, n)...)
 	ret = append(ret, genSyntheticCaliWideScanQueries(ins, n)...)
@@ -55,7 +55,7 @@ func init() {
 		"idx-scan(b)":          8.125,
 		"lookup-idx(b,d)":      16.25,
 		"lookup-tbl(b,d)":      16.25,
-		"wide-tbl-scan(a)":     140.22,
+		"wide-tbl-scan(a,c)":   140.22,
 		"wide-idx-scan(b,c)":   140.22,
 		"wide-lookup-idx(b,c)": 16.25,
 		"wide-lookup-tbl(b,c)": 140.22,
