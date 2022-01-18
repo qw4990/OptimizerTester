@@ -112,22 +112,32 @@ func CostCalibration() {
 	}
 	//os.Exit(0)
 
-	//rs = filterCaliRecordsByLabel(rs, "DescIndexScan", "Agg-PushedDown", "Sort")
-	rs = filterCaliRecordsByLabel(rs, "Agg-NotPushedDown")
-	//rs = filterCaliRecordsByLabel(rs, "IndexScan", "TableScan", "IndexLookup", "wide-tablescan", "wide-indexscan")
-	//rs = rs[:2]
+	rs = filterCaliRecordsByLabel(rs, nil, []string{"Sort"})
 
 	ret := regressionCostFactors(rs)
 	fmt.Println(ret.String())
 }
 
-func filterCaliRecordsByLabel(rs CaliRecords, labels ...string) CaliRecords {
+func filterCaliRecordsByLabel(rs CaliRecords, whiteList, blackList []string) CaliRecords {
 	ret := make(CaliRecords, 0, len(rs))
 	for _, r := range rs {
-		for _, label := range labels {
-			if strings.ToLower(r.Label) == strings.ToLower(label) {
+		if whiteList != nil {
+			for _, label := range whiteList {
+				if strings.ToLower(r.Label) == strings.ToLower(label) {
+					ret = append(ret, r)
+					break
+				}
+			}
+		} else if blackList != nil {
+			ok := true
+			for _, label := range blackList {
+				if strings.ToLower(r.Label) == strings.ToLower(label) {
+					ok = false
+					break
+				}
+			}
+			if ok {
 				ret = append(ret, r)
-				break
 			}
 		}
 	}
