@@ -67,11 +67,6 @@ func CostCalibration() {
 		fmt.Println("[cost-eval] read cali-queries from file successfully ")
 	}
 
-	//for _, q := range qs {
-	//	fmt.Println(q.SQL, q.Weights)
-	//}
-	//os.Exit(0)
-
 	var rs CaliRecords
 	costFactors := readCostFactors(ins)
 	if err := readFrom(recordFile, &rs); err != nil {
