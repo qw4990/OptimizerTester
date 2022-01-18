@@ -2,6 +2,7 @@ package cost
 
 import (
 	"fmt"
+	"math"
 	"path/filepath"
 	"strings"
 	"time"
@@ -72,6 +73,7 @@ func CostCalibration() {
 	//os.Exit(0)
 
 	var rs CaliRecords
+	costFactors := readCostFactors(ins)
 	if err := readFrom(recordFile, &rs); err != nil {
 		fmt.Println("[cost-eval] read cali-records file error: ", err)
 
@@ -83,13 +85,21 @@ func CostCalibration() {
 		ins.MustExec(`set @@tidb_cost_variant=1`)
 		rs = make(CaliRecords, 0, len(qs))
 		for i := range qs {
+			// check cost weights
+			calCost := calculateCost(qs[i].Weights, costFactors)
+
 			planCost, timeMS := extractCostTimeFromQuery(ins, qs[i].SQL, 10, false)
 			rs = append(rs, CaliRecord{
 				CaliQuery: qs[i],
 				Cost:      planCost,
 				TimeNS:    timeMS * float64(time.Millisecond/time.Nanosecond),
 			})
-			fmt.Printf("[cost-eval] run %v/%v %v %v\n", i, len(qs), timeMS, qs[i].SQL)
+			fmt.Printf("[cost-eval] run %v/%v timeMS:%v, SQL:%v, costAct:%v, costCal: %v\n", i, len(qs), timeMS, qs[i].SQL, planCost, calCost)
+
+			costDelta := math.Abs(planCost - calCost)
+			if costDelta > 50 && costDelta/planCost > 0.001 {
+				panic("wrong cal-cost")
+			}
 		}
 		fmt.Printf("[cost-eval] gen %v cali-records for %v\n", len(qs), db)
 		saveTo(recordFile, rs)

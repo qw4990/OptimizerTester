@@ -111,13 +111,7 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Record
 	ins.MustExec(`set @@tidb_executor_concurrency=1`)
 	ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
 
-	// theta: [               0                 0  3.85636587180801  1.74185850293384                 0                 0]
-	//ins.MustExec(`set @@tidb_opt_cpu_factor=0`)
-	//ins.MustExec(`set @@tidb_opt_copcpu_factor=0`)
-	//ins.MustExec(`set @@tidb_opt_network_factor=2`)
-	//ins.MustExec(`set @@tidb_opt_scan_factor=15`)
-	//ins.MustExec(`set @@tidb_opt_desc_factor=0`)
-	//ins.MustExec(`set @@tidb_opt_memory_factor=0`)
+	//setCostFactors(ins, [6]float64{0, 0, 2, 15, 0, 0})
 	records := make([]Record, 0, len(qs))
 
 	for i, q := range qs {

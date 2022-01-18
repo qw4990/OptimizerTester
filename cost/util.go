@@ -137,6 +137,41 @@ func readFrom(f string, r interface{}) error {
 	return nil
 }
 
+var costFactorVars = []string{"tidb_opt_cpu_factor",
+	"tidb_opt_copcpu_factor", "tidb_opt_network_factor",
+	"tidb_opt_scan_factor", "tidb_opt_desc_factor", "tidb_opt_memory_factor"}
+
+func setCostFactors(ins tidb.Instance, factors [6]float64) {
+	fmt.Println("SET COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem):", factors)
+	for i := 0; i < 6; i++ {
+		ins.MustExec(fmt.Sprintf("set @@%v=%v", costFactorVars[i], factors[i]))
+	}
+}
+
+func readCostFactors(ins tidb.Instance) (factors [6]float64) {
+	// (CPU, CopCPU, Net, Scan, DescScan, Mem)
+	for i := 0; i < 6; i++ {
+		ret := ins.MustQuery(fmt.Sprintf("select @@%v", costFactorVars[i]))
+		ret.Next()
+		if err := ret.Scan(&factors[i]); err != nil {
+			panic(err)
+		}
+		if err := ret.Close(); err != nil {
+			panic(err)
+		}
+	}
+	fmt.Println("READ COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem):", factors)
+	return
+}
+
+func calculateCost(weights FactorWeightsVector, factors [6]float64) float64 {
+	var cost float64
+	for i := range factors {
+		cost += weights[i] * factors[i]
+	}
+	return cost
+}
+
 func extractCostTimeFromQuery(ins tidb.Instance, query string, repeat int, checkRowCount bool) (avgPlanCost, avgTimeMS float64) {
 	query = "explain analyze " + query
 	var totalPlanCost, totalTimeMS float64
