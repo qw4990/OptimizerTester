@@ -97,7 +97,7 @@ func CostCalibration() {
 			fmt.Printf("[cost-eval] run %v/%v timeMS:%v, SQL:%v, costAct:%v, costCal: %v\n", i, len(qs), timeMS, qs[i].SQL, planCost, calCost)
 
 			costDelta := math.Abs(planCost - calCost)
-			if costDelta > 50 && costDelta/planCost > 0.001 {
+			if costDelta > 50 && costDelta/planCost > 0.05 {
 				panic("wrong cal-cost")
 			}
 		}
