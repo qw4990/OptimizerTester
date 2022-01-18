@@ -2,7 +2,6 @@ package cost
 
 import (
 	"fmt"
-	"math"
 	"time"
 
 	"gorgonia.org/gorgonia"
@@ -83,12 +82,10 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 		lossV := loss.Value().Data().(float64)
 		lossMs := lossV / float64(time.Millisecond)
 		if i%1000 == 0 {
-			fmt.Printf("theta: %v, Iter: %v Loss: %v(%.2fms), Pred: - Accuracy: %v \n",
+			fmt.Printf("theta: %v, Iter: %v Loss: %v(%.2fms)\n",
 				costFactor.Value(),
 				i,
-				lossV, lossMs,
-				//predicated.Data(),
-				accuracy(predicated.Data().([]float64), yNode.Value().Data().([]float64)))
+				lossV, lossMs)
 		}
 	}
 
@@ -131,14 +128,4 @@ func one(size int) []float64 {
 		one[i] = 1.0
 	}
 	return one
-}
-
-func accuracy(prediction, y []float64) float64 {
-	var ok float64
-	for i := 0; i < len(prediction); i++ {
-		if math.Round(prediction[i]-y[i]) == 0 {
-			ok += 1.0
-		}
-	}
-	return ok / float64(len(y))
 }
