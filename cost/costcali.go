@@ -88,7 +88,7 @@ func CostCalibration() {
 			// check cost weights
 			calCost := calculateCost(qs[i].Weights, costFactors)
 
-			planCost, timeMS := extractCostTimeFromQuery(ins, qs[i].SQL, 10, false)
+			planCost, timeMS := extractCostTimeFromQuery(ins, qs[i].SQL, 5, false)
 			rs = append(rs, CaliRecord{
 				CaliQuery: qs[i],
 				Cost:      planCost,
@@ -112,7 +112,7 @@ func CostCalibration() {
 	}
 	//os.Exit(0)
 
-	rs = filterCaliRecordsByLabel(rs, "DescIndexScan", "Agg-PushedDown", "Sort")
+	//rs = filterCaliRecordsByLabel(rs, "DescIndexScan", "Agg-PushedDown", "Sort")
 	//rs = filterCaliRecordsByLabel(rs, "IndexScan", "TableScan", "IndexLookup", "wide-tablescan", "wide-indexscan")
 	//rs = rs[:2]
 
