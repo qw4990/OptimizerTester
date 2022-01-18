@@ -240,7 +240,7 @@ func genSyntheticCaliAGGQueries(ins tidb.Instance, n int) CaliQueries {
 		netW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "net", 1)
 		cpuW := float64(rowCount)
 		qs = append(qs, CaliQuery{
-			SQL:     fmt.Sprintf("select /*+ use_index(t, b), stream_agg(), agg_not_to_cop */ count(1) from t where b>=%v and b<=%v", l, r),
+			SQL:     fmt.Sprintf("select /*+ use_index(t, b), stream_agg(), agg_not_to_cop() */ count(1) from t where b>=%v and b<=%v", l, r),
 			Label:   "Agg-NotPushedDown",
 			Weights: CostWeights{cpuW, 0, netW, scanW, 0, 0},
 		})
