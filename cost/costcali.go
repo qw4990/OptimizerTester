@@ -107,12 +107,22 @@ func CostCalibration() {
 		fmt.Println("[cost-eval] read cali-records from file successfully")
 	}
 
-	for _, r := range rs {
-		fmt.Println(r.SQL, r.Weights, r.Cost, time.Duration(r.TimeNS)*time.Nanosecond)
+	whilteList := []string{
+		"DescIndexScan",
+		"Agg-PushedDown",
+		"Agg-NotPushedDown",
+		"TableScan",
+		"IndexScan",
+		"IndexLookup",
+		"Wide-IndexLookup",
+		"Wide-TableScan",
+		"Wide-IndexScan",
+		"DescTableScan",
+		"Sort",
 	}
-	//os.Exit(0)
 
-	rs = filterCaliRecordsByLabel(rs, nil, []string{"Sort"})
+	//rs = filterCaliRecordsByLabel(rs, nil, []string{"Sort"})
+	rs = filterCaliRecordsByLabel(rs, whilteList, nil)
 
 	ret := regressionCostFactors(rs)
 	fmt.Println(ret.String())
