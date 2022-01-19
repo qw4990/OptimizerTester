@@ -204,7 +204,7 @@ func extractCostTime(explainAnalyzeResults *sql.Rows, q string, checkRowCount bo
 	rs := explainAnalyzeResults
 	var id, task, access, execInfo, opInfo, mem, disk, rootExecInfo string
 	var estRows, actRows, cost float64
-	rootOperator := "Unmatched"
+	rootOperator = "Unmatched"
 
 	for rs.Next() {
 		if err := rs.Scan(&id, &estRows, &cost, &actRows, &task, &access, &execInfo, &opInfo, &mem, &disk); err != nil {
