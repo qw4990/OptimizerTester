@@ -122,7 +122,7 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
 		scanW := float64(rowCount) * (getSyntheticRowSize("lookup-idx(b,d)", "scan", 1) + getSyntheticRowSize("lookup-tbl(b,d)", "scan", 1))
 		netW := float64(rowCount) * (getSyntheticRowSize("lookup-idx(b,d)", "net", 1) + getSyntheticRowSize("lookup-tbl(b,d)", "net", 1))
-		seekW := float64(calculateNumLookupTasks(rowCount))
+		seekW := float64(calculateNumLookupTasks(rowCount, 1024, 1024))
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, d from t where b>=%v and b<=%v", l, r),
 			Label:   "IndexLookup",
@@ -170,7 +170,7 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
 		scanW := float64(rowCount) * (getSyntheticRowSize("wide-lookup-idx(b,c)", "scan", 1) + getSyntheticRowSize("wide-lookup-tbl(b,c)", "scan", 1))
 		netW := float64(rowCount) * (getSyntheticRowSize("wide-lookup-idx(b,c)", "net", 1) + getSyntheticRowSize("wide-lookup-tbl(b,c)", "net", 1))
-		seekW := float64(calculateNumLookupTasks(rowCount))
+		seekW := float64(calculateNumLookupTasks(rowCount, 1024, 1024))
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, c from t where b>=%v and b<=%v", l, r),
 			Label:   "Wide-IndexLookup",
@@ -181,9 +181,7 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 	return qs
 }
 
-func calculateNumLookupTasks(rows int) int {
-	initBatch := 1024
-	maxBatch := 20000
+func calculateNumLookupTasks(rows, initBatch, maxBatch int) int {
 	batch := initBatch
 	numLookupTasks := 0
 	for batch < maxBatch && rows > 0 {
@@ -197,7 +195,7 @@ func calculateNumLookupTasks(rows int) int {
 			batch = maxBatch
 		}
 	}
-	numLookupTasks += rows / batch
+	numLookupTasks += (rows + batch - 1) / batch
 	return numLookupTasks
 }
 
