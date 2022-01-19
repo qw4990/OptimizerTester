@@ -31,8 +31,8 @@ func genSyntheticCalibrationQueries(ins tidb.Instance, db string) CaliQueries {
 	ret = append(ret, genSyntheticCaliScanQueries(ins, n)...)
 	ret = append(ret, genSyntheticCaliWideScanQueries(ins, n)...)
 	ret = append(ret, genSyntheticCaliDescScanQueries(ins, n)...)
-	ret = append(ret, genSyntheticCaliAGGQueries(ins, n)...)
-	ret = append(ret, genSyntheticCaliSortQueries(ins, n)...)
+	ret = append(ret, genSyntheticCaliCPUQueries(ins, n)...)
+	ret = append(ret, genSyntheticCaliCopCPUQueries(ins, n)...)
 	return ret
 }
 
@@ -232,25 +232,12 @@ func genSyntheticCaliDescScanQueries(ins tidb.Instance, n int) CaliQueries {
 	return qs
 }
 
-func genSyntheticCaliAGGQueries(ins tidb.Instance, n int) CaliQueries {
+func genSyntheticCaliCPUQueries(ins tidb.Instance, n int) CaliQueries {
 	var qs CaliQueries
 	var minB, maxB int
 	mustReadOneLine(ins, `select  min(b), max(b) from t`, &minB, &maxB)
 
-	// pushed down: copCPU
-	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n)
-		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
-		scanW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "scan", 1)
-		copCPUW := float64(rowCount)
-		qs = append(qs, CaliQuery{
-			SQL:     fmt.Sprintf("select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=%v and b<=%v", l, r),
-			Label:   "Agg-PushedDown",
-			Weights: NewCostWeights(0, copCPUW, 0, scanW, 0, 0, 1),
-		})
-	}
-
-	// not pushed down: CPU
+	// agg in TiDB
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
@@ -263,15 +250,8 @@ func genSyntheticCaliAGGQueries(ins tidb.Instance, n int) CaliQueries {
 			Weights: NewCostWeights(cpuW, 0, netW, scanW, 0, 0, 1),
 		})
 	}
-	return qs
-}
 
-func genSyntheticCaliSortQueries(ins tidb.Instance, n int) CaliQueries {
-	n *= 2
-	var qs CaliQueries
-	var minB, maxB int
-	mustReadOneLine(ins, `select  min(b), max(b) from t`, &minB, &maxB)
-
+	// sort
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
@@ -282,6 +262,28 @@ func genSyntheticCaliSortQueries(ins tidb.Instance, n int) CaliQueries {
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b), must_reorder() */ b from t where b>=%v and b<=%v order by b", l, r),
 			Label:   "Sort",
 			Weights: NewCostWeights(cpuW, 0, netW, scanW, 0, 0, 1),
+		})
+	}
+	return qs
+}
+
+func genSyntheticCaliCopCPUQueries(ins tidb.Instance, n int) CaliQueries {
+	n *= 2
+
+	var qs CaliQueries
+	var minB, maxB int
+	mustReadOneLine(ins, `select  min(b), max(b) from t`, &minB, &maxB)
+
+	// agg in TiKV
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n)
+		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
+		scanW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "scan", 1)
+		copCPUW := float64(rowCount)
+		qs = append(qs, CaliQuery{
+			SQL:     fmt.Sprintf("select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=%v and b<=%v", l, r),
+			Label:   "Agg-PushedDown",
+			Weights: NewCostWeights(0, copCPUW, 0, scanW, 0, 0, 1),
 		})
 	}
 	return qs
