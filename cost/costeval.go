@@ -27,7 +27,7 @@ func CostEval() {
 
 	var factors *CostFactors
 	var initSQLs []string
-	testCalibrated := true
+	testCalibrated := false
 
 	if testCalibrated {
 		//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
