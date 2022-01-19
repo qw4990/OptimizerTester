@@ -106,14 +106,17 @@ type Records []Record
 func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Records {
 	beginAt := time.Now()
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
+	ins.MustExec(`set @@tidb_index_lookup_size=1024`)
 	ins.MustExec(`set @@tidb_cost_calibration_mode=2`)
 	ins.MustExec(`set @@tidb_distsql_scan_concurrency=1`)
 	ins.MustExec(`set @@tidb_executor_concurrency=1`)
 	ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
 
-	//setCostFactors(ins, [6]float64{0, 0, 2, 15, 0, 0})
-	records := make([]Record, 0, len(qs))
+	//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
+	//(30,	30,		4,		100,	150,		0,		1750000)
+	setCostFactors(ins, CostFactors{30, 30, 4, 100, 150, 0, 1750000})
 
+	records := make([]Record, 0, len(qs))
 	for i, q := range qs {
 		fmt.Printf("[cost-eval] worker-%v run query %v %v/%v %v\n", id, q, i, len(qs), time.Since(beginAt))
 		planLabel := "Unmatched"
