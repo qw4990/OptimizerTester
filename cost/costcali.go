@@ -117,17 +117,17 @@ func CostCalibration() {
 		IndexScan + Wide-IndexScan + Agg-NotPushedDown + Sort ==> CPU = 7 * Net
 	*/
 	whilteList := []string{
-		//"TableScan",
+		"TableScan",
 		"IndexScan",
 		//"IndexLookup",
-		//"Wide-TableScan",
+		"Wide-TableScan",
 		"Wide-IndexScan",
 		//"Wide-IndexLookup",
 		//"DescTableScan",
 		//"DescIndexScan",
 		//"Agg-PushedDown",
-		"Agg-NotPushedDown",
-		"Sort",
+		//"Agg-NotPushedDown",
+		//"Sort",
 	}
 
 	rs = filterCaliRecordsByLabel(rs, whilteList, nil)
