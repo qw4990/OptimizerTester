@@ -25,12 +25,41 @@ func CostEval() {
 		panic(err)
 	}
 
+	var factors *CostFactors
+	var initSQLs []string
+	testCalibrated := true
+
+	if testCalibrated {
+		//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
+		//(30,	30,		4,		100,	150,		0,		9500000)
+		factors = &CostFactors{30, 30, 4, 100, 150, 0, 9.5 * 1e6}
+		initSQLs = []string{
+			`set @@tidb_index_lookup_size=1024`,
+			`set @@tidb_distsql_scan_concurrency=1`,
+			`set @@tidb_executor_concurrency=1`,
+			`set @@tidb_opt_tiflash_concurrency_factor=1`,
+			`set @@tidb_cost_calibration_mode=2`, // use true-CE
+			`set @@tidb_cost_variant=1`,          // use the new cost model
+		}
+	} else {
+		factors = nil
+		initSQLs = []string{
+			`set @@tidb_index_lookup_size=1024`,
+			`set @@tidb_distsql_scan_concurrency=1`,
+			`set @@tidb_executor_concurrency=1`,
+			`set @@tidb_opt_tiflash_concurrency_factor=1`,
+			`set @@tidb_cost_calibration_mode=2`, // use true-CE
+			`set @@tidb_cost_variant=0`,          // use the original cost model
+		}
+	}
+
 	//genSyntheticData(ins, 100000, "synthetic")
-	//evalOnDataset(ins, "synthetic", genSyntheticQueries)
-	evalOnDataset(ins, "imdb", genIMDBQueries)
+	evalOnDataset(ins, "synthetic", factors, initSQLs, genSyntheticQueries)
+	//evalOnDataset(ins, "imdb", factors, initSQLs, genIMDBQueries)
 }
 
-func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Instance, db string) Queries) {
+func evalOnDataset(ins tidb.Instance, db string, factors *CostFactors, initSQLs []string,
+	queryGenFunc func(ins tidb.Instance, db string) Queries) {
 	fmt.Println("[cost-eval] start to eval on ", db)
 	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", db))
 	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-records.json", db))
@@ -45,21 +74,10 @@ func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Inst
 		fmt.Println("[cost-eval] read queries from file successfully ")
 	}
 
-	//tmpQS := make(Queries, 0, len(qs))
-	//for _, q := range qs {
-	//	for _, label := range []string{"tablescan", "wide-tablescan"} {
-	//		if strings.ToLower(label) == strings.ToLower(q.Label) {
-	//			tmpQS = append(tmpQS, q)
-	//			break
-	//		}
-	//	}
-	//}
-	//qs = tmpQS
-
 	var rs Records
 	if err := readFrom(recordFile, &rs); err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
-		rs = runCostEvalQueries(0, ins, db, qs)
+		rs = runCostEvalQueries(0, ins, db, qs, initSQLs, factors)
 		saveTo(recordFile, rs)
 	} else {
 		fmt.Println("[cost-eval] read records from file successfully")
@@ -103,19 +121,20 @@ type Record struct {
 
 type Records []Record
 
-func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Records {
+func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries, initSQLs []string, factors *CostFactors) Records {
 	beginAt := time.Now()
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
-	ins.MustExec(`set @@tidb_index_lookup_size=1024`)
-	ins.MustExec(`set @@tidb_cost_calibration_mode=2`)
-	ins.MustExec(`set @@tidb_distsql_scan_concurrency=1`)
-	ins.MustExec(`set @@tidb_executor_concurrency=1`)
-	ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
-	ins.MustExec(`set @@tidb_cost_variant=1`)
+	for _, q := range initSQLs {
+		ins.MustExec(q)
+	}
 
-	//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
-	//(30,	30,		4,		100,	150,		0,		9500000)
-	setCostFactors(ins, CostFactors{30, 30, 4, 100, 150, 0, 9.5 * 1e6})
+	if factors != nil {
+		setCostFactors(ins, *factors)
+		check := readCostFactors(ins)
+		if check != *factors {
+			panic("set factor failed")
+		}
+	}
 
 	records := make([]Record, 0, len(qs))
 	for i, q := range qs {
