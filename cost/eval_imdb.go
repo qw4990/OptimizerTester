@@ -38,7 +38,7 @@ func genIMDBQueries(ins tidb.Instance, db string) Queries {
 	queries := make(Queries, 0, 128)
 
 	// point queries
-	n := 10
+	n := 3
 	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "movie_id")...)
 	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "person_id")...)
 	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "person_id", "movie_id")...)
@@ -62,7 +62,7 @@ func genIMDBQueries(ins tidb.Instance, db string) Queries {
 	queries = append(queries, genPointQueries(ins, n, "*", "order by episode_nr", db, "title", "episode_nr")...)
 
 	// range queries
-	queries = append(queries, genIMDBRangeQueries(20, db)...)
+	queries = append(queries, genIMDBRangeQueries(5, db)...)
 
 	return queries
 }

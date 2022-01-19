@@ -26,8 +26,8 @@ func CostEval() {
 	}
 
 	//genSyntheticData(ins, 100000, "synthetic")
-	evalOnDataset(ins, "synthetic", genSyntheticQueries)
-	//evalOnDataset(ins, "imdb", genIMDBQueries)
+	//evalOnDataset(ins, "synthetic", genSyntheticQueries)
+	evalOnDataset(ins, "imdb", genIMDBQueries)
 }
 
 func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Instance, db string) Queries) {
@@ -74,7 +74,7 @@ func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Inst
 		if r.Label == "Point" {
 			continue
 		}
-		//if r.Cost < 4e8 || r.Cost > 7e8 || r.TimeMS > 3500 {
+		//if r.Cost > 2e8 {
 		//	continue
 		//}
 		fmt.Println(">>>> ", r.SQL, r.Cost, r.TimeMS)
@@ -114,14 +114,14 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Record
 	ins.MustExec(`set @@tidb_cost_variant=1`)
 
 	//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
-	//(30,	30,		4,		100,	150,		0,		1750000)
+	//(30,	30,		4,		100,	150,		0,		9500000)
 	setCostFactors(ins, CostFactors{30, 30, 4, 100, 150, 0, 9.5 * 1e6})
 
 	records := make([]Record, 0, len(qs))
 	for i, q := range qs {
 		fmt.Printf("[cost-eval] worker-%v run query %v %v/%v %v\n", id, q, i, len(qs), time.Since(beginAt))
 		planLabel := "Unmatched"
-		planCost, timeMS := extractCostTimeFromQuery(ins, q.SQL, 10, true)
+		planCost, timeMS := extractCostTimeFromQuery(ins, q.SQL, 5, true)
 
 		if q.Label != "" {
 			planLabel = q.Label

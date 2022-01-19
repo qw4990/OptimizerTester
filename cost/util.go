@@ -209,7 +209,7 @@ func extractCostTime(explainAnalyzeResults *sql.Rows, q string, checkRowCount bo
 		if err := rs.Scan(&id, &estRows, &cost, &actRows, &task, &access, &execInfo, &opInfo, &mem, &disk); err != nil {
 			panic(err)
 		}
-		if checkRowCount && actRows != estRows {
+		if checkRowCount && actRows != estRows && !strings.Contains(q, "agg") {
 			//fmt.Printf("[cost-eval] worker-%v not true-CE for query=%v, est=%v, act=%v\n", id, q, estRows, actRows)
 			panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, q, estRows, actRows))
 		}
