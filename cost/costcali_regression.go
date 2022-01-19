@@ -6,34 +6,65 @@ import (
 	"gorgonia.org/tensor"
 )
 
-// // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
-var factorScale = [NumFactors]float64{1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 10}
-var timeScale = 1e6
-
-func normalization(rs CaliRecords) (ret CaliRecords) {
-	minY, maxY := rs[0].TimeNS, rs[0].TimeNS
-	for _, r := range rs {
-		if r.TimeNS < minY {
-			minY = r.TimeNS
+func minMaxNormalize(vals []float64) (normalized []float64, scale float64) {
+	minV, maxV := vals[0], vals[0]
+	for _, v := range vals {
+		if v > maxV {
+			maxV = v
 		}
-		if r.TimeNS > maxY {
-			maxY = r.TimeNS
+		if v < minV {
+			minV = v
+		}
+	}
+
+	for _, v := range vals {
+		normalized = append(normalized, (v-minV)/(maxV-minV))
+	}
+	scale = maxV - minV
+	return
+}
+
+func normalize(rs CaliRecords) (ret CaliRecords, scale [NumFactors]float64) {
+	vals := make([]float64, len(rs))
+
+	// normalize time
+	for i := range rs {
+		vals[i] = rs[i].TimeNS
+	}
+	ts, _ := minMaxNormalize(vals)
+	for i := range rs {
+		rs[i].TimeNS = ts[i]
+	}
+
+	// normalize cost
+	for i := range rs {
+		vals[i] = rs[i].Cost
+	}
+	ts, _ = minMaxNormalize(vals)
+	for i := range rs {
+		rs[i].Cost = ts[i]
+	}
+
+	// normalize weights
+	for k := 0; k < NumFactors; k++ {
+		for i := range rs {
+			vals[i] = rs[i].Weights[k]
+		}
+		vals, scale[k] = minMaxNormalize(vals)
+		for i := range rs {
+			rs[i].Weights[k] = vals[i]
 		}
 	}
 
 	for _, r := range rs {
-		r.TimeNS /= timeScale
-		for i := range r.Weights {
-			r.Weights[i] /= factorScale[i]
-		}
 		fmt.Println("Record>> ", r.Label, r.SQL, r.Weights.String(), r.Cost, r.TimeNS)
-		ret = append(ret, r)
 	}
 	return
 }
 
 func regressionCostFactors(rs CaliRecords) CostFactors {
-	rs = normalization(rs)
+	var scale [NumFactors]float64
+	rs, scale = normalize(rs)
 	x, y := convert2XY(rs)
 	g := gorgonia.NewGraph()
 	xNode := gorgonia.NodeFromAny(g, x, gorgonia.WithName("x"))
@@ -104,14 +135,8 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 	}
 
 	// scale factors
-	maxScale := factorScale[0]
-	for _, v := range factorScale {
-		if v > maxScale {
-			maxScale = v
-		}
-	}
 	for i := range fv {
-		fv[i] /= factorScale[i] / maxScale
+		fv[i] *= scale[i]
 	}
 
 	return fv
