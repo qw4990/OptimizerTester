@@ -110,32 +110,29 @@ func CostCalibration() {
 	}
 
 	/*
-		CPU = Net * 100
-		CPU = CopCPU
-		CPU = 4 * Scan
-		DescScan = 1.5 * Scan
-		Mem = 0
-
-		Net = 4
-		(CPU, CopCPU, Net, Scan, DescScan, Mem) = (400, 400, 4, 100, 150, 0)
+		Table/IndexScan + Wide-Table/IndexScan ==> Scan = 25 * Net
+		IndexScan + DescIndexScan ==> DescScan = 1.5 * Scan
+		TableScan + DescTableScan ==> DescScan = 1.8 * Scan
+		Table/IndexScan/Lookup + Wide-* ==> Seek * 1750000 * Net
+		IndexScan + Wide-IndexScan + Agg-NotPushedDown + Sort ==> CPU = 7 * Net
 	*/
 	whilteList := []string{
 		//"TableScan",
 		"IndexScan",
 		//"IndexLookup",
-		//"Wide-IndexLookup",
 		//"Wide-TableScan",
-		//"Wide-IndexScan",
-		"DescIndexScan",
+		"Wide-IndexScan",
+		//"Wide-IndexLookup",
 		//"DescTableScan",
+		//"DescIndexScan",
 		//"Agg-PushedDown",
-		//"Agg-NotPushedDown",
-		//"Sort",
+		"Agg-NotPushedDown",
+		"Sort",
 	}
 
 	rs = filterCaliRecordsByLabel(rs, whilteList, nil)
 	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
-	rs = maskRecords(rs, [NumFactors]bool{false, false, true, true, true, false, false})
+	rs = maskRecords(rs, [NumFactors]bool{true, false, true, true, false, false, false})
 
 	ret := regressionCostFactors(rs)
 	fmt.Println(ret.String())
