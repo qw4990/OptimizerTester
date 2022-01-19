@@ -6,24 +6,18 @@ import (
 	"gorgonia.org/tensor"
 )
 
-func minMaxNormalize(vals []float64) (normalized []float64, scale float64) {
-	minV, maxV := vals[0], vals[0]
+func mxNormalize(vals []float64) (normalized []float64, scale float64) {
+	maxV := vals[0]
 	for _, v := range vals {
 		if v > maxV {
 			maxV = v
 		}
-		if v < minV {
-			minV = v
-		}
-	}
-	if minV == maxV {
-		return vals, 1
 	}
 
 	for _, v := range vals {
-		normalized = append(normalized, (v-minV)/(maxV-minV))
+		normalized = append(normalized, v/maxV)
 	}
-	scale = maxV - minV
+	scale = maxV
 	return
 }
 
@@ -34,18 +28,18 @@ func normalize(rs CaliRecords) (ret CaliRecords, scale [NumFactors]float64) {
 	for i := range rs {
 		vals[i] = rs[i].TimeNS
 	}
-	ts, _ := minMaxNormalize(vals)
+	vals, _ = mxNormalize(vals)
 	for i := range rs {
-		rs[i].TimeNS = ts[i]
+		rs[i].TimeNS = vals[i]
 	}
 
 	// normalize cost
 	for i := range rs {
 		vals[i] = rs[i].Cost
 	}
-	ts, _ = minMaxNormalize(vals)
+	vals, _ = mxNormalize(vals)
 	for i := range rs {
-		rs[i].Cost = ts[i]
+		rs[i].Cost = vals[i]
 	}
 
 	// normalize weights
@@ -53,7 +47,7 @@ func normalize(rs CaliRecords) (ret CaliRecords, scale [NumFactors]float64) {
 		for i := range rs {
 			vals[i] = rs[i].Weights[k]
 		}
-		vals, scale[k] = minMaxNormalize(vals)
+		vals, scale[k] = mxNormalize(vals)
 		for i := range rs {
 			rs[i].Weights[k] = vals[i]
 		}
@@ -104,7 +98,7 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 		panic(fmt.Sprintf("Failed to backpropagate: %v", err))
 	}
 
-	solver := gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.01))
+	solver := gorgonia.NewAdamSolver(gorgonia.WithLearnRate(0.00001))
 	model := []gorgonia.ValueGrad{costFactor}
 
 	machine := gorgonia.NewTapeMachine(g, gorgonia.BindDualValues(costFactor))
