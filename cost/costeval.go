@@ -115,7 +115,7 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Record
 
 	//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
 	//(30,	30,		4,		100,	150,		0,		1750000)
-	setCostFactors(ins, CostFactors{30, 30, 4, 100, 150, 0, 1750000})
+	setCostFactors(ins, CostFactors{30, 30, 4, 100, 150, 0, 9.5 * 1e6})
 
 	records := make([]Record, 0, len(qs))
 	for i, q := range qs {

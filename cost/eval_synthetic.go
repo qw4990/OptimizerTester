@@ -37,7 +37,7 @@ func genSyntheticQueries(ins tidb.Instance, db string) Queries {
 	qs = append(qs, genSyntheticQuery(n, repeat, "Wide-TableScan", db, "a, c", "primary", "", "a")...)
 	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan", db, "b", "b", "", "b")...)
 	qs = append(qs, genSyntheticQuery(n, repeat, "Wide-IndexScan", db, "b, c", "bc", "", "b")...)
-	//qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookup", db, "b, d", "b", "", "b")...)
+	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookup", db, "b, d", "b", "", "b")...)
 	return qs
 }
 
@@ -47,19 +47,13 @@ func genSyntheticQuery(n, repeat int, label, db, sel, idxhint, orderby string, c
 		orderby = "order by " + orderby
 	}
 
-	rangeStep := n / repeat
 	for i := 0; i < repeat; i++ {
 		var conds []string
 		for k, col := range cols {
 			if k < len(cols)-1 {
 				conds = append(conds, fmt.Sprintf("%v=%v", col, rand.Intn(n)))
 			} else {
-				gap := rangeStep * (i + 1)
-				l := rand.Intn(n - gap + 1)
-				r := l + gap + rand.Intn(rangeStep)
-				if r > n {
-					r = n
-				}
+				l, r := randRange(0, n, i, repeat)
 				conds = append(conds, fmt.Sprintf("%v>=%v and %v<=%v", col, l, col, r))
 			}
 		}
