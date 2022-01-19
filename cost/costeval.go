@@ -31,8 +31,8 @@ func CostEval() {
 
 	if testCalibrated {
 		//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
-		//(30,	30,		4,		100,	150,		0,		9500000)
-		factors = &CostFactors{30, 30, 4, 100, 150, 0, 9.5 * 1e6}
+		//(30,	30,		4,		100,	150,		0,		1.2*1e7)
+		factors = &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7}
 		initSQLs = []string{
 			`set @@tidb_index_lookup_size=1024`,
 			`set @@tidb_distsql_scan_concurrency=1`,
@@ -92,7 +92,7 @@ func evalOnDataset(ins tidb.Instance, db string, factors *CostFactors, initSQLs 
 		if r.Label == "Point" {
 			continue
 		}
-		//if r.Cost > 2e8 {
+		//if r.Cost > 2.5e8 {
 		//	continue
 		//}
 		fmt.Println(">>>> ", r.SQL, r.Cost, r.TimeMS)
