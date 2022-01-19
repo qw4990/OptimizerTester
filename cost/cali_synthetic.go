@@ -278,11 +278,10 @@ func genSyntheticCaliSortQueries(ins tidb.Instance, n int) CaliQueries {
 		cpuW := float64(rowCount) * math.Log2(float64(rowCount))
 		scanW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "scan", 1)
 		netW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "net", 1)
-		memW := float64(rowCount)
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b), must_reorder() */ b from t where b>=%v and b<=%v order by b", l, r),
 			Label:   "Sort",
-			Weights: NewCostWeights(cpuW, 0, netW, scanW, 0, memW, 1),
+			Weights: NewCostWeights(cpuW, 0, netW, scanW, 0, 0, 1),
 		})
 	}
 	return qs
