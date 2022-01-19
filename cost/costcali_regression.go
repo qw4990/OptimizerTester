@@ -110,7 +110,7 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 
 	fmt.Println("init theta: ", costFactor.Value())
 
-	iter := 200000
+	iter := 100000
 	for i := 0; i < iter; i++ {
 		if err := machine.RunAll(); err != nil {
 			panic(fmt.Sprintf("Error during iteration: %v: %v\n", i, err))
@@ -137,7 +137,7 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 
 	// scale factors
 	for i := range fv {
-		fv[i] *= scale[i]
+		fv[i] /= scale[i]
 	}
 
 	return fv
