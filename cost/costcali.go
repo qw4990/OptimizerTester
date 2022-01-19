@@ -128,9 +128,9 @@ func CostCalibration() {
 		"Wide-IndexScan",
 		"DescIndexScan",
 		"DescTableScan",
-		"Agg-PushedDown",
+		//"Agg-PushedDown",
 		"Agg-NotPushedDown",
-		//"Sort",
+		"Sort",
 	}
 
 	//rs = filterCaliRecordsByLabel(rs, nil, []string{"Sort"})
