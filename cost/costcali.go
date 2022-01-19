@@ -90,7 +90,7 @@ func CostCalibration() {
 			// check cost weights
 			calCost := calculateCost(qs[i].Weights, costFactors)
 
-			planCost, timeMS := extractCostTimeFromQuery(ins, qs[i].SQL, 10, false)
+			_, planCost, timeMS := extractCostTimeFromQuery(ins, qs[i].SQL, 10, false)
 			rs = append(rs, CaliRecord{
 				CaliQuery: qs[i],
 				Cost:      planCost,
