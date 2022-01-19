@@ -124,10 +124,10 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 		machine.Reset()
 		lossV := loss.Value().Data().(float64)
 		if i%1000 == 0 {
-			fmt.Printf("theta: %v, Iter: %v Loss: %.4f%%\n",
+			fmt.Printf("theta: %v, Iter: %v Loss: %.6f\n",
 				costFactor.Value(),
 				i,
-				lossV*100)
+				lossV)
 		}
 	}
 
