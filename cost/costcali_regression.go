@@ -6,6 +6,10 @@ import (
 	"gorgonia.org/tensor"
 )
 
+// // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
+var factorScale = [NumFactors]float64{1e6, 1e6, 1e6, 1e6, 1e6, 1e6, 10}
+var timeScale = 1e6
+
 func normalization(rs CaliRecords) (ret CaliRecords) {
 	minY, maxY := rs[0].TimeNS, rs[0].TimeNS
 	for _, r := range rs {
@@ -18,10 +22,9 @@ func normalization(rs CaliRecords) (ret CaliRecords) {
 	}
 
 	for _, r := range rs {
-		//r.TimeNS = (r.TimeNS - minY) / (maxY - minY)
-		r.TimeNS /= 1e6
+		r.TimeNS /= timeScale
 		for i := range r.Weights {
-			r.Weights[i] /= 1e6
+			r.Weights[i] /= factorScale[i]
 		}
 		fmt.Println("Record>> ", r.Label, r.SQL, r.Weights.String(), r.Cost, r.TimeNS)
 		ret = append(ret, r)
@@ -42,7 +45,7 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 		gorgonia.WithInit(func(dt tensor.Dtype, s ...int) interface{} {
 			switch dt {
 			case tensor.Float64: // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
-				return []float64{0, 0, 4, 100, 0, 0, 9*1e6}
+				return []float64{0, 0, 0, 0, 0, 0, 0}
 			default:
 				panic("invalid type")
 			}
@@ -98,6 +101,17 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 	var fv CostFactors
 	for i := range fv {
 		fv[i] = costFactor.Value().Data().([]float64)[i]
+	}
+
+	// scale factors
+	maxScale := factorScale[0]
+	for _, v := range factorScale {
+		if v > maxScale {
+			maxScale = v
+		}
+	}
+	for i := range fv {
+		fv[i] /= factorScale[i] / maxScale
 	}
 
 	return fv

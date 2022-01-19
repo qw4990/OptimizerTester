@@ -21,7 +21,7 @@ func (fv CostFactors) String() string {
 type CostWeights [NumFactors]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
 
 func (fv CostWeights) String() string {
-	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f, Seek: %.6f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5], fv[6])
+	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f, Seek: %.4f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5], fv[6])
 }
 
 func NewCostWeights(cpu, copCPU, net, scan, descScan, mem, seek float64) CostWeights {
