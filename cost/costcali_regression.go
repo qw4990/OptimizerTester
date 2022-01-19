@@ -16,6 +16,9 @@ func minMaxNormalize(vals []float64) (normalized []float64, scale float64) {
 			minV = v
 		}
 	}
+	if minV == maxV {
+		return vals, 1
+	}
 
 	for _, v := range vals {
 		normalized = append(normalized, (v-minV)/(maxV-minV))
@@ -59,7 +62,7 @@ func normalize(rs CaliRecords) (ret CaliRecords, scale [NumFactors]float64) {
 	for _, r := range rs {
 		fmt.Println("Record>> ", r.Label, r.SQL, r.Weights.String(), r.Cost, r.TimeNS)
 	}
-	return
+	return rs, scale
 }
 
 func regressionCostFactors(rs CaliRecords) CostFactors {
