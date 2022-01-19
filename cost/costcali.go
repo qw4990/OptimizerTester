@@ -21,7 +21,7 @@ func (fv CostFactors) String() string {
 type CostWeights [NumFactors]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
 
 func (fv CostWeights) String() string {
-	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f, Seek: %.2f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5], fv[6])
+	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f, Seek: %.6f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5], fv[6])
 }
 
 func NewCostWeights(cpu, copCPU, net, scan, descScan, mem, seek float64) CostWeights {
@@ -79,6 +79,7 @@ func CostCalibration() {
 		fmt.Println("[cost-eval] read cali-records file error: ", err)
 
 		ins.MustExec(fmt.Sprintf(`use %v`, db))
+		ins.MustExec(`set @@tidb_index_lookup_size=1024`)
 		ins.MustExec(`set @@tidb_cost_calibration_mode=2`)
 		ins.MustExec(`set @@tidb_distsql_scan_concurrency=1`)
 		ins.MustExec(`set @@tidb_executor_concurrency=1`)

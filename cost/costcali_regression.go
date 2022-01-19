@@ -42,7 +42,7 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 		gorgonia.WithInit(func(dt tensor.Dtype, s ...int) interface{} {
 			switch dt {
 			case tensor.Float64: // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
-				return []float64{0, 0, 0, 0, 0, 0, 0}
+				return []float64{0, 0, 4, 100, 0, 0, 9*1e6}
 			default:
 				panic("invalid type")
 			}
