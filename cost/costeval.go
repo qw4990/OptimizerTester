@@ -111,6 +111,7 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Record
 	ins.MustExec(`set @@tidb_distsql_scan_concurrency=1`)
 	ins.MustExec(`set @@tidb_executor_concurrency=1`)
 	ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
+	ins.MustExec(`set @@tidb_cost_variant=1`)
 
 	//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
 	//(30,	30,		4,		100,	150,		0,		1750000)
