@@ -24,7 +24,14 @@ import (
 // select /*+ use_index(t, bc) */ b, c from t where b>=? and b<=?;							-- IndexScan + WideCol
 // select /*+ use_index(t, b) */ b, d from t where b>=? and b<=?;							-- IndexLookup
 
-// TODO: sort
+// DescScan: descScanFactor, netFactor
+//   select /*+ use_index(t, primary), no_reorder() */ a from t where a>=? and a<=? order by a desc			(0, 0, estRow*rowSize, 0, estRow*log(rowSize), 0)
+//   select /*+ use_index(t, b), no_reorder() */ b from t where b>=? and b<=? order by b desc				(0, 0, estRow*rowSize, 0, estRow*log(rowSize), 0)
+// AGG: CPUFactor, copCPUFactor
+//   select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=? and b<=?			(0, estRow, 0, estRow*log(rowSize), 0, 0)
+//   select /*+ use_index(t, b), stream_agg(), agg_not_to_cop() */ count(1) from t where b>=? and b<=?		(estRow, 0, estRow*rowSize, estRow*log(rowSize), 0, 0)
+// Sort: CPUFactor, MemFactor
+//   select /*+ use_index(t, b), must_reorder() */ b from t where b>=? and b<=? order by b					(estRow*log(estRow), 0, estRow*rowSize, estRow*log(rowSize), 0, estRow)
 
 func genSyntheticQueries(ins tidb.Instance, db string) Queries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
@@ -38,6 +45,9 @@ func genSyntheticQueries(ins tidb.Instance, db string) Queries {
 	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan", db, "b", "b", "", "b")...)
 	qs = append(qs, genSyntheticQuery(n, repeat, "Wide-IndexScan", db, "b, c", "bc", "", "b")...)
 	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookup", db, "b, d", "b", "", "b")...)
+	qs = append(qs, genSyntheticDescScanQuries(n, repeat)...)
+	qs = append(qs, genSyntheticSortQueries(n, repeat)...)
+	qs = append(qs, genSyntheticAggQueries(n, repeat)...)
 	return qs
 }
 
@@ -58,6 +68,50 @@ func genSyntheticQuery(n, repeat int, label, db, sel, idxhint, orderby string, c
 			}
 		}
 		qs = append(qs, Query{Label: label, SQL: fmt.Sprintf(`select /*+ use_index(t, %v) */ %v from %v.t where %v %v`, idxhint, sel, db, strings.Join(conds, " and "), orderby)})
+	}
+	return qs
+}
+
+func genSyntheticDescScanQuries(n, repeat int) Queries {
+	qs := make(Queries, 0, repeat)
+	for i := 0; i < repeat; i++ {
+		l, r := randRange(0, n, i, repeat)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf(`select /*+ use_index(t, primary), no_reorder() */ a from t where a>=%v and a<=%v order by a desc`, l, r),
+			Label: "DescTableScan",
+		})
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), no_reorder() */ b from t where b>=%v and b<=%v order by b desc`, l, r),
+			Label: "DescIndexScan",
+		})
+	}
+	return qs
+}
+
+func genSyntheticSortQueries(n, repeat int) Queries {
+	qs := make(Queries, 0, repeat)
+	for i := 0; i < repeat; i++ {
+		l, r := randRange(0, n, i, repeat)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), must_reorder() */ b from t where b>=%v and b<=%v order by b`, l, r),
+			Label: "Sort",
+		})
+	}
+	return qs
+}
+
+func genSyntheticAggQueries(n, repeat int) Queries {
+	qs := make(Queries, 0, repeat)
+	for i := 0; i < repeat; i++ {
+		l, r := randRange(0, n, i, repeat)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=%v and b<=%v`, l, r),
+			Label: "AggPushedDown",
+		})
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), stream_agg(), agg_not_to_cop() */ count(1) from t where b>=%v and b<=%v`, l, r),
+			Label: "AggNotPushedDown",
+		})
 	}
 	return qs
 }
