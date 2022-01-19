@@ -10,16 +10,22 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
-type CostFactors [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
+const NumFactors = 7
+
+type CostFactors [NumFactors]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
 
 func (fv CostFactors) String() string {
-	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5])
+	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f, Seek: %.2f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5], fv[6])
 }
 
-type CostWeights [6]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem)
+type CostWeights [NumFactors]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
 
 func (fv CostWeights) String() string {
-	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5])
+	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f, Seek: %.2f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5], fv[6])
+}
+
+func NewCostWeights(cpu, copCPU, net, scan, descScan, mem, seek float64) CostWeights {
+	return CostWeights{cpu, copCPU, net, scan, descScan, mem, seek}
 }
 
 type CaliQuery struct {
@@ -108,10 +114,10 @@ func CostCalibration() {
 		CPU = 4 * Scan
 		DescScan = 1.5 * Scan
 		Mem = 0
-		
+
 		Net = 4
 		(CPU, CopCPU, Net, Scan, DescScan, Mem) = (400, 400, 4, 100, 150, 0)
-	 */
+	*/
 	whilteList := []string{
 		"TableScan",
 		"IndexScan",

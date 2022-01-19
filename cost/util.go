@@ -139,18 +139,19 @@ func readFrom(f string, r interface{}) error {
 
 var costFactorVars = []string{"tidb_opt_cpu_factor",
 	"tidb_opt_copcpu_factor", "tidb_opt_network_factor",
-	"tidb_opt_scan_factor", "tidb_opt_desc_factor", "tidb_opt_memory_factor"}
+	"tidb_opt_scan_factor", "tidb_opt_desc_factor",
+	"tidb_opt_memory_factor", "tidb_opt_seek_factor"}
 
 func setCostFactors(ins tidb.Instance, factors CostFactors) {
-	fmt.Println("SET COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem):", factors)
-	for i := 0; i < 6; i++ {
+	fmt.Println("SET COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek):", factors)
+	for i := 0; i < NumFactors; i++ {
 		ins.MustExec(fmt.Sprintf("set @@%v=%v", costFactorVars[i], factors[i]))
 	}
 }
 
-func readCostFactors(ins tidb.Instance) (factors [6]float64) {
-	// (CPU, CopCPU, Net, Scan, DescScan, Mem)
-	for i := 0; i < 6; i++ {
+func readCostFactors(ins tidb.Instance) (factors CostFactors) {
+	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
+	for i := 0; i < NumFactors; i++ {
 		ret := ins.MustQuery(fmt.Sprintf("select @@%v", costFactorVars[i]))
 		ret.Next()
 		if err := ret.Scan(&factors[i]); err != nil {
@@ -160,7 +161,7 @@ func readCostFactors(ins tidb.Instance) (factors [6]float64) {
 			panic(err)
 		}
 	}
-	fmt.Println("READ COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem):", factors)
+	fmt.Println("READ COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek):", factors)
 	return
 }
 

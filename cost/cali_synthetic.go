@@ -99,7 +99,7 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, primary) */ a from t where a>=%v and a<=%v", l, r),
 			Label:   "TableScan",
-			Weights: CostWeights{0, 0, netW, scanW, 0, 0},
+			Weights: NewCostWeights(0, 0, netW, scanW, 0, 0, 0),
 		})
 	}
 
@@ -112,7 +112,7 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b from t where b>=%v and b<=%v", l, r),
 			Label:   "IndexScan",
-			Weights: CostWeights{0, 0, netW, scanW, 0, 0},
+			Weights: NewCostWeights(0, 0, netW, scanW, 0, 0, 0),
 		})
 	}
 
@@ -126,7 +126,7 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, d from t where b>=%v and b<=%v", l, r),
 			Label:   "IndexLookup",
-			Weights: CostWeights{cpuW, 0, netW, scanW, 0, 0},
+			Weights: NewCostWeights(cpuW, 0, netW, scanW, 0, 0, 0),
 		})
 	}
 
@@ -147,7 +147,7 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, primary) */ a, c from t where a>=%v and a<=%v", l, r),
 			Label:   "Wide-TableScan",
-			Weights: CostWeights{0, 0, netW, scanW, 0, 0},
+			Weights: NewCostWeights(0, 0, netW, scanW, 0, 0, 0),
 		})
 	}
 
@@ -160,7 +160,7 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, bc) */ b, c from t where b>=%v and b<=%v", l, r),
 			Label:   "Wide-IndexScan",
-			Weights: CostWeights{0, 0, netW, scanW, 0, 0},
+			Weights: NewCostWeights(0, 0, netW, scanW, 0, 0, 0),
 		})
 	}
 
@@ -174,7 +174,7 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b) */ b, c from t where b>=%v and b<=%v", l, r),
 			Label:   "Wide-IndexLookup",
-			Weights: CostWeights{cpuW, 0, netW, scanW, 0, 0},
+			Weights: NewCostWeights(cpuW, 0, netW, scanW, 0, 0, 0),
 		})
 	}
 
@@ -195,7 +195,7 @@ func genSyntheticCaliDescScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, primary), no_reorder() */ a from t where a>=%v and a<=%v order by a desc", l, r),
 			Label:   "DescTableScan",
-			Weights: CostWeights{0, 0, netW, 0, descScanW, 0},
+			Weights: NewCostWeights(0, 0, netW, 0, descScanW, 0, 0),
 		})
 	}
 
@@ -208,7 +208,7 @@ func genSyntheticCaliDescScanQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b), no_reorder() */ b from t where b>=%v and b<=%v order by b desc", l, r),
 			Label:   "DescIndexScan",
-			Weights: CostWeights{0, 0, netW, 0, descScanW, 0},
+			Weights: NewCostWeights(0, 0, netW, 0, descScanW, 0, 0),
 		})
 	}
 	return qs
@@ -228,7 +228,7 @@ func genSyntheticCaliAGGQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=%v and b<=%v", l, r),
 			Label:   "Agg-PushedDown",
-			Weights: CostWeights{0, copCPUW, 0, scanW, 0, 0},
+			Weights: NewCostWeights(0, copCPUW, 0, scanW, 0, 0, 0),
 		})
 	}
 
@@ -242,7 +242,7 @@ func genSyntheticCaliAGGQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b), stream_agg(), agg_not_to_cop() */ count(1) from t where b>=%v and b<=%v", l, r),
 			Label:   "Agg-NotPushedDown",
-			Weights: CostWeights{cpuW, 0, netW, scanW, 0, 0},
+			Weights: NewCostWeights(cpuW, 0, netW, scanW, 0, 0, 0),
 		})
 	}
 	return qs
@@ -264,7 +264,7 @@ func genSyntheticCaliSortQueries(ins tidb.Instance, n int) CaliQueries {
 		qs = append(qs, CaliQuery{
 			SQL:     fmt.Sprintf("select /*+ use_index(t, b), must_reorder() */ b from t where b>=%v and b<=%v order by b", l, r),
 			Label:   "Sort",
-			Weights: CostWeights{cpuW, 0, netW, scanW, 0, memW},
+			Weights: NewCostWeights(cpuW, 0, netW, scanW, 0, memW, 0),
 		})
 	}
 	return qs
