@@ -121,8 +121,8 @@ func CostCalibration() {
 	*/
 	whilteList := []string{
 		//"TableScan",
-		"IndexScan",
-		//"IndexLookup",
+		//"IndexScan",
+		"IndexLookup",
 		//"Wide-IndexLookup",
 		//"Wide-TableScan",
 		"Wide-IndexScan",
@@ -133,11 +133,25 @@ func CostCalibration() {
 		//"Sort",
 	}
 
-	//rs = filterCaliRecordsByLabel(rs, nil, []string{"Sort"})
 	rs = filterCaliRecordsByLabel(rs, whilteList, nil)
+	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
+	rs = maskRecords(rs, [NumFactors]bool{false, false, true, true, true, false, false})
 
 	ret := regressionCostFactors(rs)
 	fmt.Println(ret.String())
+}
+
+func maskRecords(rs CaliRecords, mask [NumFactors]bool) CaliRecords {
+	ret := make(CaliRecords, 0, len(rs))
+	for _, r := range rs {
+		for k := 0; k < NumFactors; k++ {
+			if mask[k] == false {
+				r.Weights[k] = 0
+			}
+		}
+		ret = append(ret, r)
+	}
+	return ret
 }
 
 func filterCaliRecordsByLabel(rs CaliRecords, whiteList, blackList []string) CaliRecords {
