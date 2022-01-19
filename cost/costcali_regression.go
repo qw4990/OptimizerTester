@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
+	"math"
 )
 
 func mxNormalize(vals []float64) (normalized []float64, scale float64) {
@@ -95,8 +96,8 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 	gorgonia.Read(pred, &predicated)
 
 	diff := must(gorgonia.Abs(must(gorgonia.Sub(pred, yNode))))
-	relativeDiff := must(gorgonia.Div(diff, yNode))
-	loss := must(gorgonia.Mean(relativeDiff))
+	//relativeDiff := must(gorgonia.Div(diff, yNode))
+	loss := must(gorgonia.Mean(diff))
 	_, err := gorgonia.Grad(loss, costFactor)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to backpropagate: %v", err))
@@ -136,8 +137,18 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 	}
 
 	// scale factors
+	minFV := 1e9
 	for i := range fv {
 		fv[i] /= scale[i]
+		if fv[i] == 0 {
+			continue
+		}
+		if math.Abs(fv[i]) < minFV {
+			minFV = math.Abs(fv[i])
+		}
+	}
+	for i := range fv {
+		fv[i] /= minFV
 	}
 
 	return fv
