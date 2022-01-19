@@ -37,7 +37,7 @@ func genSyntheticQueries(ins tidb.Instance, db string) Queries {
 	qs = append(qs, genSyntheticQuery(n, repeat, "Wide-TableScan", db, "a, c", "primary", "", "a")...)
 	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan", db, "b", "b", "", "b")...)
 	qs = append(qs, genSyntheticQuery(n, repeat, "Wide-IndexScan", db, "b, c", "bc", "", "b")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookup", db, "b, d", "b", "", "b")...)
+	//qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookup", db, "b, d", "b", "", "b")...)
 	return qs
 }
 

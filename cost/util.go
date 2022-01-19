@@ -145,7 +145,9 @@ var costFactorVars = []string{"tidb_opt_cpu_factor",
 func setCostFactors(ins tidb.Instance, factors CostFactors) {
 	fmt.Println("SET COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek):", factors)
 	for i := 0; i < NumFactors; i++ {
-		ins.MustExec(fmt.Sprintf("set @@%v=%v", costFactorVars[i], factors[i]))
+		sql := fmt.Sprintf("set @@%v=%v;", costFactorVars[i], factors[i])
+		fmt.Println(sql)
+		ins.MustExec(sql)
 	}
 }
 
