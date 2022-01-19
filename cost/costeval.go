@@ -18,7 +18,7 @@ func CostEval() {
 		Password: "",
 		Label:    "",
 	}
-	opt.Addr = "127.0.0.1"
+	//opt.Addr = "127.0.0.1"
 
 	ins, err := tidb.ConnectTo(opt)
 	if err != nil {
