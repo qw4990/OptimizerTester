@@ -14,6 +14,10 @@ func mxNormalize(vals []float64) (normalized []float64, scale float64) {
 		}
 	}
 
+	if maxV == 0 {
+		return vals, 1
+	}
+
 	for _, v := range vals {
 		normalized = append(normalized, v/maxV)
 	}
