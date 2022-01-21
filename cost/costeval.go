@@ -26,40 +26,22 @@ func CostEval() {
 		panic(err)
 	}
 
-	testCalibrated := true
 	db, dataset := "TPCH1G", "tpch"
+	mode := "baseline"
+	//mode := "calibrated"
 
 	var factors *CostFactors
-	var initSQLs []string
-	if testCalibrated {
+	if mode == "calibrated" {
 		//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
 		//(30,	30,		4,		100,	150,		0,		1.2*1e7)
 		factors = &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7}
-		initSQLs = []string{
-			`set @@tidb_index_lookup_size=1024`,
-			`set @@tidb_distsql_scan_concurrency=1`,
-			`set @@tidb_executor_concurrency=1`,
-			`set @@tidb_opt_tiflash_concurrency_factor=1`,
-			`set @@tidb_cost_calibration_mode=2`, // use true-CE
-			`set @@tidb_cost_variant=1`,          // use the new cost model
-		}
-	} else {
-		factors = nil
-		initSQLs = []string{
-			`set @@tidb_index_lookup_size=1024`,
-			`set @@tidb_distsql_scan_concurrency=1`,
-			`set @@tidb_executor_concurrency=1`,
-			`set @@tidb_opt_tiflash_concurrency_factor=1`,
-			`set @@tidb_cost_calibration_mode=2`, // use true-CE
-			`set @@tidb_cost_variant=0`,          // use the original cost model
-		}
 	}
 
 	//genSyntheticData(ins, 100000, "synthetic")
-	evalOnDataset(ins, db, dataset, factors, initSQLs)
+	evalOnDataset(ins, db, dataset, mode, factors)
 }
 
-func evalOnDataset(ins tidb.Instance, db, dataset string, factors *CostFactors, initSQLs []string) {
+func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFactors) {
 	var queryGener func(ins tidb.Instance, db string) Queries
 	switch strings.ToLower(dataset) {
 	case "imdb":
@@ -72,9 +54,30 @@ func evalOnDataset(ins tidb.Instance, db, dataset string, factors *CostFactors, 
 		panic(dataset)
 	}
 
+	var initSQLs []string
+	if mode == "calibrated" {
+		initSQLs = []string{
+			`set @@tidb_index_lookup_size=1024`,
+			`set @@tidb_distsql_scan_concurrency=1`,
+			`set @@tidb_executor_concurrency=1`,
+			`set @@tidb_opt_tiflash_concurrency_factor=1`,
+			`set @@tidb_cost_calibration_mode=2`, // use true-CE
+			`set @@tidb_cost_variant=1`,          // use the new cost model
+		}
+	} else {
+		initSQLs = []string{
+			`set @@tidb_index_lookup_size=1024`,
+			`set @@tidb_distsql_scan_concurrency=1`,
+			`set @@tidb_executor_concurrency=1`,
+			`set @@tidb_opt_tiflash_concurrency_factor=1`,
+			`set @@tidb_cost_calibration_mode=2`, // use true-CE
+			`set @@tidb_cost_variant=0`,          // use the original cost model
+		}
+	}
+
 	fmt.Println("[cost-eval] start to eval on ", db)
 	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", db))
-	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-records.json", db))
+	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-%v-records.json", db, mode))
 
 	var qs Queries
 	if err := readFrom(queryFile, &qs); err != nil {
