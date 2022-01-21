@@ -57,7 +57,7 @@ func genTPCHEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 	}
 
 	//SELECT /*+ use_index(lineitem, primary) */ L_LINENUMBER FROM lineitem WHERE L_ORDERKEY>=? AND L_ORDERKEY<=?; -- index(PK) scan
-	mustReadOneLine(ins, `select min(L_LINENUMBER), max(L_LINENUMBER) from lineitem`, &minV, &maxV)
+	mustReadOneLine(ins, `select min(L_ORDERKEY), max(L_ORDERKEY) from lineitem`, &minV, &maxV)
 	for i := 0; i < n; i++ {
 		l, r := randRange(minV, maxV, i, n)
 		qs = append(qs, Query{
