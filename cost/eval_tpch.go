@@ -12,7 +12,7 @@ func genTPCHEvaluationQueries(ins tidb.Instance, db string) Queries {
 	n := 10
 	qs = append(qs, genTPCHEvaluationScanQueries(ins, n)...)
 	qs = append(qs, genTPCHEvaluationLookupQueries(ins, n)...)
-	return nil
+	return qs
 }
 
 func genTPCHEvaluationLookupQueries(ins tidb.Instance, n int) (qs Queries) {
