@@ -26,6 +26,7 @@ func CostEval() {
 		panic(err)
 	}
 
+	processRepeat := 2
 	db, dataset := "TPCH1G", "tpch"
 	mode := "baseline"
 	//mode := "calibrated"
@@ -38,10 +39,10 @@ func CostEval() {
 	}
 
 	//genSyntheticData(ins, 100000, "synthetic")
-	evalOnDataset(ins, db, dataset, mode, factors)
+	evalOnDataset(ins, db, dataset, mode, factors, processRepeat)
 }
 
-func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFactors) {
+func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFactors, processRepeat int) {
 	var queryGener func(ins tidb.Instance, db string) Queries
 	switch strings.ToLower(dataset) {
 	case "imdb":
@@ -92,7 +93,7 @@ func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFac
 	var rs Records
 	if err := readFrom(recordFile, &rs); err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
-		rs = runCostEvalQueries(0, ins, db, qs, initSQLs, factors)
+		rs = runCostEvalQueries(ins, db, qs, initSQLs, factors, processRepeat)
 		saveTo(recordFile, rs)
 	} else {
 		fmt.Println("[cost-eval] read records from file successfully")
@@ -136,7 +137,7 @@ type Record struct {
 
 type Records []Record
 
-func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries, initSQLs []string, factors *CostFactors) Records {
+func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []string, factors *CostFactors, processRepeat int) Records {
 	beginAt := time.Now()
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	for _, q := range initSQLs {
@@ -153,8 +154,8 @@ func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries, initSQ
 
 	records := make([]Record, 0, len(qs))
 	for i, q := range qs {
-		fmt.Printf("[cost-eval] worker-%v run query %v %v/%v %v\n", id, q, i, len(qs), time.Since(beginAt))
-		label, planCost, timeMS := extractCostTimeFromQuery(ins, q.SQL, 5, true)
+		fmt.Printf("[cost-eval] run query %v %v/%v %v\n", q, i, len(qs), time.Since(beginAt))
+		label, planCost, timeMS := extractCostTimeFromQuery(ins, q.SQL, processRepeat, true)
 		if q.Label != "" {
 			label = q.Label
 		}
