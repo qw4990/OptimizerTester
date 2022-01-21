@@ -102,7 +102,7 @@ SELECT /*+ use_index(customer, primary) */ * FROM customer WHERE C_CUSTKEY>=? AN
 SELECT /*+ use_index(lineitem, primary) */ L_LINENUMBER FROM lineitem WHERE L_ORDERKEY>=? AND L_ORDERKEY<=?; -- index(PK) scan
 SELECT /*+ use_index(orders, primary) */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=? AND O_ORDERKEY<=?; -- index(PK) scan
 SELECT /*+ use_index(orders, primary), no_reorder() */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=? AND O_ORDERKEY<=? ORDER BY O_ORDERKEY DESC; -- index(PK) desc scan
-SELECT /*+ use_index(partsupp, primary) */ * FROM partsupp WHERE PS_PARTKEY>=? AND PS_PARTKEY<=? ORDER BY PS_PARTKEY DESC; -- desc table scan
+SELECT /*+ use_index(customer, primary), no_reorder() */ * FROM customer WHERE C_CUSTKEY>=? AND C_CUSTKEY<=? ORDER BY C_CUSTKEY DESC; -- table scan
 
 -- IndexLookup
 SELECT /*+ use_index(orders, O_CUSTKEY) */ * FROM orders WHERE O_CUSTKEY>=? AND O_CUSTKEY<=?; -- index lookup
