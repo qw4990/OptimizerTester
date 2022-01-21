@@ -34,7 +34,7 @@ SELECT * FROM title WHERE episode_nr BETWEEN ? AND ?;                           
 SELECT * FROM title WHERE episode_nr BETWEEN ? AND ? ORDER BY episode_nr;                           -- find movies by episode_nr
 */
 
-func genIMDBQueries(ins tidb.Instance, db string) Queries {
+func genIMDBEvaluationQueries(ins tidb.Instance, db string) Queries {
 	queries := make(Queries, 0, 128)
 
 	// point queries

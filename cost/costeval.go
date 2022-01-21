@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/qw4990/OptimizerTester/tidb"
@@ -25,10 +26,11 @@ func CostEval() {
 		panic(err)
 	}
 
+	testCalibrated := true
+	db, dataset := "TPCH1G", "tpch"
+
 	var factors *CostFactors
 	var initSQLs []string
-	testCalibrated := true
-
 	if testCalibrated {
 		//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
 		//(30,	30,		4,		100,	150,		0,		1.2*1e7)
@@ -54,12 +56,22 @@ func CostEval() {
 	}
 
 	//genSyntheticData(ins, 100000, "synthetic")
-	//evalOnDataset(ins, "synthetic", factors, initSQLs, genSyntheticQueries)
-	evalOnDataset(ins, "imdb", factors, initSQLs, genIMDBQueries)
+	evalOnDataset(ins, db, dataset, factors, initSQLs)
 }
 
-func evalOnDataset(ins tidb.Instance, db string, factors *CostFactors, initSQLs []string,
-	queryGenFunc func(ins tidb.Instance, db string) Queries) {
+func evalOnDataset(ins tidb.Instance, db, dataset string, factors *CostFactors, initSQLs []string) {
+	var queryGener func(ins tidb.Instance, db string) Queries
+	switch strings.ToLower(dataset) {
+	case "imdb":
+		queryGener = genIMDBEvaluationQueries
+	case "synthetic":
+		queryGener = genSyntheticEvaluationQueries
+	case "tpch":
+		queryGener = genTPCHEvaluationQueries
+	default:
+		panic(dataset)
+	}
+
 	fmt.Println("[cost-eval] start to eval on ", db)
 	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", db))
 	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-records.json", db))
@@ -67,7 +79,7 @@ func evalOnDataset(ins tidb.Instance, db string, factors *CostFactors, initSQLs 
 	var qs Queries
 	if err := readFrom(queryFile, &qs); err != nil {
 		fmt.Println("[cost-eval] read queries file error: ", err)
-		qs = queryGenFunc(ins, db)
+		qs = queryGener(ins, db)
 		fmt.Printf("[cost-eval] gen %v queries for %v\n", len(qs), db)
 		saveTo(queryFile, qs)
 	} else {

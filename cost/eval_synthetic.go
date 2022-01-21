@@ -33,25 +33,25 @@ import (
 // Sort: CPUFactor, MemFactor
 //   select /*+ use_index(t, b), must_reorder() */ b from t where b>=? and b<=? order by b					(estRow*log(estRow), 0, estRow*rowSize, estRow*log(rowSize), 0, estRow)
 
-func genSyntheticQueries(ins tidb.Instance, db string) Queries {
+func genSyntheticEvaluationQueries(ins tidb.Instance, db string) Queries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	var n int
 	mustReadOneLine(ins, `select max(a) from t`, &n)
 
 	repeat := 10
 	qs := make(Queries, 0, 1024)
-	qs = append(qs, genSyntheticQuery(n, repeat, "TableScan", db, "a", "primary", "", "a")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "Wide-TableScan", db, "a, c", "primary", "", "a")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan", db, "b", "b", "", "b")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "Wide-IndexScan", db, "b, c", "bc", "", "b")...)
-	qs = append(qs, genSyntheticQuery(n/5, repeat, "IndexLookup", db, "b, d", "b", "", "b")...)
-	qs = append(qs, genSyntheticDescScanQuries(n, repeat)...)
-	qs = append(qs, genSyntheticSortQueries(n, repeat)...)
-	qs = append(qs, genSyntheticAggQueries(n, repeat)...)
+	qs = append(qs, genSyntheticEvaluationScanQueries(n, repeat, "TableScan", db, "a", "primary", "", "a")...)
+	qs = append(qs, genSyntheticEvaluationScanQueries(n, repeat, "Wide-TableScan", db, "a, c", "primary", "", "a")...)
+	qs = append(qs, genSyntheticEvaluationScanQueries(n, repeat, "IndexScan", db, "b", "b", "", "b")...)
+	qs = append(qs, genSyntheticEvaluationScanQueries(n, repeat, "Wide-IndexScan", db, "b, c", "bc", "", "b")...)
+	qs = append(qs, genSyntheticEvaluationScanQueries(n/5, repeat, "IndexLookup", db, "b, d", "b", "", "b")...)
+	qs = append(qs, genSyntheticEvaluationDescScanQuries(n, repeat)...)
+	qs = append(qs, genSyntheticEvaluationSortQueries(n, repeat)...)
+	qs = append(qs, genSyntheticEvaluationAggQueries(n, repeat)...)
 	return qs
 }
 
-func genSyntheticQuery(n, repeat int, label, db, sel, idxhint, orderby string, cols ...string) Queries {
+func genSyntheticEvaluationScanQueries(n, repeat int, label, db, sel, idxhint, orderby string, cols ...string) Queries {
 	qs := make(Queries, 0, repeat)
 	if orderby != "" {
 		orderby = "order by " + orderby
@@ -72,7 +72,7 @@ func genSyntheticQuery(n, repeat int, label, db, sel, idxhint, orderby string, c
 	return qs
 }
 
-func genSyntheticDescScanQuries(n, repeat int) Queries {
+func genSyntheticEvaluationDescScanQuries(n, repeat int) Queries {
 	qs := make(Queries, 0, repeat)
 	for i := 0; i < repeat; i++ {
 		l, r := randRange(0, n, i, repeat)
@@ -88,7 +88,7 @@ func genSyntheticDescScanQuries(n, repeat int) Queries {
 	return qs
 }
 
-func genSyntheticSortQueries(n, repeat int) Queries {
+func genSyntheticEvaluationSortQueries(n, repeat int) Queries {
 	qs := make(Queries, 0, repeat)
 	for i := 0; i < repeat; i++ {
 		l, r := randRange(0, n, i, repeat)
@@ -100,7 +100,7 @@ func genSyntheticSortQueries(n, repeat int) Queries {
 	return qs
 }
 
-func genSyntheticAggQueries(n, repeat int) Queries {
+func genSyntheticEvaluationAggQueries(n, repeat int) Queries {
 	qs := make(Queries, 0, repeat)
 	for i := 0; i < repeat; i++ {
 		l, r := randRange(0, n, i, repeat)
