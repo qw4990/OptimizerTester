@@ -128,7 +128,7 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 
 	tmp := make(Records, 0, len(rs))
 	for _, r := range rs {
-		if opt.mode == "calibrated" && r.Label == "IndexLookup" {
+		if r.Label == "IndexLookup" {
 			continue
 		}
 		if opt.dataset == "synthetic" && r.TimeMS > 200 {
@@ -157,7 +157,7 @@ func drawSummary(opts []*evalOpt) {
 
 			var tmp Records
 			for _, r := range records {
-				if opt.mode == "calibrated" && r.Label == "IndexLookup" {
+				if r.Label == "IndexLookup" {
 					continue
 				}
 				if opt.dataset == "synthetic" && r.TimeMS > 200 {
