@@ -29,10 +29,10 @@ func CostEval() {
 	opts := []*evalOpt{
 		{"imdb", "imdb", "original", 20, 2},
 		{"imdb", "imdb", "calibrated", 20, 2},
-		{"tpch1g", "tpch", "original", 20, 2},
-		{"tpch1g", "tpch", "calibrated", 20, 2},
-		{"synthetic", "synthetic", "original", 20, 2},
-		{"synthetic", "synthetic", "calibrated", 20, 2},
+		//{"tpch1g", "tpch", "original", 20, 2},
+		//{"tpch1g", "tpch", "calibrated", 20, 2},
+		//{"synthetic", "synthetic", "original", 20, 2},
+		//{"synthetic", "synthetic", "calibrated", 20, 2},
 	}
 
 	for _, opt := range opts {
@@ -97,7 +97,7 @@ func (opt *evalOpt) GenQueries(ins tidb.Instance) Queries {
 }
 
 func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
-	fmt.Println("[cost-eval] start to eval on ", opt.db)
+	fmt.Println("[cost-eval] start cost model evaluation ", opt.db, opt.dataset, opt.mode)
 	var qs Queries
 	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", opt.db))
 	if err := readFrom(queryFile, &qs); err != nil {
