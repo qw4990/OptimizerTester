@@ -5,9 +5,8 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
-func genIMDBEvaluationQueries(ins tidb.Instance, db string) (qs Queries) {
+func genIMDBEvaluationQueries(ins tidb.Instance, db string, n int) (qs Queries) {
 	ins.MustExec("use " + db)
-	n := 20
 	qs = append(qs, genIMDBEvaluationScanQueries(ins, n)...)
 	qs = append(qs, genIMDBEvaluationDescScanQueries(ins, n)...)
 	qs = append(qs, genIMDBEvaluationLookupQueries(ins, n)...)

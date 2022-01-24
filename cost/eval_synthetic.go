@@ -18,9 +18,8 @@ import (
 //	key bc(b, c)
 //);
 
-func genSyntheticEvaluationQueries(ins tidb.Instance, db string) Queries {
+func genSyntheticEvaluationQueries(ins tidb.Instance, db string, n int) Queries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
-	n := 10
 	qs := make(Queries, 0, 1024)
 	qs = append(qs, genSyntheticEvaluationScanQueries(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationLookupQueries(ins, n)...)

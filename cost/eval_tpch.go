@@ -6,10 +6,9 @@ import (
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
-func genTPCHEvaluationQueries(ins tidb.Instance, db string) Queries {
+func genTPCHEvaluationQueries(ins tidb.Instance, db string, n int) Queries {
 	ins.MustExec(`use ` + db)
 	qs := make(Queries, 0, 100)
-	n := 30
 	qs = append(qs, genTPCHEvaluationScanQueries(ins, n)...)
 	qs = append(qs, genTPCHEvaluationLookupQueries(ins, n)...)
 	qs = append(qs, genTPCHEvaluationAggQueries(ins, n)...)

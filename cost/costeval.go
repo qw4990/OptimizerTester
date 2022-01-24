@@ -39,11 +39,11 @@ func CostEval() {
 	}
 
 	//genSyntheticData(ins, 100000, "synthetic")
-	evalOnDataset(ins, db, dataset, mode, factors, processRepeat)
+	evalOnDataset(ins, db, dataset, mode, factors, processRepeat, 20)
 }
 
-func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFactors, processRepeat int) {
-	var queryGener func(ins tidb.Instance, db string) Queries
+func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFactors, processRepeat int, n int) {
+	var queryGener func(ins tidb.Instance, db string, n int) Queries
 	switch strings.ToLower(dataset) {
 	case "imdb":
 		queryGener = genIMDBEvaluationQueries
@@ -83,7 +83,7 @@ func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFac
 	var qs Queries
 	if err := readFrom(queryFile, &qs); err != nil {
 		fmt.Println("[cost-eval] read queries file error: ", err)
-		qs = queryGener(ins, db)
+		qs = queryGener(ins, db, n)
 		fmt.Printf("[cost-eval] gen %v queries for %v\n", len(qs), db)
 		saveTo(queryFile, qs)
 	} else {
