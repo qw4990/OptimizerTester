@@ -1,4 +1,4 @@
-CREATE TABLE `cast_info` (
+CREATE TABLE `cast_info` (      -- 36244344
   `id` int(11) NOT NULL,
   `person_id` int(11) NOT NULL,
   `movie_id` int(11) NOT NULL,
@@ -13,12 +13,6 @@ CREATE TABLE `cast_info` (
   KEY `role_id_cast_info` (`role_id`)
 );
 
-SELECT * FROM cast_info WHERE movie_id = ?;                         -- find the cast info of a movie
-SELECT * FROM cast_info WHERE person_id = ?;                        -- find the cast info of a person
-SELECT * FROM cast_info WHERE person_id = ? AND movie_id = ?;       -- find the cast info of a person in a movie
-SELECT * FROM cast_info WHERE person_id = ? AND person_role_id = ?; -- find the cast info of a person with a role
-
-
 CREATE TABLE `company_name` (
   `id` int(11) NOT NULL,
   `name` varchar(512) NOT NULL,
@@ -30,13 +24,7 @@ CREATE TABLE `company_name` (
   PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */
 );
 
-SELECT * FROM company_name WHERE id = ?;                            -- find a company
-SELECT * FROM company_name WHERE name = ?;                          -- find a company by the name
-SELECT * FROM company_name WHERE country_code = ?;                  -- find all companies with a code
-
-
-
-CREATE TABLE `movie_companies` (
+CREATE TABLE `movie_companies` (        -- 2609129
   `id` int(11) NOT NULL,
   `movie_id` int(11) NOT NULL,
   `company_id` int(11) NOT NULL,
@@ -48,10 +36,7 @@ CREATE TABLE `movie_companies` (
   KEY `movie_id_movie_companies` (`movie_id`)
 );
 
-SELECT * FROM movie_companies WHERE movie_id = ?;                   -- find the company of a movie
-SELECT * FROM movie_companies WHERE company_id = ?;                 -- find movies of a company
-
-CREATE TABLE `movie_keyword` (
+CREATE TABLE `movie_keyword` (      -- 4523930
   `id` int(11) NOT NULL,
   `movie_id` int(11) NOT NULL,
   `keyword_id` int(11) NOT NULL,
@@ -60,11 +45,7 @@ CREATE TABLE `movie_keyword` (
   KEY `movie_id_movie_keyword` (`movie_id`)
 );
 
-SELECT * FROM movie_keyword WHERE movie_id = ?;                     -- find all keywords of a movie
-SELECT * FROM movie_keyword WHERE keyword_id = ?;                   -- find all movies with the keyword
-
-
-CREATE TABLE `title` (
+CREATE TABLE `title` (      -- 2528312
   `id` int(11) NOT NULL,
   `title` varchar(512) NOT NULL,
   `imdb_index` varchar(5) DEFAULT NULL,
@@ -81,15 +62,25 @@ CREATE TABLE `title` (
   KEY `kind_id_title` (`kind_id`)
 );
 
+ALTER TABLE title ADD INDEX idx_year(production_year);
 
-SELECT * FROM title WHERE id = ?;                                                                   -- find the title of a movie
-SELECT * FROM title WHERE title = ?;                                                                -- find a movie by its title
-SELECT * FROM title WHERE production_year = ?;                                                      -- find movies by year
-SELECT * FROM title WHERE production_year BETWEEN ? AND ?;                                          -- find movies by year
-SELECT * FROM title WHERE production_year BETWEEN ? AND ? ORDER BY production_year;                 -- find movies by year
-SELECT COUNT(*) FROM title WHERE production_year BETWEEN ? AND ?;                                   -- find movies by year
-SELECT * FROM title WHERE episode_nr = ?;                                                           -- find movies by episode_nr
-SELECT * FROM title WHERE episode_nr BETWEEN ? AND ?;                                               -- find movies by episode_nr
-SELECT * FROM title WHERE episode_nr BETWEEN ? AND ? ORDER BY episode_nr;                           -- find movies by episode_nr
-SELECT COUNT(*) FROM title WHERE episode_nr BETWEEN ? AND ?;                                        -- find movies by episode_nr
+-- ########################## evaluation queries ##########################
 
+-- SCAN
+SELECT /*+ use_index(cast_info, primary) */ id FROM cast_info WHERE id>=? AND id<=?; -- table scan
+SELECT /*+ use_index(cast_info, movie_id_cast_info) */ movie_id FROM cast_info WHERE movie_id>=? AND movie_id<=?; -- index scan
+
+-- DESC SCAN
+SELECT /*+ use_index(cast_info, primary), no_reorder() */ id FROM cast_info WHERE id>=? AND id<=? ORDER BY id DESC; -- table scan
+SELECT /*+ use_index(cast_info, movie_id_cast_info), no_reorder() */ movie_id FROM cast_info WHERE movie_id>=? AND movie_id<=? ORDER BY movie_id DESC; -- index scan
+
+-- LOOKUP
+SELECT /*+ use_index(movie_companies, movie_id_movie_companies) */ * FROM movie_companies WHERE movie_id>=? AND movie_id<=?; -- lookup
+
+-- AGG
+SELECT /*+ use_index(title, idx_year), stream_agg(), agg_to_cop() */ COUNT(*) FROM title WHERE production_year>=? AND production_year<=?;
+SELECT /*+ use_index(title, idx_year), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM title WHERE production_year>=? AND production_year<=?;
+
+-- SORT
+SELECT /*+ use_index(movie_companies, movie_id_movie_companies), must_reorder() */ movie_id FROM movie_companies WHERE movie_id>=? AND movie_id<=? ORDER BY movie_id; -- sort 
+SELECT /*+ use_index(movie_companies, company_id_movie_companies), must_reorder() */ company_id FROM movie_companies WHERE company_id>=? AND company_id<=? ORDER BY company_id; -- sort 
