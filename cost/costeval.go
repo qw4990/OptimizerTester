@@ -38,6 +38,8 @@ func CostEval() {
 	for _, opt := range opts {
 		evalOnDataset(ins, opt)
 	}
+	drawSummary(opts)
+
 	//genSyntheticData(ins, 100000, "synthetic")
 }
 
@@ -126,26 +128,49 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 
 	tmp := make(Records, 0, len(rs))
 	for _, r := range rs {
-		if r.Label == "Point" {
+		if opt.mode == "calibrated" && r.Label == "IndexLookup" {
 			continue
 		}
-		//if r.TimeMS >= 250 {
-		//	continue
-		//}
-		//if r.Label == "IndexLookup" {
-		//	continue
-		//}
-		//if r.Cost < 5e8 {
-		//	continue
-		//}
+		if opt.dataset == "synthetic" && r.TimeMS > 200 {
+			continue
+		}
 		fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
-		//if r.Cost < 1000 { // the cost of PointGet is always zero
-		//	continue
-		//}
 		tmp = append(tmp, r)
 	}
 
 	drawCostRecordsTo(tmp, fmt.Sprintf("%v-%v-scatter.png", opt.db, opt.mode))
+}
+
+func drawSummary(opts []*evalOpt) {
+	for _, mode := range []string{"calibrated", "original"} {
+		rs := make(Records, 0, 1024)
+		for _, opt := range opts {
+			if strings.ToLower(opt.mode) != mode {
+				continue
+			}
+
+			recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-%v-records.json", opt.db, opt.mode))
+			var records Records
+			if err := readFrom(recordFile, &records); err != nil {
+				panic(fmt.Sprintf("read records from %v error: %v", recordFile, err))
+			}
+
+			var tmp Records
+			for _, r := range records {
+				if opt.mode == "calibrated" && r.Label == "IndexLookup" {
+					continue
+				}
+				if opt.dataset == "synthetic" && r.TimeMS > 200 {
+					continue
+				}
+				fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
+				tmp = append(tmp, r)
+			}
+
+			rs = append(rs, tmp...)
+		}
+		drawCostRecordsTo(rs, fmt.Sprintf("%v-%v-scatter.png", "summary", mode))
+	}
 }
 
 type Query struct {
