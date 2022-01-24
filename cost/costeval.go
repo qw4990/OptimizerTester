@@ -28,7 +28,7 @@ func CostEval() {
 
 	processRepeat := 1
 	db, dataset := "TPCH1G", "tpch"
-	mode := "baseline"
+	mode := "original"
 	//mode := "calibrated"
 
 	var factors *CostFactors
@@ -118,7 +118,7 @@ func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFac
 		tmp = append(tmp, r)
 	}
 
-	drawCostRecordsTo(tmp, fmt.Sprintf("%v-scatter.png", db))
+	drawCostRecordsTo(tmp, fmt.Sprintf("%v-%v-scatter.png", db, mode))
 }
 
 type Query struct {
