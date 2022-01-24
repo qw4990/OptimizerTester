@@ -65,7 +65,7 @@ func genIMDBEvaluationDescScanQueries(ins tidb.Instance, n int) (qs Queries) {
 
 func genIMDBEvaluationLookupQueries(ins tidb.Instance, n int) (qs Queries) {
 	var minMID, maxMID int
-	mustReadOneLine(ins, `select min(movie_id), max(movie_id) from movie_companies`)
+	mustReadOneLine(ins, `select min(movie_id), max(movie_id) from movie_companies`, &minMID, &maxMID)
 
 	//SELECT /*+ use_index(movie_companies, movie_id_movie_companies) */ * FROM movie_companies WHERE movie_id>=? AND movie_id<=?; -- lookup
 	for i := 0; i < n; i++ {
@@ -81,7 +81,7 @@ func genIMDBEvaluationLookupQueries(ins tidb.Instance, n int) (qs Queries) {
 
 func genIMDBEvaluationAggQueries(ins tidb.Instance, n int) (qs Queries) {
 	var minY, maxY int
-	mustReadOneLine(ins, `select min(production_year), max(production_year) from title`)
+	mustReadOneLine(ins, `select min(production_year), max(production_year) from title`, &minY, &maxY)
 
 	//SELECT /*+ use_index(title, idx_year), stream_agg(), agg_to_cop() */ COUNT(*) FROM title WHERE production_year>=? AND production_year<=?;
 	for i := 0; i < n; i++ {
