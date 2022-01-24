@@ -60,7 +60,7 @@ func genSyntheticEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 
 	// select /*+ use_index(t, primary) */ a, c from t where a>=? and a<=?; -- WideTableScan
 	for i := 0; i < n; i++ {
-		l, r := randRange(minA, maxA, i, n, 0)
+		l, r := randRange(minA, maxA, i, n, 0.3)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf("select /*+ use_index(t, primary) */ a, c from t where a>=%v and a<=%v", l, r),
 			Label: "TableScan",
@@ -78,7 +78,7 @@ func genSyntheticEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 
 	// select /*+ use_index(t, bc) */ b, c from t where b>=? and b<=?; -- WideIndexScan
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n, 0)
+		l, r := randRange(minB, maxB, i, n, 0.3)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf("select /*+ use_index(t, b) */ b, c from t where b>=%v and b<=%v", l, r),
 			Label: "IndexScan",

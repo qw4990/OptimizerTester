@@ -128,9 +128,12 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 		if r.Label == "Point" {
 			continue
 		}
-		if r.Label == "IndexLookup" {
-			continue
-		}
+		//if r.TimeMS >= 250 {
+		//	continue
+		//}
+		//if r.Label == "IndexLookup" {
+		//	continue
+		//}
 		//if r.Cost < 5e8 {
 		//	continue
 		//}
