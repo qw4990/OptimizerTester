@@ -106,12 +106,15 @@ func mustGetRowCount(ins tidb.Instance, q string) int {
 	return cnt
 }
 
-func randRange(minVal, maxVal, iter, totalRepeat int) (int, int) {
+func randRange(minVal, maxVal, iter, totalRepeat int, scalePercent float64) (int, int) {
 	step := (maxVal - minVal + 1) / totalRepeat
 	l := 1
 	r := step * (iter + 1)
 	if r > maxVal {
 		r = maxVal
+	}
+	if scalePercent > 0 && scalePercent < 100 {
+		r = l + (r-l)*int(scalePercent*100)/100
 	}
 	return l, r
 }
@@ -137,23 +140,62 @@ func readFrom(f string, r interface{}) error {
 	return nil
 }
 
-func extractCostTimeFromQuery(ins tidb.Instance, query string, repeat int, checkRowCount bool) (avgPlanCost, avgTimeMS float64) {
+var costFactorVars = []string{"tidb_opt_cpu_factor",
+	"tidb_opt_copcpu_factor", "tidb_opt_network_factor",
+	"tidb_opt_scan_factor", "tidb_opt_desc_factor",
+	"tidb_opt_memory_factor", "tidb_opt_seek_factor"}
+
+func setCostFactors(ins tidb.Instance, factors CostFactors) {
+	fmt.Println("SET COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek):", factors)
+	for i := 0; i < NumFactors; i++ {
+		sql := fmt.Sprintf("set @@%v=%v;", costFactorVars[i], factors[i])
+		fmt.Println(sql)
+		ins.MustExec(sql)
+	}
+}
+
+func readCostFactors(ins tidb.Instance) (factors CostFactors) {
+	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
+	for i := 0; i < NumFactors; i++ {
+		ret := ins.MustQuery(fmt.Sprintf("select @@%v", costFactorVars[i]))
+		ret.Next()
+		if err := ret.Scan(&factors[i]); err != nil {
+			panic(err)
+		}
+		if err := ret.Close(); err != nil {
+			panic(err)
+		}
+	}
+	fmt.Println("READ COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek):", factors)
+	return
+}
+
+func calculateCost(weights CostWeights, factors CostFactors) float64 {
+	var cost float64
+	for i := range factors {
+		cost += weights[i] * factors[i]
+	}
+	return cost
+}
+
+func extractCostTimeFromQuery(ins tidb.Instance, query string, repeat int, checkRowCount bool) (rootOperator string, avgPlanCost, avgTimeMS float64) {
 	query = "explain analyze " + query
 	var totalPlanCost, totalTimeMS float64
 	for i := 0; i < repeat+1; i++ {
 		rs := ins.MustQuery(query)
-		planCost, timeMS := extractCostTime(rs, query, checkRowCount)
+		rootOp, planCost, timeMS := extractCostTime(rs, query, checkRowCount)
 		fmt.Printf("[cost-eval/cali] iter: %v, cost: %v, timeMS: %v, query: %v\n", i, planCost, timeMS, query)
 		if i == 0 {
 			continue // ignore the first processing
 		}
 		totalPlanCost += planCost
 		totalTimeMS += timeMS
+		rootOperator = rootOp
 	}
-	return totalPlanCost / float64(repeat), totalTimeMS / float64(repeat)
+	return rootOperator, totalPlanCost / float64(repeat), totalTimeMS / float64(repeat)
 }
 
-func extractCostTime(explainAnalyzeResults *sql.Rows, q string, checkRowCount bool) (planCost, timeMS float64) {
+func extractCostTime(explainAnalyzeResults *sql.Rows, q string, checkRowCount bool) (rootOperator string, planCost, timeMS float64) {
 	//mysql> explain analyze select /*+ use_index(t, b) */ * from synthetic.t where b>=1 and b<=100000;
 	//	+-------------------------------+-----------+-------------+---------+-----------+---------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+---------+------+
 	//	| id                            | estRows   | estCost     | actRows | task      | access object       | execution info                                                                                                                                                                                                                                                 | operator info                      | memory  | disk |
@@ -165,23 +207,23 @@ func extractCostTime(explainAnalyzeResults *sql.Rows, q string, checkRowCount bo
 	rs := explainAnalyzeResults
 	var id, task, access, execInfo, opInfo, mem, disk, rootExecInfo string
 	var estRows, actRows, cost float64
-	planLabel := "Unmatched"
+	rootOperator = "Unmatched"
 
 	for rs.Next() {
 		if err := rs.Scan(&id, &estRows, &cost, &actRows, &task, &access, &execInfo, &opInfo, &mem, &disk); err != nil {
 			panic(err)
 		}
-		if checkRowCount && actRows != estRows {
+		if checkRowCount && actRows != estRows && !strings.Contains(q, "agg") {
 			//fmt.Printf("[cost-eval] worker-%v not true-CE for query=%v, est=%v, act=%v\n", id, q, estRows, actRows)
 			panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, q, estRows, actRows))
 		}
 		if rootExecInfo == "" {
 			rootExecInfo, planCost = execInfo, cost
 		}
-		if planLabel == "Unmatched" {
+		if rootOperator == "Unmatched" {
 			for _, operator := range []string{"Point", "Batch", "IndexReader", "IndexLookup", "TableReader", "Sort"} {
 				if strings.Contains(strings.ToLower(id), strings.ToLower(operator)) {
-					planLabel = operator
+					rootOperator = operator
 				}
 			}
 		}

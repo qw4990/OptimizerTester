@@ -18,57 +18,133 @@ import (
 //	key bc(b, c)
 //);
 
-// select /*+ use_index(t, primary) */ a from t where a>=? and a<=?;						-- TableScan
-// select /*+ use_index(t, primary) */ a, c from t where a>=? and a<=?;						-- TableScan + WideCol
-// select /*+ use_index(t, b) */ b from t where b>=? and b<=?;								-- IndexScan
-// select /*+ use_index(t, bc) */ b, c from t where b>=? and b<=?;							-- IndexScan + WideCol
-// select /*+ use_index(t, b) */ b, d from t where b>=? and b<=?;							-- IndexLookup
-
-// TODO: sort
-
-func genSyntheticQueries(ins tidb.Instance, db string) Queries {
+func genSyntheticEvaluationQueries(ins tidb.Instance, db string, n int) Queries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
-	var n int
-	mustReadOneLine(ins, `select max(a) from t`, &n)
-
-	repeat := 20
 	qs := make(Queries, 0, 1024)
-	qs = append(qs, genSyntheticQuery(n, repeat, "TableScan", db, "a", "primary", "", "a")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "Wide-TableScan", db, "a, c", "primary", "", "a")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "IndexScan", db, "b", "b", "", "b")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "Wide-IndexScan", db, "b, c", "bc", "", "b")...)
-	qs = append(qs, genSyntheticQuery(n, repeat, "IndexLookup", db, "b, d", "b", "", "b")...)
+	qs = append(qs, genSyntheticEvaluationScanQueries(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationLookupQueries(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationDescScanQueries(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationSortQueries(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationAggQueries(ins, n)...)
 	return qs
 }
 
-func genSyntheticQuery(n, repeat int, label, db, sel, idxhint, orderby string, cols ...string) Queries {
-	qs := make(Queries, 0, repeat)
-	if orderby != "" {
-		orderby = "order by " + orderby
+func genSyntheticEvaluationLookupQueries(ins tidb.Instance, n int) (qs Queries) {
+	var minB, maxB int
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+
+	// select /*+ use_index(t, b) */ b, d from t where b>=? and b<=?; -- IndexLookup
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n, 0.03)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("select /*+ use_index(t, b) */ b, d from t where b>=%v and b<=%v", l, r),
+			Label: "IndexLookup",
+		})
 	}
 
-	rangeStep := n / repeat
-	for i := 0; i < repeat; i++ {
-		var conds []string
-		for k, col := range cols {
-			if k < len(cols)-1 {
-				conds = append(conds, fmt.Sprintf("%v=%v", col, rand.Intn(n)))
-			} else {
-				gap := rangeStep * (i + 1)
-				l := rand.Intn(n - gap + 1)
-				r := l + gap + rand.Intn(rangeStep)
-				if r > n {
-					r = n
-				}
-				conds = append(conds, fmt.Sprintf("%v>=%v and %v<=%v", col, l, col, r))
-			}
-		}
-		qs = append(qs, Query{Label: label, SQL: fmt.Sprintf(`select /*+ use_index(t, %v) */ %v from %v.t where %v %v`, idxhint, sel, db, strings.Join(conds, " and "), orderby)})
+	return
+}
+
+func genSyntheticEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
+	var minA, maxA, minB, maxB int
+	mustReadOneLine(ins, `select min(a), max(a), min(b), max(b) from t`, &minA, &maxA, &minB, &maxB)
+
+	// select /*+ use_index(t, primary) */ a from t where a>=? and a<=?; -- TableScan	
+	for i := 0; i < n; i++ {
+		l, r := randRange(minA, maxA, i, n, 0)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("select /*+ use_index(t, primary) */ a from t where a>=%v and a<=%v", l, r),
+			Label: "TableScan",
+		})
+	}
+
+	// select /*+ use_index(t, primary) */ a, c from t where a>=? and a<=?; -- WideTableScan
+	for i := 0; i < n; i++ {
+		l, r := randRange(minA, maxA, i, n, 0)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("select /*+ use_index(t, primary) */ a, c from t where a>=%v and a<=%v", l, r),
+			Label: "TableScan",
+		})
+	}
+
+	// select /*+ use_index(t, b) */ b from t where b>=? and b<=?; -- IndexScan
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n, 0)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("select /*+ use_index(t, b) */ b from t where b>=%v and b<=%v", l, r),
+			Label: "IndexScan",
+		})
+	}
+
+	// select /*+ use_index(t, bc) */ b, c from t where b>=? and b<=?; -- WideIndexScan
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n, 0)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("select /*+ use_index(t, b) */ b, c from t where b>=%v and b<=%v", l, r),
+			Label: "IndexScan",
+		})
+	}
+
+	return
+}
+
+func genSyntheticEvaluationDescScanQueries(ins tidb.Instance, n int) (qs Queries) {
+	var minA, maxA, minB, maxB int
+	mustReadOneLine(ins, `select min(a), max(a), min(b), max(b) from t`, &minA, &maxA, &minB, &maxB)
+
+	for i := 0; i < n; i++ {
+		l, r := randRange(minA, maxA, i, n, 0)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf(`select /*+ use_index(t, primary), no_reorder() */ a from t where a>=%v and a<=%v order by a desc`, l, r),
+			Label: "DescTableScan",
+		})
+	}
+
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n, 0)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), no_reorder() */ b from t where b>=%v and b<=%v order by b desc`, l, r),
+			Label: "DescIndexScan",
+		})
+	}
+
+	return
+}
+
+func genSyntheticEvaluationSortQueries(ins tidb.Instance, n int) (qs Queries) {
+	var minB, maxB int
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n, 0)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), must_reorder() */ b from t where b>=%v and b<=%v order by b`, l, r),
+			Label: "Sort",
+		})
+	}
+	return qs
+}
+
+func genSyntheticEvaluationAggQueries(ins tidb.Instance, n int) (qs Queries) {
+	var minB, maxB int
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n, 0)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=%v and b<=%v`, l, r),
+			Label: "Agg",
+		})
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), stream_agg(), agg_not_to_cop() */ count(1) from t where b>=%v and b<=%v`, l, r),
+			Label: "Agg",
+		})
 	}
 	return qs
 }
 
 func genSyntheticData(ins tidb.Instance, n int, db string) {
+	ins.MustExec(fmt.Sprintf(`create database if not exists %v`, db))
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	ins.MustExec(`create table if not exists t (
 		a int, 

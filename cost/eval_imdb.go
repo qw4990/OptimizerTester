@@ -2,120 +2,127 @@ package cost
 
 import (
 	"fmt"
-	"math/rand"
-
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
-/*
-SELECT * FROM cast_info WHERE movie_id = ?;                         -- find the cast info of a movie
-SELECT * FROM cast_info WHERE person_id = ?;                        -- find the cast info of a person
-SELECT * FROM cast_info WHERE person_id = ? AND movie_id = ?;       -- find the cast info of a person in a movie
-SELECT * FROM cast_info WHERE person_id = ? AND person_role_id = ?; -- find the cast info of a person with a role
-
-SELECT * FROM company_name WHERE id = ?;                            -- find a company
-SELECT * FROM company_name WHERE name = ?;                          -- find a company by the name
-SELECT * FROM company_name WHERE country_code = ?;                  -- find all companies with a code
-
-SELECT * FROM movie_companies WHERE movie_id = ?;                   -- find the company of a movie
-SELECT * FROM movie_companies WHERE company_id = ?;                 -- find movies of a company
-
-SELECT * FROM movie_keyword WHERE movie_id = ?;                     -- find all keywords of a movie
-SELECT * FROM movie_keyword WHERE keyword_id = ?;                   -- find all movies with the keyword
-
-SELECT * FROM title WHERE id = ?;                                                                   -- find the title of a movie
-SELECT * FROM title WHERE title = ?;                                                                -- find a movie by its title
-SELECT * FROM title WHERE production_year = ?;                                                      -- find movies by year
-SELECT * FROM title WHERE episode_nr = ?;                                                           -- find movies by episode_nr
-
-SELECT * FROM title WHERE production_year BETWEEN ? AND ?;                                          -- find movies by year
-SELECT * FROM title WHERE production_year BETWEEN ? AND ? ORDER BY production_year;                 -- find movies by year
-SELECT * FROM title WHERE episode_nr BETWEEN ? AND ?;                                               -- find movies by episode_nr
-SELECT * FROM title WHERE episode_nr BETWEEN ? AND ? ORDER BY episode_nr;                           -- find movies by episode_nr
-*/
-
-func genIMDBQueries(ins tidb.Instance, db string) Queries {
-	queries := make(Queries, 0, 128)
-
-	// point queries
-	n := 10
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "movie_id")...)
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "person_id")...)
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "person_id", "movie_id")...)
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "cast_info", "person_id", "person_role_id")...)
-
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "company_name", "id")...)
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "company_name", "name")...)
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "company_name", "country_code")...)
-
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "movie_companies", "movie_id")...)
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "movie_companies", "company_id")...)
-
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "movie_keyword", "movie_id")...)
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "movie_keyword", "keyword_id")...)
-
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "title", "id")...)
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "title", "title")...)
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "title", "production_year")...)
-	queries = append(queries, genPointQueries(ins, n, "*", "", db, "title", "episode_nr")...)
-	queries = append(queries, genPointQueries(ins, n, "*", "order by production_year", db, "title", "production_year")...)
-	queries = append(queries, genPointQueries(ins, n, "*", "order by episode_nr", db, "title", "episode_nr")...)
-
-	// range queries
-	queries = append(queries, genIMDBRangeQueries(20, db)...)
-
-	return queries
+func genIMDBEvaluationQueries(ins tidb.Instance, db string, n int) (qs Queries) {
+	ins.MustExec("use " + db)
+	qs = append(qs, genIMDBEvaluationScanQueries(ins, n)...)
+	qs = append(qs, genIMDBEvaluationDescScanQueries(ins, n)...)
+	qs = append(qs, genIMDBEvaluationLookupQueries(ins, n)...)
+	qs = append(qs, genIMDBEvaluationAggQueries(ins, n)...)
+	qs = append(qs, genIMDBEvaluationSortQueries(ins, n)...)
+	return
 }
 
-func genIMDBRangeQueries(n int, db string) Queries {
-	queries := make(Queries, 0, 128)
-	// range by year or episode_nr
-	for _, sel := range []string{"*"} {
-		for _, ordered := range []bool{true, false} {
-			for _, col := range []string{"production_year", "episode_nr"} {
-				orderby := ""
-				if ordered {
-					orderby = "order by " + col
-				}
+func genIMDBEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
+	var minID, maxID, minMID, maxMID int
+	mustReadOneLine(ins, `select min(id), max(id), min(movie_id), max(movie_id) from cast_info`, &minID, &maxID, &minMID, &maxMID)
 
-				if col == "production_year" {
-					// 1500 ~ 2020
-					step := (2020 - 1500) / n
-					for i := 0; i < n; i++ {
-						gap := step * (i + 1)
-						l := 1500 + rand.Intn((2020-1500)-gap+1)
-						r := l + gap + rand.Intn(step)
-						if r > 2020 {
-							r = 2020
-						}
-						cond := fmt.Sprintf("production_year>=%v and production_year<=%v", l, r)
-						q := fmt.Sprintf("select %v from %v.%v where %v %v", sel, db, "title", cond, orderby)
-						queries = append(queries, Query{
-							SQL:   q,
-							Label: "",
-						})
-					}
-				} else if col == "episode_nr" {
-					// 0 ~ 2528072
-					step := 2528072 / n
-					for i := 0; i < n; i++ {
-						gap := step * (i + 1)
-						l := rand.Intn(2528072 - gap + 1)
-						r := l + gap + rand.Intn(step)
-						if r > 2528072 {
-							r = 2528072
-						}
-						cond := fmt.Sprintf("episode_nr>=%v and episode_nr<=%v", l, r)
-						q := fmt.Sprintf("select %v from %v.%v where %v %v", sel, db, "title", cond, orderby)
-						queries = append(queries, Query{
-							SQL:   q,
-							Label: "",
-						})
-					}
-
-				}
-			}
-		}
+	//SELECT /*+ use_index(cast_info, primary) */ * FROM cast_info WHERE id>=? AND id<=?; -- table scan
+	for i := 0; i < n; i++ {
+		l, r := randRange(minID, maxID, i, n, 0.05)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("SELECT /*+ use_index(cast_info, primary) */ * FROM cast_info WHERE id>=%v AND id<=%v", l, r),
+			Label: "TableScan",
+		})
 	}
-	return queries
+
+	//SELECT /*+ use_index(cast_info, movie_id_cast_info) */ movie_id FROM cast_info WHERE movie_id>=? AND movie_id<=?; -- index scan
+	for i := 0; i < n; i++ {
+		l, r := randRange(minMID, maxMID, i, n, 0.05)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("SELECT /*+ use_index(cast_info, movie_id_cast_info) */ movie_id FROM cast_info WHERE movie_id>=%v AND movie_id<=%v", l, r),
+			Label: "IndexScan",
+		})
+	}
+	return
+}
+
+func genIMDBEvaluationDescScanQueries(ins tidb.Instance, n int) (qs Queries) {
+	var minID, maxID, minMID, maxMID int
+	mustReadOneLine(ins, `select min(id), max(id), min(movie_id), max(movie_id) from cast_info`, &minID, &maxID, &minMID, &maxMID)
+
+	//SELECT /*+ use_index(cast_info, primary) */ * FROM cast_info WHERE id>=? AND id<=? ORDER BY id DESC; -- table scan
+	for i := 0; i < n; i++ {
+		l, r := randRange(minID, maxID, i, n, 0.05)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("SELECT /*+ use_index(cast_info, primary) */ * FROM cast_info WHERE id>=%v AND id<=%v ORDER BY id DESC", l, r),
+			Label: "DescTableScan",
+		})
+	}
+
+	//SELECT /*+ use_index(cast_info, movie_id_cast_info) */ movie_id FROM cast_info WHERE movie_id>=? AND movie_id<=? ORDER BY movie_id DESC; -- index scan
+	for i := 0; i < n; i++ {
+		l, r := randRange(minMID, maxMID, i, n, 0.05)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("SELECT /*+ use_index(cast_info, movie_id_cast_info) */ movie_id FROM cast_info WHERE movie_id>=%v AND movie_id<=%v ORDER BY movie_id DESC", l, r),
+			Label: "DescIndexScan",
+		})
+	}
+	return
+}
+
+func genIMDBEvaluationLookupQueries(ins tidb.Instance, n int) (qs Queries) {
+	var minMID, maxMID int
+	mustReadOneLine(ins, `select min(movie_id), max(movie_id) from movie_companies`, &minMID, &maxMID)
+
+	//SELECT /*+ use_index(movie_companies, movie_id_movie_companies) */ * FROM movie_companies WHERE movie_id>=? AND movie_id<=?; -- lookup
+	for i := 0; i < n; i++ {
+		l, r := randRange(minMID, maxMID, i, n, 0.3)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("SELECT /*+ use_index(movie_companies, movie_id_movie_companies) */ * FROM movie_companies WHERE movie_id>=%v AND movie_id<=%v", l, r),
+			Label: "IndexLookup",
+		})
+
+	}
+	return
+}
+
+func genIMDBEvaluationAggQueries(ins tidb.Instance, n int) (qs Queries) {
+	var minCID, maxCID int
+	mustReadOneLine(ins, `select min(company_id), max(company_id) from movie_companies`, &minCID, &maxCID)
+
+	//SELECT /*+ use_index(movie_companies, company_id_movie_companies), stream_agg(), agg_to_cop() */ COUNT(*) FROM movie_companies WHERE company_id>=? AND company_id<=?;
+	for i := 0; i < n; i++ {
+		l, r := randRange(minCID, maxCID, i, n, 0)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("SELECT /*+ use_index(movie_companies, company_id_movie_companies), stream_agg(), agg_to_cop() */ COUNT(*) FROM movie_companies WHERE company_id>=%v AND company_id<=%v", l, r),
+			Label: "Agg",
+		})
+	}
+
+	//SELECT /*+ use_index(movie_companies, company_id_movie_companies), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM movie_companies WHERE company_id>=? AND company_id<=?;
+	for i := 0; i < n; i++ {
+		l, r := randRange(minCID, maxCID, i, n, 0)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("SELECT /*+ use_index(movie_companies, company_id_movie_companies), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM movie_companies WHERE company_id>=%v AND company_id<=%v", l, r),
+			Label: "Agg",
+		})
+	}
+	return
+}
+
+func genIMDBEvaluationSortQueries(ins tidb.Instance, n int) (qs Queries) {
+	var minMID, maxMID, minCID, maxCID int
+	mustReadOneLine(ins, `select min(movie_id), max(movie_id), min(company_id), max(company_id) from movie_companies`, &minMID, &maxMID, &minCID, &maxCID)
+
+	//SELECT /*+ use_index(movie_companies, movie_id_movie_companies), must_reorder() */ movie_id FROM movie_companies WHERE movie_id>=? AND movie_id<=? ORDER BY movie_id; -- sort
+	for i := 0; i < n; i++ {
+		l, r := randRange(minMID, maxMID, i, n, 0)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("SELECT /*+ use_index(movie_companies, movie_id_movie_companies), must_reorder() */ movie_id FROM movie_companies WHERE movie_id>=%v AND movie_id<=%v ORDER BY movie_id", l, r),
+			Label: "Sort",
+		})
+	}
+
+	//SELECT /*+ use_index(movie_companies, company_id_movie_companies), must_reorder() */ company_id FROM movie_companies WHERE company_id>=? AND company_id<=? ORDER BY company_id; -- sort
+	for i := 0; i < n; i++ {
+		l, r := randRange(minCID, maxCID, i, n, 0)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf("SELECT /*+ use_index(movie_companies, company_id_movie_companies), must_reorder() */ company_id FROM movie_companies WHERE company_id>=%v AND company_id<=%v ORDER BY company_id", l, r),
+			Label: "Sort",
+		})
+	}
+	return
 }

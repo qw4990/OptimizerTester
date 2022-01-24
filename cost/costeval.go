@@ -2,10 +2,12 @@ package cost
 
 import (
 	"fmt"
-	"github.com/qw4990/OptimizerTester/tidb"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
+
+	"github.com/qw4990/OptimizerTester/tidb"
 )
 
 // CostEval ...
@@ -17,48 +19,101 @@ func CostEval() {
 		Password: "",
 		Label:    "",
 	}
-	opt.Addr = "127.0.0.1"
+	//opt.Addr = "127.0.0.1"
 
 	ins, err := tidb.ConnectTo(opt)
 	if err != nil {
 		panic(err)
 	}
 
+	opts := []*evalOpt{
+		//{"imdb", "imdb", "original", 15, 2},
+		//{"imdb", "imdb", "calibrated", 15, 2},
+		//{"tpch1g", "tpch", "original", 15, 2},
+		//{"tpch1g", "tpch", "calibrated", 15, 2},
+		{"synthetic", "synthetic", "original", 15, 2},
+		{"synthetic", "synthetic", "calibrated", 15, 2},
+	}
+
+	for _, opt := range opts {
+		evalOnDataset(ins, opt)
+	}
 	//genSyntheticData(ins, 100000, "synthetic")
-	evalOnDataset(ins, "synthetic", genSyntheticQueries)
-	//evalOnDataset(ins, "imdb", genIMDBQueries)
 }
 
-func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Instance, db string) Queries) {
-	fmt.Println("[cost-eval] start to eval on ", db)
-	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", db))
-	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-records.json", db))
+type evalOpt struct {
+	db            string
+	dataset       string
+	mode          string
+	queryScale    int
+	processRepeat int
+}
 
+func (opt *evalOpt) Factors() *CostFactors {
+	if opt.mode == "calibrated" {
+		//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
+		//(30,	30,		4,		100,	150,		0,		1.2*1e7)
+		factors := &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7}
+		return factors
+	}
+	return nil
+}
+
+func (opt *evalOpt) InitSQLs() []string {
+	var initSQLs []string
+	if strings.ToLower(opt.mode) == "calibrated" {
+		initSQLs = []string{
+			`set @@tidb_index_lookup_size=1024`,
+			`set @@tidb_distsql_scan_concurrency=1`,
+			`set @@tidb_executor_concurrency=1`,
+			`set @@tidb_opt_tiflash_concurrency_factor=1`,
+			`set @@tidb_cost_calibration_mode=2`, // use true-CE
+			`set @@tidb_cost_variant=1`,          // use the new cost model
+		}
+	} else {
+		initSQLs = []string{
+			`set @@tidb_index_lookup_size=1024`,
+			`set @@tidb_distsql_scan_concurrency=1`,
+			`set @@tidb_executor_concurrency=1`,
+			`set @@tidb_opt_tiflash_concurrency_factor=1`,
+			`set @@tidb_cost_calibration_mode=2`, // use true-CE
+			`set @@tidb_cost_variant=0`,          // use the original cost model
+		}
+	}
+	return initSQLs
+}
+
+func (opt *evalOpt) GenQueries(ins tidb.Instance) Queries {
+	switch strings.ToLower(opt.dataset) {
+	case "imdb":
+		return genIMDBEvaluationQueries(ins, opt.db, opt.queryScale)
+	case "synthetic":
+		return genSyntheticEvaluationQueries(ins, opt.db, opt.queryScale)
+	case "tpch":
+		return genTPCHEvaluationQueries(ins, opt.db, opt.queryScale)
+	default:
+		panic(opt.dataset)
+	}
+}
+
+func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
+	fmt.Println("[cost-eval] start cost model evaluation ", opt.db, opt.dataset, opt.mode)
 	var qs Queries
+	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", opt.db))
 	if err := readFrom(queryFile, &qs); err != nil {
 		fmt.Println("[cost-eval] read queries file error: ", err)
-		qs = queryGenFunc(ins, db)
-		fmt.Printf("[cost-eval] gen %v queries for %v\n", len(qs), db)
+		qs = opt.GenQueries(ins)
+		fmt.Printf("[cost-eval] gen %v queries for %v\n", len(qs), opt.db)
 		saveTo(queryFile, qs)
 	} else {
 		fmt.Println("[cost-eval] read queries from file successfully ")
 	}
 
-	//tmpQS := make(Queries, 0, len(qs))
-	//for _, q := range qs {
-	//	for _, label := range []string{"tablescan", "wide-tablescan"} {
-	//		if strings.ToLower(label) == strings.ToLower(q.Label) {
-	//			tmpQS = append(tmpQS, q)
-	//			break
-	//		}
-	//	}
-	//}
-	//qs = tmpQS
-
 	var rs Records
+	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-%v-records.json", opt.db, opt.mode))
 	if err := readFrom(recordFile, &rs); err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
-		rs = runCostEvalQueries(0, ins, db, qs)
+		rs = runCostEvalQueries(ins, opt.db, qs, opt.InitSQLs(), opt.Factors(), opt.processRepeat)
 		saveTo(recordFile, rs)
 	} else {
 		fmt.Println("[cost-eval] read records from file successfully")
@@ -73,17 +128,20 @@ func evalOnDataset(ins tidb.Instance, db string, queryGenFunc func(ins tidb.Inst
 		if r.Label == "Point" {
 			continue
 		}
-		//if r.Cost < 4e8 || r.Cost > 7e8 || r.TimeMS > 3500 {
+		if r.Label == "IndexLookup" {
+			continue
+		}
+		//if r.Cost < 5e8 {
 		//	continue
 		//}
-		fmt.Println(">>>> ", r.SQL, r.Cost, r.TimeMS)
+		fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
 		//if r.Cost < 1000 { // the cost of PointGet is always zero
 		//	continue
 		//}
 		tmp = append(tmp, r)
 	}
 
-	drawCostRecordsTo(tmp, fmt.Sprintf("%v-scatter.png", db))
+	drawCostRecordsTo(tmp, fmt.Sprintf("%v-%v-scatter.png", opt.db, opt.mode))
 }
 
 type Query struct {
@@ -102,35 +160,32 @@ type Record struct {
 
 type Records []Record
 
-func runCostEvalQueries(id int, ins tidb.Instance, db string, qs Queries) Records {
+func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []string, factors *CostFactors, processRepeat int) Records {
 	beginAt := time.Now()
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
-	ins.MustExec(`set @@tidb_cost_calibration_mode=2`)
-	ins.MustExec(`set @@tidb_distsql_scan_concurrency=1`)
-	ins.MustExec(`set @@tidb_executor_concurrency=1`)
-	ins.MustExec(`set @@tidb_opt_tiflash_concurrency_factor=1`)
+	for _, q := range initSQLs {
+		ins.MustExec(q)
+	}
 
-	// theta: [               0                 0  3.85636587180801  1.74185850293384                 0                 0]
-	//ins.MustExec(`set @@tidb_opt_cpu_factor=0`)
-	//ins.MustExec(`set @@tidb_opt_copcpu_factor=0`)
-	//ins.MustExec(`set @@tidb_opt_network_factor=2`)
-	//ins.MustExec(`set @@tidb_opt_scan_factor=15`)
-	//ins.MustExec(`set @@tidb_opt_desc_factor=0`)
-	//ins.MustExec(`set @@tidb_opt_memory_factor=0`)
+	if factors != nil {
+		setCostFactors(ins, *factors)
+		check := readCostFactors(ins)
+		if check != *factors {
+			panic("set factor failed")
+		}
+	}
+
 	records := make([]Record, 0, len(qs))
-
 	for i, q := range qs {
-		fmt.Printf("[cost-eval] worker-%v run query %v %v/%v %v\n", id, q, i, len(qs), time.Since(beginAt))
-		planLabel := "Unmatched"
-		planCost, timeMS := extractCostTimeFromQuery(ins, q.SQL, 10, true)
-
+		fmt.Printf("[cost-eval] run query %v %v/%v %v\n", q, i, len(qs), time.Since(beginAt))
+		label, planCost, timeMS := extractCostTimeFromQuery(ins, q.SQL, processRepeat, true)
 		if q.Label != "" {
-			planLabel = q.Label
+			label = q.Label
 		}
 		records = append(records, Record{
 			Cost:   planCost,
 			TimeMS: timeMS,
-			Label:  planLabel,
+			Label:  label,
 			SQL:    q.SQL,
 		})
 	}
