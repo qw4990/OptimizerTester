@@ -148,8 +148,9 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 }
 
 type Query struct {
-	SQL   string
-	Label string
+	SQL    string
+	Label  string
+	TypeID int
 }
 
 type Queries []Query
