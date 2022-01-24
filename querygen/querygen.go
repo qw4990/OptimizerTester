@@ -117,6 +117,7 @@ func RunQueryGen(dsns []string, outputFile, dbName, tableName string, n uint) er
 	tbl.RowCount = uint(ndv)
 
 	sampleSQLTemplate := "select %s from " + fullTableName + " where rand() < %f order by %s"
+	sampleDistinctSQLTemplate := "select * from (select distinct %s from " + fullTableName + ") n where rand() < %f order by %s"
 	for _, col := range cols {
 		sampleRate := float64(n) / float64(tbl.RowCount)
 		if sampleRate > 1 {
@@ -126,6 +127,16 @@ func RunQueryGen(dsns []string, outputFile, dbName, tableName string, n uint) er
 		result := runQuery(sampleSQL, queryTaskChan)
 		for _, val := range result {
 			col.RandVals = append(col.RandVals, queryResultToStr(val[0], col.TP))
+		}
+
+		distinctSampleRate := float64(n) / float64(col.NDV)
+		if distinctSampleRate > 1 {
+			distinctSampleRate = 1
+		}
+		sampleDistinctSQL := fmt.Sprintf(sampleDistinctSQLTemplate, col.Name, distinctSampleRate, col.Name)
+		result = runQuery(sampleDistinctSQL, queryTaskChan)
+		for _, val := range result {
+			col.RandDistinctVals = append(col.RandDistinctVals, queryResultToStr(val[0], col.TP))
 		}
 	}
 	queryTaskChan <- &tidb.QueryTask{Exited: true}
@@ -164,15 +175,22 @@ func RunQueryGen(dsns []string, outputFile, dbName, tableName string, n uint) er
 			panic(err)
 		}
 	}()
-	for i := 0; i < int(n); i++ {
+	dedupMap := make(map[string]struct{})
+	for i := 0; i < int(n); {
 		sql := "select * from " + fullTableName + " where "
 		pt := patterns[rand.Intn(len(patterns))]
-		sql += pt.generate()
+		expr := pt.generate()
+		if _, ok := dedupMap[expr]; ok {
+			continue
+		}
+		dedupMap[expr] = struct{}{}
+		sql += expr
 		sql += ";\n"
 		_, err = file.WriteString(sql)
 		if err != nil {
 			panic(err)
 		}
+		i++
 	}
 
 	return nil

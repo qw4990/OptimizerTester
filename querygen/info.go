@@ -11,12 +11,13 @@ type table struct {
 }
 
 type column struct {
-	Name     string
-	TP       types.FieldType
-	NDV      uint
-	Max      string
-	Min      string
-	RandVals []string
+	Name             string
+	TP               types.FieldType
+	NDV              uint
+	Max              string
+	Min              string
+	RandVals         []string
+	RandDistinctVals []string
 }
 
 func findColByName(cols []*column, name string) *column {

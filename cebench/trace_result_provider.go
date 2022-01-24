@@ -17,10 +17,14 @@ func (record *CETraceRecord) SQL() string {
 	return "SELECT COUNT(*) FROM " + record.TableName + " WHERE " + record.Expr
 }
 
+var dedupMap = make(map[CETraceRecord]struct{}, 100)
+
 func TraceResultProvider(inChan <-chan *tidb.QueryResult, queryTaskChan chan<- *tidb.QueryTask, destChan chan<- *tidb.QueryResult) {
 	finishChan := make(chan struct{}, 100)
 	taskCnt := 0
 	tasks := make([]*tidb.QueryTask, 0, 100)
+	tracedCnt := 0
+	recordsCnt := 0
 FORLOOP:
 	for {
 		var nextTaskToSend *tidb.QueryTask
@@ -48,8 +52,19 @@ FORLOOP:
 				// TODO
 				panic(err)
 			}
+			tracedCnt++
+			if tracedCnt%20 == 0 {
+				fmt.Printf("[%s] %d statements have been traced.\n", logTime(), tracedCnt)
+			}
 			for _, record := range records {
+				if needDedup {
+					if _, ok := dedupMap[*record]; ok {
+						continue
+					}
+				}
+				dedupMap[*record] = struct{}{}
 				taskCnt++
+				recordsCnt++
 				tasks = append(tasks, &tidb.QueryTask{record, destChan, finishChan, false})
 			}
 		case tmpQueryTaskChan <- nextTaskToSend:
@@ -59,6 +74,7 @@ FORLOOP:
 			}
 		}
 	}
+	fmt.Printf("[%s] All statements have been traced. %d trace records collected.\n", logTime(), recordsCnt)
 	if taskCnt > 0 {
 		for range finishChan {
 			taskCnt--
@@ -68,5 +84,5 @@ FORLOOP:
 		}
 	}
 	queryTaskChan <- &tidb.QueryTask{nil, destChan, nil, true}
-	fmt.Printf("[%s] Trace result provider exited.\n", logTime())
+	fmt.Printf("[%s] Trace result provider has exited.\n", logTime())
 }

@@ -1,28 +1,24 @@
 package cebench
 
 import (
-	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/qw4990/OptimizerTester/tidb"
-	"gonum.org/v1/plot"
-	"gonum.org/v1/plot/plotter"
-	"gonum.org/v1/plot/vg"
-	"io"
 	"io/fs"
-	"math"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 )
 
-const concurrencyForEachDSN = uint(2)
 const fullEstInfoFile = "full_est_info.json"
 const reportMDFile = "report.md"
 const chartFileTemplate = "chart_%s.png"
+
+var needDedup = true
 
 func logTime() string {
 	str, err := time.Now().MarshalText()
@@ -32,42 +28,69 @@ func logTime() string {
 	return string(str)
 }
 
-func RunCEBench(queryLocation string, dsns []string, outDir string) error {
-	// 1. Collect all files in the specified location.
-	var files []string
-	collectFiles := func(path string, d fs.DirEntry, err error) error {
-		if !d.IsDir() {
-			files = append(files, path)
+func RunCEBench(queryLocation string, dsns []string, jsonLocation, outDir string, dedup bool, threshold, concurrencyForEachDSN uint) error {
+	needDedup = dedup
+	// 1. Collect estimation information.
+	var allEstInfos EstInfos
+	estInfoMap := make(map[string]EstInfos)
+	if len(jsonLocation) > 0 {
+		jsonBytes, err := ioutil.ReadFile(jsonLocation)
+		if err != nil {
+			panic(err)
 		}
-		return nil
-	}
-	err := filepath.WalkDir(queryLocation, collectFiles)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("[%s] %d sql files found.\n", logTime(), len(files))
-	queryTaskChan := make(chan *tidb.QueryTask, 100)
-	tracePlanResChan := make(chan *tidb.QueryResult, 100)
-	actualCntResChan := make(chan *tidb.QueryResult, 100)
-	for i, dsn := range dsns {
-		err = tidb.StartQueryRunner(dsn, queryTaskChan, concurrencyForEachDSN, 2, uint(i))
+		err = json.Unmarshal(jsonBytes, &estInfoMap)
+		if err != nil {
+			panic(err)
+		}
+		for _, infos := range estInfoMap {
+			for _, info := range infos {
+				allEstInfos = append(allEstInfos, info)
+			}
+		}
+	} else if len(queryLocation) > 0 && len(dsns) > 0 {
+		var files []string
+		collectFiles := func(path string, d fs.DirEntry, err error) error {
+			if !d.IsDir() {
+				files = append(files, path)
+			}
+			return nil
+		}
+		err := filepath.WalkDir(queryLocation, collectFiles)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("[%s] %d query runners started for DSN#%d: %s.\n", logTime(), concurrencyForEachDSN, i, dsn)
+		fmt.Printf("[%s] %d sql files found.\n", logTime(), len(files))
+		queryTaskChan := make(chan *tidb.QueryTask, 100)
+		tracePlanResChan := make(chan *tidb.QueryResult, 100)
+		actualCntResChan := make(chan *tidb.QueryResult, 100)
+		for i, dsn := range dsns {
+			err = tidb.StartQueryRunner(dsn, queryTaskChan, concurrencyForEachDSN, 2, uint(i))
+			if err != nil {
+				return err
+			}
+			fmt.Printf("[%s] %d query runners started for DSN#%d: %s.\n", logTime(), concurrencyForEachDSN, i, dsn)
+		}
+		go SQLProvider(files, queryTaskChan, tracePlanResChan)
+		go TraceResultProvider(tracePlanResChan, queryTaskChan, actualCntResChan)
+		allEstInfos = CollectEstInfo(actualCntResChan)
+	} else {
+		return errors.New("should specify one method to get the estimation information.\n(1) SQL file(s) + DSN(s)\n(2) JSON file")
 	}
-	go SQLProvider(files, queryTaskChan, tracePlanResChan)
-	go TraceResultProvider(tracePlanResChan, queryTaskChan, actualCntResChan)
-	estInfoMap, allEstInfos := CollectEstInfo(actualCntResChan)
+	if needDedup {
+		allEstInfos = DedupEstInfo(allEstInfos)
+	}
+	for _, info := range allEstInfos {
+		estInfoMap[info.Type] = append(estInfoMap[info.Type], info)
+	}
 
 	// Information needed has been collected.
-	// 2. Now start to analyze and output them.
+	// 2. Calculate and sort by p-error. Write all information into a json file.
 	CalcPError(estInfoMap)
 	for _, infos := range estInfoMap {
 		sort.Sort(infos)
 	}
 	sort.Sort(allEstInfos)
-	err = os.MkdirAll(outDir, os.ModePerm)
+	err := os.MkdirAll(outDir, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
@@ -89,6 +112,7 @@ func RunCEBench(queryLocation string, dsns []string, outDir string) error {
 		panic(err)
 	}
 
+	// 3. Generate the report.
 	reportF, err := os.Create(filepath.Join(outDir, reportMDFile))
 	if err != nil {
 		panic(err)
@@ -100,95 +124,25 @@ func RunCEBench(queryLocation string, dsns []string, outDir string) error {
 		}
 	}()
 
-	// Title
-	_, err = reportF.Write([]byte("## All\n"))
-	if err != nil {
-		panic(err)
-	}
+	WriteToFileForInfos(allEstInfos, "All", outDir, reportF)
 
-	// Bar chart
-	chartFileName := fmt.Sprintf(chartFileTemplate, "All")
-	chartPath := filepath.Join(outDir, chartFileName)
-	p := plot.New()
-	chartVals := distribution(allEstInfos)
-	bar, err := plotter.NewBarChart(plotter.Values(chartVals), vg.Points(25))
-	if err != nil {
-		panic(err)
-	}
-	p.Add(bar)
-	p.NominalX(xAxisNames...)
-	p.Title.Text = "PError distribution"
-	err = p.Save(vg.Points(600), vg.Points(150), chartPath)
-	if err != nil {
-		panic(err)
-	}
-
-	_, err = reportF.Write([]byte(fmt.Sprintf("![chart](%s)\n", chartFileName)))
-	if err != nil {
-		panic(err)
-	}
-
-	// Form
-	var overEstInfos, underEstInfos EstInfos
-	for _, info := range allEstInfos {
-		if info.pError < 0 {
-			underEstInfos = append(underEstInfos, info)
-		} else if info.pError > 0 {
-			overEstInfos = append(overEstInfos, info)
-		}
-	}
-	sort.Sort(sort.Reverse(underEstInfos))
-	WriteOverOrUnderStats(overEstInfos, true, reportF)
-	WriteOverOrUnderStats(underEstInfos, false, reportF)
-
-	_, err = reportF.Write([]byte("\n## Globally Worst 10 case:\n"))
+	_, err = reportF.Write([]byte("\n### Globally Worst 10 cases:\n"))
 	if err != nil {
 		panic(err)
 	}
 	WriteWorst10(allEstInfos, reportF)
 
 	for tp, infos := range estInfoMap {
-		// Title
-		_, err = reportF.Write([]byte(fmt.Sprintf("\n## %s\n", tp)))
+		WriteToFileForInfos(infos, tp, outDir, reportF)
+		_, err = reportF.Write([]byte("\n### Worst 10 cases:\n"))
 		if err != nil {
 			panic(err)
 		}
-
-		// Bar chart
-		chartFileName := strings.ReplaceAll(fmt.Sprintf(chartFileTemplate, tp), " ", "-")
-		chartPath := filepath.Join(outDir, chartFileName)
-		p := plot.New()
-		chartVals := distribution(infos)
-		bar, err := plotter.NewBarChart(plotter.Values(chartVals), vg.Points(25))
-		if err != nil {
-			panic(err)
-		}
-		p.Add(bar)
-		p.NominalX(xAxisNames...)
-		p.Title.Text = "PError distribution"
-		err = p.Save(vg.Points(600), vg.Points(150), chartPath)
-		if err != nil {
-			panic(err)
-		}
-
-		_, err = reportF.Write([]byte(fmt.Sprintf("![chart](%s)\n", chartFileName)))
-		if err != nil {
-			panic(err)
-		}
-
-		// Form
-		var overEstInfos, underEstInfos EstInfos
-		for _, info := range infos {
-			if info.pError < 0 {
-				underEstInfos = append(underEstInfos, info)
-			} else if info.pError > 0 {
-				overEstInfos = append(overEstInfos, info)
-			}
-		}
-		sort.Sort(sort.Reverse(underEstInfos))
-		WriteOverOrUnderStats(overEstInfos, true, reportF)
-		WriteOverOrUnderStats(underEstInfos, false, reportF)
+		WriteWorst10(infos, reportF)
 	}
+
+	_, err = reportF.Write([]byte(fmt.Sprintf("\n## All cases with p-error above the threshold (%d):\n", threshold)))
+	WritePErrorAboveThresh(allEstInfos, reportF, float64(threshold))
 
 	fmt.Printf("[%s] Analyze finished and results are written into files. Tester exited.\n", logTime())
 	return nil
@@ -216,14 +170,18 @@ func (s EstInfos) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-func CollectEstInfo(inChan <-chan *tidb.QueryResult) (map[string]EstInfos, EstInfos) {
-	res := make(map[string]EstInfos)
+func CollectEstInfo(inChan <-chan *tidb.QueryResult) EstInfos {
 	allEstInfos := make(EstInfos, 0, 8)
+	cnt := 0
 	for queryRes := range inChan {
 		queryResVal := queryRes.Result[0][0].([]uint8)
 		actualCnt, err := strconv.ParseUint(string(queryResVal), 10, 64)
 		if err != nil {
 			panic(err)
+		}
+		cnt++
+		if cnt%20 == 0 {
+			fmt.Printf("[%s] estimation information for %d records collected.\n", logTime(), cnt)
 		}
 		traceRecord := queryRes.Payload.(*CETraceRecord)
 		estRes := EstInfo{
@@ -232,11 +190,22 @@ func CollectEstInfo(inChan <-chan *tidb.QueryResult) (map[string]EstInfos, EstIn
 			Est:    traceRecord.RowCount,
 			Actual: actualCnt,
 		}
-		res[estRes.Type] = append(res[traceRecord.Type], &estRes)
 		allEstInfos = append(allEstInfos, &estRes)
 	}
 	fmt.Printf("[%s] All estimation information collected.\n", logTime())
-	return res, allEstInfos
+	return allEstInfos
+}
+
+func DedupEstInfo(records EstInfos) EstInfos {
+	ret := make(EstInfos, 0, len(records))
+	exists := make(map[EstInfo]struct{}, len(records))
+	for _, rec := range records {
+		if _, ok := exists[*rec]; !ok {
+			ret = append(ret, rec)
+			exists[*rec] = struct{}{}
+		}
+	}
+	return ret
 }
 
 func CalcPError(estInfoMap map[string]EstInfos) {
@@ -264,57 +233,6 @@ func pError(est, act uint64) float64 {
 		lower++
 	}
 	return sign * (float64(larger)/float64(lower) - 1)
-}
-
-func WriteOverOrUnderStats(infos EstInfos, forOverEst bool, writer io.Writer) {
-	str := bytes.Buffer{}
-	defer func() {
-		_, err := str.WriteTo(writer)
-		if err != nil {
-			panic(err)
-		}
-	}()
-	if forOverEst {
-		str.WriteString("### OverEstimation Statistics\n")
-	} else {
-		str.WriteString("### UnderEstimation Statistics\n")
-	}
-	str.WriteString("\n| Total | P50 | P90 | P99 | Max |\n")
-	str.WriteString("| ---- | ---- | ---- | ---- | ---- |\n")
-	if len(infos) == 0 {
-		str.WriteString("| 0 | - | - | - | - |\n")
-		return
-	}
-	n := len(infos)
-	str.WriteString(fmt.Sprintf("| %d | %.3f | %.3f | %.3f | %.3f |\n",
-		n,
-		infos[(n*50)/100].pError,
-		infos[(n*90)/100].pError,
-		infos[(n*99)/100].pError,
-		infos[n-1].pError))
-}
-
-func WriteWorst10(infos EstInfos, writer io.Writer) {
-	str := bytes.Buffer{}
-	sort.Slice(infos, func(i, j int) bool {
-		iError := infos[i].pError
-		jError := infos[j].pError
-		return math.Abs(iError) < math.Abs(jError)
-	})
-	n := 10
-	if len(infos) < n {
-		n = len(infos)
-	}
-	str.WriteString("\n| Type | Expr | Est | Actual | PError |\n")
-	str.WriteString("| ---- | ---- | ---- | ---- | ---- |\n")
-	for i := 0; i < n; i++ {
-		info := infos[len(infos)-i-1]
-		str.WriteString(fmt.Sprintf("| %s | %s | %d | %d | %.3f |\n", info.Type, info.Expr, info.Est, info.Actual, info.pError))
-	}
-	_, err := str.WriteTo(writer)
-	if err != nil {
-		panic(err)
-	}
 }
 
 type bucket struct {

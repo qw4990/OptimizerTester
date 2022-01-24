@@ -28,7 +28,7 @@ func (cp *colPattern) generate() string {
 	} else if cp.tp == interval {
 		return cp.generateInterval()
 	}
-	return ""
+	return "true"
 }
 
 func (cp *colPattern) generateEqual() string {
@@ -39,8 +39,9 @@ func (cp *colPattern) generateEqual() string {
 	if r < 0.5 {
 		return n + " = " + val1
 	}
-	val2 := vals[rand.Intn(len(vals))]
-	val3 := vals[rand.Intn(len(vals))]
+	dVals := cp.col.RandDistinctVals
+	val2 := dVals[rand.Intn(len(dVals))]
+	val3 := dVals[rand.Intn(len(dVals))]
 	if r < 0.75 {
 		return n + " = " + val1 + " or " + n + " = " + val2 + " or " + n + " = " + val3
 	}
@@ -51,8 +52,8 @@ func (cp *colPattern) generateEqual() string {
 }
 
 func (cp *colPattern) generateInterval() string {
-	vals := cp.col.RandVals
-	val1 := vals[rand.Intn(len(vals))]
+	dVals := cp.col.RandDistinctVals
+	val1 := dVals[rand.Intn(len(dVals))]
 	r := rand.Float64()
 	n := cp.col.Name
 	if r < 0.05 {
@@ -73,11 +74,11 @@ func (cp *colPattern) generateInterval() string {
 	if r < 0.6 {
 		return n + " > " + val1
 	}
-	rIdx1, rIdx2 := rand.Intn(len(vals)), rand.Intn(len(vals))
+	rIdx1, rIdx2 := rand.Intn(len(dVals)), rand.Intn(len(dVals))
 	if rIdx1 > rIdx2 {
 		rIdx1, rIdx2 = rIdx2, rIdx1
 	}
-	return n + " > " + vals[rIdx1] + " and " + n + " < " + vals[rIdx2]
+	return n + " > " + dVals[rIdx1] + " and " + n + " < " + dVals[rIdx2]
 }
 
 type exprType int

@@ -23,6 +23,9 @@ func SQLProvider(paths []string, queryTaskChan chan<- *tidb.QueryTask, destChan 
 	isSelectStmt := regexp.MustCompile("(?i)^select")
 	isDropStmt := regexp.MustCompile("(?i)^drop")
 	isCreateStmt := regexp.MustCompile("(?i)^create")
+	createOrDropCnt := 0
+	selectOrTraceCnt := 0
+	othersCnt := 0
 	finishChan := make(chan struct{}, 100)
 	taskCnt := 0
 	var lastPayloads []*originalSQL
@@ -56,22 +59,27 @@ func SQLProvider(paths []string, queryTaskChan chan<- *tidb.QueryTask, destChan 
 			payload := originalSQL{}
 			needWait := false
 			if isTracePlanStmt.MatchString(sql) {
+				selectOrTraceCnt++
 				taskCnt++
 				payload.sql = sql
 			} else if isSelectStmt.MatchString(sql) {
+				selectOrTraceCnt++
 				taskCnt++
 				sql = "TRACE PLAN TARGET = 'estimation' " + sql
 				payload.sql = sql
 			} else if isDropStmt.MatchString(sql) {
+				createOrDropCnt++
 				payload.sql = sql
 				payload.noTrace = true
 				lastPayloads = append(lastPayloads, &payload)
 				continue
 			} else if isCreateStmt.MatchString(sql) {
+				createOrDropCnt++
 				payload.sql = sql
 				payload.noTrace = true
 				needWait = true
 			} else {
+				othersCnt++
 				taskCnt++
 				payload.sql = sql
 				payload.noTrace = true
@@ -98,7 +106,11 @@ func SQLProvider(paths []string, queryTaskChan chan<- *tidb.QueryTask, destChan 
 			panic(err)
 		}
 	}
-	fmt.Printf("[%s] All SQLs are read.\n", logTime())
+	fmt.Printf("[%s] All SQLs are read. SELECT/TRACE stmts: %d. CREATE/DROP stmts: %d. Other stmts: %d.\n",
+		logTime(),
+		selectOrTraceCnt,
+		createOrDropCnt,
+		othersCnt)
 	for _, payload := range lastPayloads {
 		tmpFinishChan := make(chan struct{}, 1)
 		queryTaskChan <- &tidb.QueryTask{payload, destChan, tmpFinishChan, false}
@@ -113,5 +125,5 @@ func SQLProvider(paths []string, queryTaskChan chan<- *tidb.QueryTask, destChan 
 		}
 	}
 	queryTaskChan <- &tidb.QueryTask{nil, destChan, nil, true}
-	fmt.Printf("[%s] SQL provider exited.\n", logTime())
+	fmt.Printf("[%s] SQL provider has exited.\n", logTime())
 }
