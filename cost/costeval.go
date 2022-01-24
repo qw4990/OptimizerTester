@@ -26,10 +26,10 @@ func CostEval() {
 		panic(err)
 	}
 
-	processRepeat := 2
+	processRepeat := 1
 	db, dataset := "TPCH1G", "tpch"
-	mode := "baseline"
-	//mode := "calibrated"
+	//mode := "baseline"
+	mode := "calibrated"
 
 	var factors *CostFactors
 	if mode == "calibrated" {
@@ -108,9 +108,9 @@ func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFac
 		if r.Label == "Point" {
 			continue
 		}
-		if r.Cost < 5e8 {
-			continue
-		}
+		//if r.Cost < 5e8 {
+		//	continue
+		//}
 		fmt.Println(">>>> ", r.SQL, r.Cost, r.TimeMS)
 		//if r.Cost < 1000 { // the cost of PointGet is always zero
 		//	continue

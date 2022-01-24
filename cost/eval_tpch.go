@@ -22,7 +22,7 @@ func genTPCHEvaluationLookupQueries(ins tidb.Instance, n int) (qs Queries) {
 	mustReadOneLine(ins, `select min(O_CUSTKEY), max(O_CUSTKEY) from orders`, &minV, &maxV)
 	for i := 0; i < n; i++ {
 		l, r := randRange(minV, maxV, i, n)
-		r = l + (r-l)/5
+		r = l + (r-l)/10
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`SELECT /*+ use_index(orders, O_CUSTKEY) */ * FROM orders WHERE O_CUSTKEY>=%v AND O_CUSTKEY<=%v`, l, r),
 			Label: "IndexLookup",
@@ -33,7 +33,7 @@ func genTPCHEvaluationLookupQueries(ins tidb.Instance, n int) (qs Queries) {
 	mustReadOneLine(ins, `select min(L_SUPPKEY), max(L_SUPPKEY) from lineitem`, &minV, &maxV)
 	for i := 0; i < n; i++ {
 		l, r := randRange(minV, maxV, i, n)
-		r = l + (r-l)/5
+		r = l + (r-l)/50
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`SELECT /*+ use_index(lineitem, L_SUPPKEY) */ * FROM lineitem WHERE L_SUPPKEY>=%v AND L_SUPPKEY<=%v`, l, r),
 			Label: "IndexLookup",
