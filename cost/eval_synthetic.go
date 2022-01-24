@@ -18,21 +18,6 @@ import (
 //	key bc(b, c)
 //);
 
-// select /*+ use_index(t, primary) */ a from t where a>=? and a<=?;						-- TableScan
-// select /*+ use_index(t, primary) */ a, c from t where a>=? and a<=?;						-- TableScan + WideCol
-// select /*+ use_index(t, b) */ b from t where b>=? and b<=?;								-- IndexScan
-// select /*+ use_index(t, bc) */ b, c from t where b>=? and b<=?;							-- IndexScan + WideCol
-// select /*+ use_index(t, b) */ b, d from t where b>=? and b<=?;							-- IndexLookup
-
-// DescScan: descScanFactor, netFactor
-//   select /*+ use_index(t, primary), no_reorder() */ a from t where a>=? and a<=? order by a desc			(0, 0, estRow*rowSize, 0, estRow*log(rowSize), 0)
-//   select /*+ use_index(t, b), no_reorder() */ b from t where b>=? and b<=? order by b desc				(0, 0, estRow*rowSize, 0, estRow*log(rowSize), 0)
-// AGG: CPUFactor, copCPUFactor
-//   select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=? and b<=?			(0, estRow, 0, estRow*log(rowSize), 0, 0)
-//   select /*+ use_index(t, b), stream_agg(), agg_not_to_cop() */ count(1) from t where b>=? and b<=?		(estRow, 0, estRow*rowSize, estRow*log(rowSize), 0, 0)
-// Sort: CPUFactor, MemFactor
-//   select /*+ use_index(t, b), must_reorder() */ b from t where b>=? and b<=? order by b					(estRow*log(estRow), 0, estRow*rowSize, estRow*log(rowSize), 0, estRow)
-
 func genSyntheticEvaluationQueries(ins tidb.Instance, db string) Queries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	n := 10
