@@ -13,7 +13,33 @@ func genTPCHEvaluationQueries(ins tidb.Instance, db string) Queries {
 	qs = append(qs, genTPCHEvaluationScanQueries(ins, n)...)
 	qs = append(qs, genTPCHEvaluationLookupQueries(ins, n)...)
 	qs = append(qs, genTPCHEvaluationAggQueries(ins, n)...)
+	qs = append(qs, genTPCHEvaluationSortQueries(ins, n)...)
 	return qs
+}
+
+func genTPCHEvaluationSortQueries(ins tidb.Instance, n int) (qs Queries) {
+	var minV, maxV int
+
+	//SELECT /*+ use_index(orders, primary), must_reorder() */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=? AND O_ORDERKEY<=? ORDER BY O_ORDERKEY; -- index(PK) scan
+	mustReadOneLine(ins, `select min(O_ORDERKEY), max(O_ORDERKEY) from orders`, &minV, &maxV)
+	for i := 0; i < n; i++ {
+		l, r := randRange(minV, maxV, i, n)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf(`SELECT /*+ use_index(orders, primary), must_reorder() */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=%v AND O_ORDERKEY<=%v ORDER BY O_ORDERKEY`, l, r),
+			Label: "Sort",
+		})
+	}
+
+	//SELECT /*+ use_index(customer, primary), must_reorder() */ C_CUSTKEY FROM customer WHERE C_CUSTKEY>=? AND C_CUSTKEY<=? ORDER BY C_CUSTKEY; -- table scan
+	mustReadOneLine(ins, `select min(C_CUSTKEY), max(C_CUSTKEY) from customer`, &minV, &maxV)
+	for i := 0; i < n; i++ {
+		l, r := randRange(minV, maxV, i, n)
+		qs = append(qs, Query{
+			SQL:   fmt.Sprintf(`SELECT /*+ use_index(customer, primary), must_reorder() */ C_CUSTKEY FROM customer WHERE C_CUSTKEY>=%v AND C_CUSTKEY<=%v ORDER BY C_CUSTKEY`, l, r),
+			Label: "Sort",
+		})
+	}
+	return
 }
 
 func genTPCHEvaluationAggQueries(ins tidb.Instance, n int) (qs Queries) {

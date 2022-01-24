@@ -113,4 +113,5 @@ SELECT /*+ use_index(lineitem, primary), stream_agg(), agg_to_cop() */ COUNT(*) 
 SELECT /*+ use_index(lineitem, primary), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM lineitem WHERE L_ORDERKEY>=? AND L_ORDERKEY<=?; -- not-pushed-down agg
 
 -- Sort
-
+SELECT /*+ use_index(orders, primary), must_reorder() */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=? AND O_ORDERKEY<=? ORDER BY O_ORDERKEY; -- index(PK) scan
+SELECT /*+ use_index(customer, primary), must_reorder() */ C_CUSTKEY FROM customer WHERE C_CUSTKEY>=? AND C_CUSTKEY<=? ORDER BY C_CUSTKEY; -- table scan
