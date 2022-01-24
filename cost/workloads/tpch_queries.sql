@@ -101,14 +101,16 @@ CREATE TABLE `supplier` ( -- 10000
 SELECT /*+ use_index(customer, primary) */ * FROM customer WHERE C_CUSTKEY>=? AND C_CUSTKEY<=?; -- table scan
 SELECT /*+ use_index(lineitem, primary) */ L_LINENUMBER FROM lineitem WHERE L_ORDERKEY>=? AND L_ORDERKEY<=?; -- index(PK) scan
 SELECT /*+ use_index(orders, primary) */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=? AND O_ORDERKEY<=?; -- index(PK) scan
-SELECT /*+ use_index(orders, primary), no_reorder() */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=? AND O_ORDERKEY<=? ORDER BY O_ORDERKEY DESC; -- index(PK) desc scan
-SELECT /*+ use_index(customer, primary), no_reorder() */ * FROM customer WHERE C_CUSTKEY>=? AND C_CUSTKEY<=? ORDER BY C_CUSTKEY DESC; -- table scan
+SELECT /*+ use_index(orders, primary), no_reorder() */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=? AND O_ORDERKEY<=? ORDER BY O_ORDERKEY DESC; -- desc index(PK) scan
+SELECT /*+ use_index(customer, primary), no_reorder() */ * FROM customer WHERE C_CUSTKEY>=? AND C_CUSTKEY<=? ORDER BY C_CUSTKEY DESC; -- desc table scan
 
 -- IndexLookup
 SELECT /*+ use_index(orders, O_CUSTKEY) */ * FROM orders WHERE O_CUSTKEY>=? AND O_CUSTKEY<=?; -- index lookup
 SELECT /*+ use_index(lineitem, L_SUPPKEY) */ * FROM lineitem WHERE L_SUPPKEY>=? AND L_SUPPKEY<=?; -- index lookup
 
 -- Aggregation
+SELECT /*+ use_index(lineitem, primary), stream_agg(), agg_to_cop() */ COUNT(*) FROM lineitem WHERE L_ORDERKEY>=? AND L_ORDERKEY<=?; -- pushed-down agg
+SELECT /*+ use_index(lineitem, primary), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM lineitem WHERE L_ORDERKEY>=? AND L_ORDERKEY<=?; -- not-pushed-down agg
 
 -- Sort
 
