@@ -26,37 +26,42 @@ func CostEval() {
 		panic(err)
 	}
 
-	processRepeat := 1
-	db, dataset := "TPCH1G", "tpch"
-	mode := "original"
-	//mode := "calibrated"
-
-	var factors *CostFactors
-	if mode == "calibrated" {
-		//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
-		//(30,	30,		4,		100,	150,		0,		1.2*1e7)
-		factors = &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7}
+	opts := []*evalOpt{
+		{"imdb", "imdb", "original", 20, 2},
+		{"imdb", "imdb", "calibrated", 20, 2},
+		{"tpch1g", "tpch", "original", 20, 2},
+		{"tpch1g", "tpch", "calibrated", 20, 2},
+		{"synthetic", "synthetic", "original", 20, 2},
+		{"synthetic", "synthetic", "calibrated", 20, 2},
 	}
 
+	for _, opt := range opts {
+		evalOnDataset(ins, opt)
+	}
 	//genSyntheticData(ins, 100000, "synthetic")
-	evalOnDataset(ins, db, dataset, mode, factors, processRepeat, 20)
 }
 
-func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFactors, processRepeat int, n int) {
-	var queryGener func(ins tidb.Instance, db string, n int) Queries
-	switch strings.ToLower(dataset) {
-	case "imdb":
-		queryGener = genIMDBEvaluationQueries
-	case "synthetic":
-		queryGener = genSyntheticEvaluationQueries
-	case "tpch":
-		queryGener = genTPCHEvaluationQueries
-	default:
-		panic(dataset)
-	}
+type evalOpt struct {
+	db            string
+	dataset       string
+	mode          string
+	queryScale    int
+	processRepeat int
+}
 
+func (opt *evalOpt) Factors() *CostFactors {
+	if opt.mode == "calibrated" {
+		//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
+		//(30,	30,		4,		100,	150,		0,		1.2*1e7)
+		factors := &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7}
+		return factors
+	}
+	return nil
+}
+
+func (opt *evalOpt) InitSQLs() []string {
 	var initSQLs []string
-	if mode == "calibrated" {
+	if strings.ToLower(opt.mode) == "calibrated" {
 		initSQLs = []string{
 			`set @@tidb_index_lookup_size=1024`,
 			`set @@tidb_distsql_scan_concurrency=1`,
@@ -75,25 +80,40 @@ func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFac
 			`set @@tidb_cost_variant=0`,          // use the original cost model
 		}
 	}
+	return initSQLs
+}
 
-	fmt.Println("[cost-eval] start to eval on ", db)
-	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", db))
-	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-%v-records.json", db, mode))
+func (opt *evalOpt) GenQueries(ins tidb.Instance) Queries {
+	switch strings.ToLower(opt.dataset) {
+	case "imdb":
+		return genIMDBEvaluationQueries(ins, opt.db, opt.queryScale)
+	case "synthetic":
+		return genSyntheticEvaluationQueries(ins, opt.db, opt.queryScale)
+	case "tpch":
+		return genTPCHEvaluationQueries(ins, opt.db, opt.queryScale)
+	default:
+		panic(opt.dataset)
+	}
+}
 
+func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
+	fmt.Println("[cost-eval] start to eval on ", opt.db)
 	var qs Queries
+	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", opt.db))
 	if err := readFrom(queryFile, &qs); err != nil {
 		fmt.Println("[cost-eval] read queries file error: ", err)
-		qs = queryGener(ins, db, n)
-		fmt.Printf("[cost-eval] gen %v queries for %v\n", len(qs), db)
+		qs = opt.GenQueries(ins)
+		fmt.Printf("[cost-eval] gen %v queries for %v\n", len(qs), opt.db)
 		saveTo(queryFile, qs)
 	} else {
 		fmt.Println("[cost-eval] read queries from file successfully ")
 	}
 
 	var rs Records
+	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-%v-records.json", opt.db, opt.mode))
 	if err := readFrom(recordFile, &rs); err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
-		rs = runCostEvalQueries(ins, db, qs, initSQLs, factors, processRepeat)
+		rs = runCostEvalQueries(ins, opt.db, qs, opt.InitSQLs(), opt.Factors(), opt.processRepeat)
 		saveTo(recordFile, rs)
 	} else {
 		fmt.Println("[cost-eval] read records from file successfully")
@@ -118,7 +138,7 @@ func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFac
 		tmp = append(tmp, r)
 	}
 
-	drawCostRecordsTo(tmp, fmt.Sprintf("%v-%v-scatter.png", db, mode))
+	drawCostRecordsTo(tmp, fmt.Sprintf("%v-%v-scatter.png", opt.db, opt.mode))
 }
 
 type Query struct {
