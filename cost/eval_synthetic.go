@@ -35,8 +35,7 @@ func genSyntheticEvaluationLookupQueries(ins tidb.Instance, n int) (qs Queries) 
 
 	// select /*+ use_index(t, b) */ b, d from t where b>=? and b<=?; -- IndexLookup
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n)
-		r = l + (r-l)/30
+		l, r := randRange(minB, maxB, i, n, 0.03)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf("select /*+ use_index(t, b) */ b, d from t where b>=%v and b<=%v", l, r),
 			Label: "IndexLookup",
@@ -52,7 +51,7 @@ func genSyntheticEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 
 	// select /*+ use_index(t, primary) */ a from t where a>=? and a<=?; -- TableScan	
 	for i := 0; i < n; i++ {
-		l, r := randRange(minA, maxA, i, n)
+		l, r := randRange(minA, maxA, i, n, 0)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf("select /*+ use_index(t, primary) */ a from t where a>=%v and a<=%v", l, r),
 			Label: "TableScan",
@@ -61,7 +60,7 @@ func genSyntheticEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 
 	// select /*+ use_index(t, primary) */ a, c from t where a>=? and a<=?; -- WideTableScan
 	for i := 0; i < n; i++ {
-		l, r := randRange(minA, maxA, i, n)
+		l, r := randRange(minA, maxA, i, n, 0)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf("select /*+ use_index(t, primary) */ a, c from t where a>=%v and a<=%v", l, r),
 			Label: "TableScan",
@@ -70,7 +69,7 @@ func genSyntheticEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 
 	// select /*+ use_index(t, b) */ b from t where b>=? and b<=?; -- IndexScan
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n)
+		l, r := randRange(minB, maxB, i, n, 0)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf("select /*+ use_index(t, b) */ b from t where b>=%v and b<=%v", l, r),
 			Label: "IndexScan",
@@ -79,7 +78,7 @@ func genSyntheticEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 
 	// select /*+ use_index(t, bc) */ b, c from t where b>=? and b<=?; -- WideIndexScan
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n)
+		l, r := randRange(minB, maxB, i, n, 0)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf("select /*+ use_index(t, b) */ b, c from t where b>=%v and b<=%v", l, r),
 			Label: "IndexScan",
@@ -94,7 +93,7 @@ func genSyntheticEvaluationDescScanQueries(ins tidb.Instance, n int) (qs Queries
 	mustReadOneLine(ins, `select min(a), max(a), min(b), max(b) from t`, &minA, &maxA, &minB, &maxB)
 
 	for i := 0; i < n; i++ {
-		l, r := randRange(minA, maxA, i, n)
+		l, r := randRange(minA, maxA, i, n, 0)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`select /*+ use_index(t, primary), no_reorder() */ a from t where a>=%v and a<=%v order by a desc`, l, r),
 			Label: "DescTableScan",
@@ -102,7 +101,7 @@ func genSyntheticEvaluationDescScanQueries(ins tidb.Instance, n int) (qs Queries
 	}
 
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n)
+		l, r := randRange(minB, maxB, i, n, 0)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), no_reorder() */ b from t where b>=%v and b<=%v order by b desc`, l, r),
 			Label: "DescIndexScan",
@@ -117,7 +116,7 @@ func genSyntheticEvaluationSortQueries(ins tidb.Instance, n int) (qs Queries) {
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n)
+		l, r := randRange(minB, maxB, i, n, 0)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), must_reorder() */ b from t where b>=%v and b<=%v order by b`, l, r),
 			Label: "Sort",
@@ -131,7 +130,7 @@ func genSyntheticEvaluationAggQueries(ins tidb.Instance, n int) (qs Queries) {
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n)
+		l, r := randRange(minB, maxB, i, n, 0)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=%v and b<=%v`, l, r),
 			Label: "AggPushedDown",
