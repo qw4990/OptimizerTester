@@ -1,4 +1,4 @@
-package cebench
+package tidb
 
 import (
 	"database/sql"
@@ -8,6 +8,14 @@ import (
 	"go.uber.org/atomic"
 	"time"
 )
+
+func logTime() string {
+	str, err := time.Now().MarshalText()
+	if err != nil {
+		panic(err)
+	}
+	return string(str)
+}
 
 type SQLContainer interface {
 	SQL() string
@@ -20,15 +28,15 @@ func (s PlainSQL) SQL() string {
 }
 
 type QueryTask struct {
-	payload SQLContainer
-	dest    chan<- *QueryResult
-	finish  chan<- struct{}
-	exited  bool
+	Payload SQLContainer
+	Dest    chan<- *QueryResult
+	Finish  chan<- struct{}
+	Exited  bool
 }
 
 type QueryResult struct {
-	payload SQLContainer
-	result  [][]interface{}
+	Payload SQLContainer
+	Result  [][]interface{}
 }
 
 func StartQueryRunner(dsn string, inChan chan *QueryTask, concurrency, nTaskSender, dsnID uint) error {
@@ -49,10 +57,15 @@ var nExitedTaskSender atomic.Uint64
 
 func queryRunner(db *sql.DB, inChan chan *QueryTask, nTaskSender, dsnID, runnerID uint) {
 	for task := range inChan {
-		// This task sender has exited, so there will be no more tasks sent from the sender and no more results to the dest.
-		if task.exited {
+		if task == nil {
+			continue
+		}
+		// This task sender has exited, so there will be no more tasks sent from the sender and no more results to the Dest.
+		if task.Exited {
 			nAfterInc := nExitedTaskSender.Inc()
-			close(task.dest)
+			if task.Dest != nil {
+				close(task.Dest)
+			}
 			// All task senders have exited, there will not be more tasks, so close the inChan and exit.
 			// This should only run once among all query runners.
 			if nAfterInc == uint64(nTaskSender) {
@@ -62,7 +75,7 @@ func queryRunner(db *sql.DB, inChan chan *QueryTask, nTaskSender, dsnID, runnerI
 			continue
 		}
 		// Run the SQL.
-		pl := task.payload
+		pl := task.Payload
 		sqlStr := pl.SQL()
 		begin := time.Now()
 		rows, err := db.Query(sqlStr)
@@ -71,6 +84,7 @@ func queryRunner(db *sql.DB, inChan chan *QueryTask, nTaskSender, dsnID, runnerI
 		}
 		if err != nil {
 			// TODO
+			fmt.Printf("[%s] SQL: %s\n", logTime(), sqlStr)
 			panic(err)
 		}
 		colNames, err := rows.Columns()
@@ -96,12 +110,12 @@ func queryRunner(db *sql.DB, inChan chan *QueryTask, nTaskSender, dsnID, runnerI
 			panic(err)
 		}
 
-		// Send the query result.
-		task.dest <- &QueryResult{task.payload, res}
+		// Send the query Result.
+		task.Dest <- &QueryResult{task.Payload, res}
 
 		// Notify that this task has completed.
-		if task.finish != nil {
-			task.finish <- struct{}{}
+		if task.Finish != nil {
+			task.Finish <- struct{}{}
 		}
 	}
 	fmt.Printf("[%s] Query runner %d#%d exited.\n", logTime(), dsnID, runnerID)

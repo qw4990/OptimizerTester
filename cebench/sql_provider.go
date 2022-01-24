@@ -3,6 +3,7 @@ package cebench
 import (
 	"bufio"
 	"fmt"
+	"github.com/qw4990/OptimizerTester/tidb"
 	"os"
 	"regexp"
 	"strings"
@@ -17,15 +18,19 @@ func (s *originalSQL) SQL() string {
 	return s.sql
 }
 
-func SQLProvider(paths []string, queryTaskChan chan<- *QueryTask, destChan chan<- *QueryResult) {
+func SQLProvider(paths []string, queryTaskChan chan<- *tidb.QueryTask, destChan chan<- *tidb.QueryResult) {
 	isTracePlanStmt := regexp.MustCompile("(?i)^trace plan")
 	isSelectStmt := regexp.MustCompile("(?i)^select")
 	isDropStmt := regexp.MustCompile("(?i)^drop")
 	isCreateStmt := regexp.MustCompile("(?i)^create")
+	createOrDropCnt := 0
+	selectOrTraceCnt := 0
+	othersCnt := 0
 	finishChan := make(chan struct{}, 100)
 	taskCnt := 0
 	var lastPayloads []*originalSQL
 	for _, path := range paths {
+		fmt.Printf("[%s] Read SQL from %s.\n", logTime(), path)
 		file, err := os.Open(path)
 		if err != nil {
 			// TODO
@@ -54,32 +59,37 @@ func SQLProvider(paths []string, queryTaskChan chan<- *QueryTask, destChan chan<
 			payload := originalSQL{}
 			needWait := false
 			if isTracePlanStmt.MatchString(sql) {
+				selectOrTraceCnt++
 				taskCnt++
 				payload.sql = sql
 			} else if isSelectStmt.MatchString(sql) {
+				selectOrTraceCnt++
 				taskCnt++
 				sql = "TRACE PLAN TARGET = 'estimation' " + sql
 				payload.sql = sql
 			} else if isDropStmt.MatchString(sql) {
+				createOrDropCnt++
 				payload.sql = sql
 				payload.noTrace = true
 				lastPayloads = append(lastPayloads, &payload)
 				continue
 			} else if isCreateStmt.MatchString(sql) {
+				createOrDropCnt++
 				payload.sql = sql
 				payload.noTrace = true
 				needWait = true
 			} else {
+				othersCnt++
 				taskCnt++
 				payload.sql = sql
 				payload.noTrace = true
 			}
 			if needWait {
 				tmpFinishChan := make(chan struct{}, 1)
-				queryTaskChan <- &QueryTask{&payload, destChan, tmpFinishChan, false}
-
+				queryTaskChan <- &tidb.QueryTask{&payload, destChan, tmpFinishChan, false}
+				<-tmpFinishChan
 			} else {
-				queryTaskChan <- &QueryTask{&payload, destChan, finishChan, false}
+				queryTaskChan <- &tidb.QueryTask{&payload, destChan, finishChan, false}
 			}
 		FORLOOP:
 			for {
@@ -96,9 +106,14 @@ func SQLProvider(paths []string, queryTaskChan chan<- *QueryTask, destChan chan<
 			panic(err)
 		}
 	}
+	fmt.Printf("[%s] All SQLs are read. SELECT/TRACE stmts: %d. CREATE/DROP stmts: %d. Other stmts: %d.\n",
+		logTime(),
+		selectOrTraceCnt,
+		createOrDropCnt,
+		othersCnt)
 	for _, payload := range lastPayloads {
 		tmpFinishChan := make(chan struct{}, 1)
-		queryTaskChan <- &QueryTask{payload, destChan, tmpFinishChan, false}
+		queryTaskChan <- &tidb.QueryTask{payload, destChan, tmpFinishChan, false}
 		<-tmpFinishChan
 	}
 	if taskCnt > 0 {
@@ -109,6 +124,6 @@ func SQLProvider(paths []string, queryTaskChan chan<- *QueryTask, destChan chan<
 			}
 		}
 	}
-	queryTaskChan <- &QueryTask{nil, destChan, nil, true}
-	fmt.Printf("[%s] SQL provider exited.\n", logTime())
+	queryTaskChan <- &tidb.QueryTask{nil, destChan, nil, true}
+	fmt.Printf("[%s] SQL provider has exited.\n", logTime())
 }
