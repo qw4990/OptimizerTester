@@ -28,8 +28,8 @@ func CostEval() {
 
 	processRepeat := 1
 	db, dataset := "TPCH1G", "tpch"
-	//mode := "baseline"
-	mode := "calibrated"
+	mode := "baseline"
+	//mode := "calibrated"
 
 	var factors *CostFactors
 	if mode == "calibrated" {
