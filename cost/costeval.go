@@ -29,10 +29,10 @@ func CostEval() {
 	opts := []*evalOpt{
 		//{"imdb", "imdb", "original", 15, 2},
 		//{"imdb", "imdb", "calibrated", 15, 2},
-		//{"tpch1g", "tpch", "original", 15, 2},
-		//{"tpch1g", "tpch", "calibrated", 15, 2},
-		{"synthetic", "synthetic", "original", 15, 2},
-		{"synthetic", "synthetic", "calibrated", 15, 2},
+		{"tpch1g", "tpch", "original", 15, 2},
+		{"tpch1g", "tpch", "calibrated", 15, 2},
+		//{"synthetic", "synthetic", "original", 15, 2},
+		//{"synthetic", "synthetic", "calibrated", 15, 2},
 	}
 
 	for _, opt := range opts {

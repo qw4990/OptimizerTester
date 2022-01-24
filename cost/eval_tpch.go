@@ -22,7 +22,7 @@ func genTPCHEvaluationSortQueries(ins tidb.Instance, n int) (qs Queries) {
 	//SELECT /*+ use_index(orders, primary), must_reorder() */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=? AND O_ORDERKEY<=? ORDER BY O_ORDERKEY; -- index(PK) scan
 	mustReadOneLine(ins, `select min(O_ORDERKEY), max(O_ORDERKEY) from orders`, &minV, &maxV)
 	for i := 0; i < n; i++ {
-		l, r := randRange(minV, maxV, i, n, 0)
+		l, r := randRange(minV, maxV, i, n, 0.4)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`SELECT /*+ use_index(orders, primary), must_reorder() */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=%v AND O_ORDERKEY<=%v ORDER BY O_ORDERKEY`, l, r),
 			Label: "Sort",
@@ -47,7 +47,7 @@ func genTPCHEvaluationAggQueries(ins tidb.Instance, n int) (qs Queries) {
 	//SELECT /*+ use_index(lineitem, primary), stream_agg(), agg_to_cop() */ COUNT(*) FROM lineitem WHERE L_ORDERKEY>=? AND L_ORDERKEY<=?; -- pushed-down agg
 	mustReadOneLine(ins, `select min(L_ORDERKEY), max(L_ORDERKEY) from lineitem`, &minV, &maxV)
 	for i := 0; i < n; i++ {
-		l, r := randRange(minV, maxV, i, n, 0)
+		l, r := randRange(minV, maxV, i, n, 0.1)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`SELECT /*+ use_index(lineitem, primary), stream_agg(), agg_to_cop() */ COUNT(*) FROM lineitem WHERE L_ORDERKEY>=%v AND L_ORDERKEY<=%v`, l, r),
 			Label: "Aggregation",
@@ -56,7 +56,7 @@ func genTPCHEvaluationAggQueries(ins tidb.Instance, n int) (qs Queries) {
 
 	//SELECT /*+ use_index(lineitem, primary), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM lineitem WHERE L_ORDERKEY>=? AND L_ORDERKEY<=?; -- not-pushed-down agg
 	for i := 0; i < n; i++ {
-		l, r := randRange(minV, maxV, i, n, 0)
+		l, r := randRange(minV, maxV, i, n, 0.1)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`SELECT /*+ use_index(lineitem, primary), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM lineitem WHERE L_ORDERKEY>=%v AND L_ORDERKEY<=%v`, l, r),
 			Label: "Aggregation",
@@ -82,7 +82,7 @@ func genTPCHEvaluationLookupQueries(ins tidb.Instance, n int) (qs Queries) {
 	//SELECT /*+ use_index(lineitem, L_SUPPKEY) */ * FROM lineitem WHERE L_SUPPKEY>=? AND L_SUPPKEY<=?; -- index lookup
 	mustReadOneLine(ins, `select min(L_SUPPKEY), max(L_SUPPKEY) from lineitem`, &minV, &maxV)
 	for i := 0; i < n; i++ {
-		l, r := randRange(minV, maxV, i, n, 0.2)
+		l, r := randRange(minV, maxV, i, n, 0.05)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`SELECT /*+ use_index(lineitem, L_SUPPKEY) */ * FROM lineitem WHERE L_SUPPKEY>=%v AND L_SUPPKEY<=%v`, l, r),
 			Label: "IndexLookup",
@@ -108,7 +108,7 @@ func genTPCHEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 	//SELECT /*+ use_index(lineitem, primary) */ L_LINENUMBER FROM lineitem WHERE L_ORDERKEY>=? AND L_ORDERKEY<=?; -- index(PK) scan
 	mustReadOneLine(ins, `select min(L_ORDERKEY), max(L_ORDERKEY) from lineitem`, &minV, &maxV)
 	for i := 0; i < n; i++ {
-		l, r := randRange(minV, maxV, i, n, 0)
+		l, r := randRange(minV, maxV, i, n, 0.1)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`SELECT /*+ use_index(lineitem, primary) */ L_ORDERKEY FROM lineitem WHERE L_ORDERKEY>=%v AND L_ORDERKEY<=%v`, l, r),
 			Label: "IndexScan",
@@ -118,7 +118,7 @@ func genTPCHEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 	//SELECT /*+ use_index(orders, primary) */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=? AND O_ORDERKEY<=?; -- index(PK) scan
 	mustReadOneLine(ins, `select min(O_ORDERKEY), max(O_ORDERKEY) from orders`, &minV, &maxV)
 	for i := 0; i < n; i++ {
-		l, r := randRange(minV, maxV, i, n, 0)
+		l, r := randRange(minV, maxV, i, n, 0.4)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`SELECT /*+ use_index(orders, primary) */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=%v AND O_ORDERKEY<=%v`, l, r),
 			Label: "TableScan",
@@ -128,7 +128,7 @@ func genTPCHEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 	//SELECT /*+ use_index(orders, primary), no_reorder() */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=? AND O_ORDERKEY<=? ORDER BY O_ORDERKEY DESC; -- index(PK) desc scan
 	mustReadOneLine(ins, `select min(O_ORDERKEY), max(O_ORDERKEY) from orders`, &minV, &maxV)
 	for i := 0; i < n; i++ {
-		l, r := randRange(minV, maxV, i, n, 0)
+		l, r := randRange(minV, maxV, i, n, 0.4)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`SELECT /*+ use_index(orders, primary), no_reorder() */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=%v AND O_ORDERKEY<=%v ORDER BY O_ORDERKEY DESC`, l, r),
 			Label: "DescIndexScan",

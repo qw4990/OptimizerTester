@@ -106,15 +106,12 @@ func mustGetRowCount(ins tidb.Instance, q string) int {
 	return cnt
 }
 
-func randRange(minVal, maxVal, iter, totalRepeat int, scalePercent float64) (int, int) {
+func randRange(minVal, maxVal, iter, totalRepeat int) (int, int) {
 	step := (maxVal - minVal + 1) / totalRepeat
 	l := 1
 	r := step * (iter + 1)
 	if r > maxVal {
 		r = maxVal
-	}
-	if scalePercent > 0 && scalePercent < 100 {
-		r = l + (r-l)*int(scalePercent*100)/100
 	}
 	return l, r
 }

@@ -8,19 +8,19 @@ import (
 )
 
 // Scan: scanFactor, netFactor																				(CPU, CopCPU, Net, Scan, DescScan, Mem)
-//   select /*+ use_index(t, primary) */ a from t where a>=? and a<=?										(0, 0, estRow*log(rowSize), estRow*rowSize, 0, 0)
-//   select /*+ use_index(t, b) */ b from t where b>=? and b<=?												(0, 0, estRow*log(rowSize), estRow*rowSize, 0, 0)
-//   select /*+ use_index(t, b) */ b, d from t where b>=? and b<=?											(estRow*(1+ log2(Min(estRow, lookupBatchSize))), 0, estRow*log(tblRowSize)+estRow*log(idxRowSize), estRow*tblRowSize+estRow*idxRowSize, 0, 0)
+//   select /*+ use_index(t, primary) */ a from t where a>=? and a<=?										(0, 0, estRow*log(rowSize), estRow*rowSize, 0)
+//   select /*+ use_index(t, b) */ b from t where b>=? and b<=?												(0, 0, estRow*log(rowSize), estRow*rowSize, 0)
+//   select /*+ use_index(t, b) */ b, d from t where b>=? and b<=?											(estRow*(1+ log2(Min(estRow, lookupBatchSize))), 0, estRow*log(tblRowSize)+estRow*log(idxRowSize), estRow*tblRowSize+estRow*idxRowSize, 0)
 // WideScan: scanFactor, netFactor
-//   select /*+ use_index(t, primary) */ a, c from t where a>=? and a<=?									(0, 0, estRow*log(rowSize), estRow*rowSize, 0, 0)
-//   select /*+ use_index(t, bc) */ b, c from t where b>=? and b<=?											(0, 0, estRow*log(rowSize), estRow*rowSize, 0, 0)
-//   select /*+ use_index(t, b) */ b, c from t where b>=? and b<=?											(estRow*(1+ log2(Min(estRow, lookupBatchSize))), 0, estRow*log(tblRowSize)+estRow*log(idxRowSize), estRow*tblRowSize+estRow*idxRowSize, 0, 0)
+//   select /*+ use_index(t, primary) */ a, c from t where a>=? and a<=?									(0, 0, estRow*log(rowSize), estRow*rowSize, 0)
+//   select /*+ use_index(t, bc) */ b, c from t where b>=? and b<=?											(0, 0, estRow*log(rowSize), estRow*rowSize, 0)
+//   select /*+ use_index(t, b) */ b, c from t where b>=? and b<=?											(estRow*(1+ log2(Min(estRow, lookupBatchSize))), 0, estRow*log(tblRowSize)+estRow*log(idxRowSize), estRow*tblRowSize+estRow*idxRowSize, 0)
 // DescScan: descScanFactor, netFactor
-//   select /*+ use_index(t, primary), no_reorder() */ a from t where a>=? and a<=? order by a desc			(0, 0, estRow*rowSize, 0, estRow*log(rowSize), 0)
-//   select /*+ use_index(t, b), no_reorder() */ b from t where b>=? and b<=? order by b desc				(0, 0, estRow*rowSize, 0, estRow*log(rowSize), 0)
+//   select /*+ use_index(t, primary), no_reorder() */ a from t where a>=? and a<=? order by a desc			(0, 0, estRow*rowSize, 0, estRow*log(rowSize))
+//   select /*+ use_index(t, b), no_reorder() */ b from t where b>=? and b<=? order by b desc				(0, 0, estRow*rowSize, 0, estRow*log(rowSize))
 // AGG: CPUFactor, copCPUFactor
-//   select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=? and b<=?			(0, estRow, 0, estRow*log(rowSize), 0, 0)
-//   select /*+ use_index(t, b), stream_agg(), agg_not_to_cop() */ count(1) from t where b>=? and b<=?		(estRow, 0, estRow*rowSize, estRow*log(rowSize), 0, 0)
+//   select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=? and b<=?			(0, estRow, 0, estRow*log(rowSize), 0)
+//   select /*+ use_index(t, b), stream_agg(), agg_not_to_cop() */ count(1) from t where b>=? and b<=?		(estRow, 0, estRow*rowSize, estRow*log(rowSize), 0)
 // Sort: CPUFactor, MemFactor
 //   select /*+ use_index(t, b), must_reorder() */ b from t where b>=? and b<=? order by b					(estRow*log(estRow), 0, estRow*rowSize, estRow*log(rowSize), 0, estRow)
 
@@ -92,7 +92,7 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 
 	// PK scan
 	for i := 0; i < n; i++ {
-		l, r := randRange(minA, maxA, i, n, 0)
+		l, r := randRange(minA, maxA, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where a>=%v and a<=%v", l, r))
 		scanW := float64(rowCount) * getSyntheticRowSize("tbl-scan(a)", "scan", 1)
 		netW := float64(rowCount) * getSyntheticRowSize("tbl-scan(a)", "net", 1)
@@ -105,7 +105,7 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 
 	// index scan
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n, 0)
+		l, r := randRange(minB, maxB, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
 		scanW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "scan", 1)
 		netW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "net", 1)
@@ -118,7 +118,7 @@ func genSyntheticCaliScanQueries(ins tidb.Instance, n int) CaliQueries {
 
 	// index lookup
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n, 0)
+		l, r := randRange(minB, maxB, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
 		scanW := float64(rowCount) * (getSyntheticRowSize("lookup-idx(b,d)", "scan", 1) + getSyntheticRowSize("lookup-tbl(b,d)", "scan", 1))
 		netW := float64(rowCount) * (getSyntheticRowSize("lookup-idx(b,d)", "net", 1) + getSyntheticRowSize("lookup-tbl(b,d)", "net", 1))
@@ -140,7 +140,7 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 
 	// PK scan
 	for i := 0; i < n; i++ {
-		l, r := randRange(minA, maxA, i, n, 0)
+		l, r := randRange(minA, maxA, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where a>=%v and a<=%v", l, r))
 		scanW := float64(rowCount) * getSyntheticRowSize("wide-tbl-scan(a,c)", "scan", 1)
 		netW := float64(rowCount) * getSyntheticRowSize("wide-tbl-scan(a,c)", "net", 1)
@@ -153,7 +153,7 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 
 	// index scan
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n, 0)
+		l, r := randRange(minB, maxB, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
 		scanW := float64(rowCount) * getSyntheticRowSize("wide-idx-scan(b,c)", "scan", 1)
 		netW := float64(rowCount) * getSyntheticRowSize("wide-idx-scan(b,c)", "net", 1)
@@ -166,7 +166,7 @@ func genSyntheticCaliWideScanQueries(ins tidb.Instance, n int) CaliQueries {
 
 	// index lookup
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n, 0)
+		l, r := randRange(minB, maxB, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
 		scanW := float64(rowCount) * (getSyntheticRowSize("wide-lookup-idx(b,c)", "scan", 1) + getSyntheticRowSize("wide-lookup-tbl(b,c)", "scan", 1))
 		netW := float64(rowCount) * (getSyntheticRowSize("wide-lookup-idx(b,c)", "net", 1) + getSyntheticRowSize("wide-lookup-tbl(b,c)", "net", 1))
@@ -206,7 +206,7 @@ func genSyntheticCaliDescScanQueries(ins tidb.Instance, n int) CaliQueries {
 
 	// table scan
 	for i := 0; i < n; i++ {
-		l, r := randRange(minA, maxA, i, n, 0)
+		l, r := randRange(minA, maxA, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where a>=%v and b<=%v", l, r))
 		descScanW := float64(rowCount) * getSyntheticRowSize("desc-tbl-scan(a)", "scan", 1)
 		netW := float64(rowCount) * getSyntheticRowSize("desc-tbl-scan(a)", "net", 1)
@@ -219,7 +219,7 @@ func genSyntheticCaliDescScanQueries(ins tidb.Instance, n int) CaliQueries {
 
 	// index scan
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n, 0)
+		l, r := randRange(minB, maxB, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
 		descScanW := float64(rowCount) * getSyntheticRowSize("desc-idx-scan(b)", "scan", 1)
 		netW := float64(rowCount) * getSyntheticRowSize("desc-idx-scan(b)", "net", 1)
@@ -239,7 +239,7 @@ func genSyntheticCaliCPUQueries(ins tidb.Instance, n int) CaliQueries {
 
 	// agg in TiDB
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n, 0)
+		l, r := randRange(minB, maxB, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
 		scanW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "scan", 1)
 		netW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "net", 1)
@@ -253,7 +253,7 @@ func genSyntheticCaliCPUQueries(ins tidb.Instance, n int) CaliQueries {
 
 	// sort
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n, 0)
+		l, r := randRange(minB, maxB, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
 		cpuW := float64(rowCount) * math.Log2(float64(rowCount))
 		scanW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "scan", 1)
@@ -276,7 +276,7 @@ func genSyntheticCaliCopCPUQueries(ins tidb.Instance, n int) CaliQueries {
 
 	// agg in TiKV
 	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n, 0)
+		l, r := randRange(minB, maxB, i, n)
 		rowCount := mustGetRowCount(ins, fmt.Sprintf("select count(*) from t where b>=%v and b<=%v", l, r))
 		scanW := float64(rowCount) * getSyntheticRowSize("idx-scan(b)", "scan", 1)
 		copCPUW := float64(rowCount)
