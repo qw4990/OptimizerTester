@@ -133,11 +133,11 @@ func genSyntheticEvaluationAggQueries(ins tidb.Instance, n int) (qs Queries) {
 		l, r := randRange(minB, maxB, i, n, 0)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=%v and b<=%v`, l, r),
-			Label: "AggPushedDown",
+			Label: "Agg",
 		})
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`select /*+ use_index(t, b), stream_agg(), agg_not_to_cop() */ count(1) from t where b>=%v and b<=%v`, l, r),
-			Label: "AggNotPushedDown",
+			Label: "Agg",
 		})
 	}
 	return qs
