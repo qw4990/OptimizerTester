@@ -27,12 +27,12 @@ func CostEval() {
 	}
 
 	opts := []*evalOpt{
-		//{"imdb", "imdb", "original", 15, 2},
-		//{"imdb", "imdb", "calibrated", 15, 2},
-		{"tpch1g", "tpch", "original", 15, 2},
-		{"tpch1g", "tpch", "calibrated", 15, 2},
-		//{"synthetic", "synthetic", "original", 15, 2},
-		//{"synthetic", "synthetic", "calibrated", 15, 2},
+		{"imdb", "imdb", "original", 15, 2, 1000},
+		{"imdb", "imdb", "calibrated", 15, 2, 1000},
+		{"tpch1g", "tpch", "original", 15, 2, 1000},
+		{"tpch1g", "tpch", "calibrated", 15, 2, 1000},
+		{"synthetic", "synthetic", "original", 15, 2, 1000},
+		{"synthetic", "synthetic", "calibrated", 15, 2, 1000},
 	}
 
 	for _, opt := range opts {
@@ -42,11 +42,12 @@ func CostEval() {
 }
 
 type evalOpt struct {
-	db            string
-	dataset       string
-	mode          string
-	queryScale    int
-	processRepeat int
+	db                 string
+	dataset            string
+	mode               string
+	queryScale         int
+	processRepeat      int
+	processTimeLimitMS int
 }
 
 func (opt *evalOpt) Factors() *CostFactors {
@@ -113,7 +114,7 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-%v-records.json", opt.db, opt.mode))
 	if err := readFrom(recordFile, &rs); err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
-		rs = runCostEvalQueries(ins, opt.db, qs, opt.InitSQLs(), opt.Factors(), opt.processRepeat)
+		rs = runCostEvalQueries(ins, opt.db, qs, opt.InitSQLs(), opt.Factors(), opt.processRepeat, opt.processTimeLimitMS)
 		saveTo(recordFile, rs)
 	} else {
 		fmt.Println("[cost-eval] read records from file successfully")
@@ -164,7 +165,7 @@ type Record struct {
 
 type Records []Record
 
-func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []string, factors *CostFactors, processRepeat int) Records {
+func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []string, factors *CostFactors, processRepeat, processTimeLimitMS int) Records {
 	beginAt := time.Now()
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	for _, q := range initSQLs {
@@ -180,7 +181,9 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 	}
 
 	records := make([]Record, 0, len(qs))
-	for i, q := range qs {
+	i := 0
+	for i < len(qs) {
+		q := qs[i]
 		fmt.Printf("[cost-eval] run query %v %v/%v %v\n", q, i, len(qs), time.Since(beginAt))
 		label, planCost, timeMS := extractCostTimeFromQuery(ins, q.SQL, processRepeat, true)
 		if q.Label != "" {
@@ -192,6 +195,16 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 			Label:  label,
 			SQL:    q.SQL,
 		})
+
+		if timeMS > float64(processTimeLimitMS) {
+			// skip all queries with the same TypeID
+			tid := q.TypeID
+			for i < len(qs) && qs[i].TypeID == tid {
+				i++
+			}
+		} else {
+			i++
+		}
 	}
 
 	return records
