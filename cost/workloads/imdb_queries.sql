@@ -62,8 +62,6 @@ CREATE TABLE `title` (      -- 2528312
   KEY `kind_id_title` (`kind_id`)
 );
 
-ALTER TABLE title ADD INDEX idx_year(production_year);
-
 -- ########################## evaluation queries ##########################
 
 -- SCAN
@@ -78,8 +76,8 @@ SELECT /*+ use_index(cast_info, movie_id_cast_info), no_reorder() */ movie_id FR
 SELECT /*+ use_index(movie_companies, movie_id_movie_companies) */ * FROM movie_companies WHERE movie_id>=? AND movie_id<=?; -- lookup
 
 -- AGG
-SELECT /*+ use_index(title, idx_year), stream_agg(), agg_to_cop() */ COUNT(*) FROM title WHERE production_year>=? AND production_year<=?;
-SELECT /*+ use_index(title, idx_year), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM title WHERE production_year>=? AND production_year<=?;
+SELECT /*+ use_index(movie_companies, company_id_movie_companies), stream_agg(), agg_to_cop() */ COUNT(*) FROM movie_companies WHERE company_id>=? AND company_id<=?;
+SELECT /*+ use_index(movie_companies, company_id_movie_companies), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM movie_companies WHERE company_id>=? AND company_id<=?;
 
 -- SORT
 SELECT /*+ use_index(movie_companies, movie_id_movie_companies), must_reorder() */ movie_id FROM movie_companies WHERE movie_id>=? AND movie_id<=? ORDER BY movie_id; -- sort 

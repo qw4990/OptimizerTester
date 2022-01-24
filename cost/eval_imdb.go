@@ -80,23 +80,23 @@ func genIMDBEvaluationLookupQueries(ins tidb.Instance, n int) (qs Queries) {
 }
 
 func genIMDBEvaluationAggQueries(ins tidb.Instance, n int) (qs Queries) {
-	var minY, maxY int
-	mustReadOneLine(ins, `select min(production_year), max(production_year) from title`, &minY, &maxY)
+	var minCID, maxCID int
+	mustReadOneLine(ins, `select min(company_id), max(company_id) from movie_companies`, &minCID, &maxCID)
 
-	//SELECT /*+ use_index(title, idx_year), stream_agg(), agg_to_cop() */ COUNT(*) FROM title WHERE production_year>=? AND production_year<=?;
+	//SELECT /*+ use_index(movie_companies, company_id_movie_companies), stream_agg(), agg_to_cop() */ COUNT(*) FROM movie_companies WHERE company_id>=? AND company_id<=?;
 	for i := 0; i < n; i++ {
-		l, r := randRange(minY, maxY, i, n, 0)
+		l, r := randRange(minCID, maxCID, i, n, 0)
 		qs = append(qs, Query{
-			SQL:   fmt.Sprintf("SELECT /*+ use_index(title, idx_year), stream_agg(), agg_to_cop() */ COUNT(*) FROM title WHERE production_year>=%v AND production_year<=%v", l, r),
+			SQL:   fmt.Sprintf("SELECT /*+ use_index(movie_companies, company_id_movie_companies), stream_agg(), agg_to_cop() */ COUNT(*) FROM movie_companies WHERE company_id>=%v AND company_id<=%v", l, r),
 			Label: "Agg",
 		})
 	}
 
-	//SELECT /*+ use_index(title, idx_year), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM title WHERE production_year>=? AND production_year<=?;
+	//SELECT /*+ use_index(movie_companies, company_id_movie_companies), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM movie_companies WHERE company_id>=? AND company_id<=?;
 	for i := 0; i < n; i++ {
-		l, r := randRange(minY, maxY, i, n, 0)
+		l, r := randRange(minCID, maxCID, i, n, 0)
 		qs = append(qs, Query{
-			SQL:   fmt.Sprintf("SELECT /*+ use_index(title, idx_year), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM title WHERE production_year>=%v AND production_year<=%v", l, r),
+			SQL:   fmt.Sprintf("SELECT /*+ use_index(movie_companies, company_id_movie_companies), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM movie_companies WHERE company_id>=%v AND company_id<=%v", l, r),
 			Label: "Agg",
 		})
 	}
