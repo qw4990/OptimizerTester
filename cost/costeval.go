@@ -111,7 +111,7 @@ func evalOnDataset(ins tidb.Instance, db, dataset, mode string, factors *CostFac
 		//if r.Cost < 5e8 {
 		//	continue
 		//}
-		fmt.Println(">>>> ", r.SQL, r.Cost, r.TimeMS)
+		fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
 		//if r.Cost < 1000 { // the cost of PointGet is always zero
 		//	continue
 		//}
