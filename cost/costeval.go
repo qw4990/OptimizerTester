@@ -27,12 +27,12 @@ func CostEval() {
 	}
 
 	opts := []*evalOpt{
-		//{"imdb", "imdb", "original", 15, 2, 1000},
-		//{"imdb", "imdb", "calibrated", 15, 2, 1000},
+		{"imdb", "imdb", "original", 15, 2, 500},
+		{"imdb", "imdb", "calibrated", 15, 2, 500},
 		{"tpch1g", "tpch", "original", 20, 2, 500},
 		{"tpch1g", "tpch", "calibrated", 20, 2, 500},
-		//{"synthetic", "synthetic", "original", 15, 2, 1000},
-		//{"synthetic", "synthetic", "calibrated", 15, 2, 1000},
+		{"synthetic", "synthetic", "original", 15, 2, 500},
+		{"synthetic", "synthetic", "calibrated", 15, 2, 500},
 	}
 
 	for _, opt := range opts {
@@ -187,6 +187,7 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 		fmt.Printf("[cost-eval] run query %v %v/%v %v\n", q, i, len(qs), time.Since(beginAt))
 		label, planCost, timeMS, tle := extractCostTimeFromQuery(ins, q.SQL, processRepeat, processTimeLimitMS, true)
 		if tle { // skip all queries with the same TypeID
+			fmt.Println("[cost-eval] skip TLE queries")
 			tid := q.TypeID
 			for i < len(qs) && qs[i].TypeID == tid {
 				i++
