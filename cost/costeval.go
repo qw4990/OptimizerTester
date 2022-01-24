@@ -27,12 +27,12 @@ func CostEval() {
 	}
 
 	opts := []*evalOpt{
-		{"imdb", "imdb", "original", 15, 2, 1000},
-		{"imdb", "imdb", "calibrated", 15, 2, 1000},
-		{"tpch1g", "tpch", "original", 15, 2, 1000},
-		{"tpch1g", "tpch", "calibrated", 15, 2, 1000},
-		{"synthetic", "synthetic", "original", 15, 2, 1000},
-		{"synthetic", "synthetic", "calibrated", 15, 2, 1000},
+		//{"imdb", "imdb", "original", 15, 2, 1000},
+		//{"imdb", "imdb", "calibrated", 15, 2, 1000},
+		{"tpch1g", "tpch", "original", 20, 2, 500},
+		{"tpch1g", "tpch", "calibrated", 20, 2, 500},
+		//{"synthetic", "synthetic", "original", 15, 2, 1000},
+		//{"synthetic", "synthetic", "calibrated", 15, 2, 1000},
 	}
 
 	for _, opt := range opts {
@@ -185,7 +185,15 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 	for i < len(qs) {
 		q := qs[i]
 		fmt.Printf("[cost-eval] run query %v %v/%v %v\n", q, i, len(qs), time.Since(beginAt))
-		label, planCost, timeMS := extractCostTimeFromQuery(ins, q.SQL, processRepeat, true)
+		label, planCost, timeMS, tle := extractCostTimeFromQuery(ins, q.SQL, processRepeat, processTimeLimitMS, true)
+		if tle { // skip all queries with the same TypeID
+			tid := q.TypeID
+			for i < len(qs) && qs[i].TypeID == tid {
+				i++
+			}
+			continue
+		}
+
 		if q.Label != "" {
 			label = q.Label
 		}
@@ -195,16 +203,7 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 			Label:  label,
 			SQL:    q.SQL,
 		})
-
-		if timeMS > float64(processTimeLimitMS) {
-			// skip all queries with the same TypeID
-			tid := q.TypeID
-			for i < len(qs) && qs[i].TypeID == tid {
-				i++
-			}
-		} else {
-			i++
-		}
+		i++
 	}
 
 	return records

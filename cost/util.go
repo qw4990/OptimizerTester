@@ -108,7 +108,7 @@ func calculateCost(weights CostWeights, factors CostFactors) float64 {
 	return cost
 }
 
-func extractCostTimeFromQuery(ins tidb.Instance, query string, repeat int, checkRowCount bool) (rootOperator string, avgPlanCost, avgTimeMS float64) {
+func extractCostTimeFromQuery(ins tidb.Instance, query string, repeat, timeLimitMS int, checkRowCount bool) (rootOperator string, avgPlanCost, avgTimeMS float64, tle bool) {
 	query = "explain analyze " + query
 	var totalPlanCost, totalTimeMS float64
 	for i := 0; i < repeat+1; i++ {
@@ -118,11 +118,14 @@ func extractCostTimeFromQuery(ins tidb.Instance, query string, repeat int, check
 		if i == 0 {
 			continue // ignore the first processing
 		}
+		if timeLimitMS > 0 && int(timeMS) > timeLimitMS {
+			return "", 0, 0, true
+		}
 		totalPlanCost += planCost
 		totalTimeMS += timeMS
 		rootOperator = rootOp
 	}
-	return rootOperator, totalPlanCost / float64(repeat), totalTimeMS / float64(repeat)
+	return rootOperator, totalPlanCost / float64(repeat), totalTimeMS / float64(repeat), false
 }
 
 func extractCostTime(explainAnalyzeResults *sql.Rows, q string, checkRowCount bool) (rootOperator string, planCost, timeMS float64) {
