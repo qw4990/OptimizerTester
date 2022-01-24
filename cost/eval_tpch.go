@@ -113,7 +113,7 @@ func genTPCHEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 	for i := 0; i < n; i++ {
 		l, r := randRange(minV, maxV, i, n)
 		qs = append(qs, Query{
-			SQL:   fmt.Sprintf(`SELECT /*+ use_index(lineitem, primary) */ L_LINENUMBER FROM lineitem WHERE L_ORDERKEY>=%v AND L_ORDERKEY<=%v`, l, r),
+			SQL:   fmt.Sprintf(`SELECT /*+ use_index(lineitem, primary) */ L_ORDERKEY FROM lineitem WHERE L_ORDERKEY>=%v AND L_ORDERKEY<=%v`, l, r),
 			Label: "IndexScan",
 		})
 	}
@@ -124,7 +124,7 @@ func genTPCHEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 		l, r := randRange(minV, maxV, i, n)
 		qs = append(qs, Query{
 			SQL:   fmt.Sprintf(`SELECT /*+ use_index(orders, primary) */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=%v AND O_ORDERKEY<=%v`, l, r),
-			Label: "IndexScan",
+			Label: "TableScan",
 		})
 	}
 

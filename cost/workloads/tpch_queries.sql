@@ -99,7 +99,7 @@ CREATE TABLE `supplier` ( -- 10000
 
 -- Table/Index Acs/Desc Scan
 SELECT /*+ use_index(customer, primary) */ * FROM customer WHERE C_CUSTKEY>=? AND C_CUSTKEY<=?; -- table scan
-SELECT /*+ use_index(lineitem, primary) */ L_LINENUMBER FROM lineitem WHERE L_ORDERKEY>=? AND L_ORDERKEY<=?; -- index(PK) scan
+SELECT /*+ use_index(lineitem, primary) */ L_ORDERKEY FROM lineitem WHERE L_ORDERKEY>=? AND L_ORDERKEY<=?; -- index(PK) scan
 SELECT /*+ use_index(orders, primary) */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=? AND O_ORDERKEY<=?; -- index(PK) scan
 SELECT /*+ use_index(orders, primary), no_reorder() */ O_ORDERKEY FROM orders WHERE O_ORDERKEY>=? AND O_ORDERKEY<=? ORDER BY O_ORDERKEY DESC; -- desc index(PK) scan
 SELECT /*+ use_index(customer, primary), no_reorder() */ * FROM customer WHERE C_CUSTKEY>=? AND C_CUSTKEY<=? ORDER BY C_CUSTKEY DESC; -- desc table scan
