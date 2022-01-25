@@ -20,8 +20,13 @@ func (r Records) XY(k int) (x, y float64) {
 func drawCostRecordsTo(r Records, f string) {
 	p := plot.New()
 	p.Title.Text = "cost model accuracy scatter plot"
+	p.Title.TextStyle.Font.Size = 20
 	p.X.Label.Text = "cost estimation"
+	p.X.Tick.Label.Font.Size = 20
+	p.Y.Tick.Label.Font.Size = 20
+	p.X.Label.TextStyle.Font.Size = 20
 	p.Y.Label.Text = "actual exec-time(ms)"
+	p.Y.Label.TextStyle.Font.Size = 20
 
 	labledRecords := make(map[string]Records)
 	for _, record := range r {
@@ -38,6 +43,7 @@ func drawCostRecordsTo(r Records, f string) {
 		s.GlyphStyle.Radius = vg.Points(3)
 		p.Add(s)
 		p.Legend.Add(label, s)
+		p.Legend.TextStyle.Font.Size = 20
 	}
 
 	err := p.Save(800, 800, f)
