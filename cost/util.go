@@ -181,6 +181,22 @@ func parseTimeFromExecInfo(execInfo string) (timeMS float64) {
 	return float64(dur) / float64(time.Millisecond)
 }
 
+func KendallCorrelation(estCosts, actTimes []float64) float64 {
+	n := len(estCosts)
+	tot := n * (n - 1) / 2
+	var concordant int
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			if (estCosts[j] >= estCosts[i] && actTimes[j] >= actTimes[i]) ||
+				(estCosts[j] <= estCosts[i] && actTimes[j] <= actTimes[i]) {
+				concordant += 1
+			}
+		}
+	}
+	discordant := tot - concordant
+	return float64(concordant-discordant) / float64(tot)
+}
+
 func PearsonCorrelation(estCosts, actTimes []float64) float64 {
 	return Covariance(estCosts, actTimes) / (StandardDeviation(estCosts) * StandardDeviation(actTimes))
 }

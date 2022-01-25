@@ -13,7 +13,11 @@ func TestPearsonCorrelation(t *testing.T) {
 	if cost.PearsonCorrelation(xs, ys) != 1 {
 		panic("???")
 	}
+	if cost.KendallCorrelation(xs, ys) != 1 {
+		panic("???")
+	}
 
 	ys = []float64{90000, 800, 700, 60, 50, 4}
 	fmt.Println(cost.PearsonCorrelation(xs, ys))
+	fmt.Println(cost.KendallCorrelation(xs, ys))
 }
