@@ -134,7 +134,7 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 		if opt.dataset == "synthetic" && r.TimeMS > 200 {
 			continue
 		}
-		fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
+		//fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
 		tmp = append(tmp, r)
 	}
 
@@ -163,7 +163,7 @@ func drawSummary(opts []*evalOpt) {
 				if opt.dataset == "synthetic" && r.TimeMS > 200 {
 					continue
 				}
-				fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
+				//fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
 				tmp = append(tmp, r)
 			}
 

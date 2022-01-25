@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -178,4 +179,35 @@ func parseTimeFromExecInfo(execInfo string) (timeMS float64) {
 		panic(fmt.Sprintf("invalid time %v", timeField))
 	}
 	return float64(dur) / float64(time.Millisecond)
+}
+
+func PearsonCorrelation(estCosts, actTimes []float64) float64 {
+	return Covariance(estCosts, actTimes) / (StandardDeviation(estCosts) * StandardDeviation(actTimes))
+}
+
+func Covariance(xs, ys []float64) float64 {
+	avgx, avgy := Average(xs), Average(ys)
+	var acc float64
+	for i := range xs {
+		acc += (xs[i] - avgx) * (ys[i] - avgy)
+	}
+	return acc / float64(len(xs)-1)
+}
+
+func StandardDeviation(xs []float64) float64 {
+	var acc float64
+	avg := Average(xs)
+	for _, x := range xs {
+		acc += (x - avg) * (x - avg)
+	}
+	acc /= float64(len(xs) - 1)
+	return math.Sqrt(acc)
+}
+
+func Average(xs []float64) float64 {
+	var sum float64
+	for _, x := range xs {
+		sum += x
+	}
+	return sum / float64(len(xs))
 }
