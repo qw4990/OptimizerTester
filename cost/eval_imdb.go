@@ -18,25 +18,23 @@ func genIMDBEvaluationQueries(ins tidb.Instance, db string, n int) (qs Queries) 
 
 func genIMDBEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 	var minID, maxID, minMID, maxMID int
-	mustReadOneLine(ins, `select min(id), max(id), min(movie_id), max(movie_id) from cast_info`, &minID, &maxID, &minMID, &maxMID)
+	mustReadOneLine(ins, `select min(id), max(id), min(movie_id), max(movie_id) from movie_companies`, &minID, &maxID, &minMID, &maxMID)
 
-	//SELECT /*+ use_index(cast_info, primary) */ * FROM cast_info WHERE id>=? AND id<=?; -- table scan
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minID, maxID, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("SELECT /*+ use_index(cast_info, primary) */ * FROM cast_info WHERE id>=%v AND id<=%v", l, r),
+			SQL:    fmt.Sprintf("SELECT /*+ use_index(movie_companies, primary) */ * FROM movie_companies WHERE id>=%v AND id<=%v", l, r),
 			Label:  "TableScan",
 			TypeID: tid,
 		})
 	}
 
-	//SELECT /*+ use_index(cast_info, movie_id_cast_info) */ movie_id FROM cast_info WHERE movie_id>=? AND movie_id<=?; -- index scan
 	tid = genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minMID, maxMID, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("SELECT /*+ use_index(cast_info, movie_id_cast_info) */ movie_id FROM cast_info WHERE movie_id>=%v AND movie_id<=%v", l, r),
+			SQL:    fmt.Sprintf("SELECT /*+ use_index(movie_companies, movie_id_movie_companies) */ movie_id FROM movie_companies WHERE movie_id>=%v AND movie_id<=%v", l, r),
 			Label:  "IndexScan",
 			TypeID: tid,
 		})
@@ -46,25 +44,23 @@ func genIMDBEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 
 func genIMDBEvaluationDescScanQueries(ins tidb.Instance, n int) (qs Queries) {
 	var minID, maxID, minMID, maxMID int
-	mustReadOneLine(ins, `select min(id), max(id), min(movie_id), max(movie_id) from cast_info`, &minID, &maxID, &minMID, &maxMID)
+	mustReadOneLine(ins, `select min(id), max(id), min(movie_id), max(movie_id) from movie_companies`, &minID, &maxID, &minMID, &maxMID)
 
-	//SELECT /*+ use_index(cast_info, primary) */ * FROM cast_info WHERE id>=? AND id<=? ORDER BY id DESC; -- table scan
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minID, maxID, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("SELECT /*+ use_index(cast_info, primary) */ * FROM cast_info WHERE id>=%v AND id<=%v ORDER BY id DESC", l, r),
+			SQL:    fmt.Sprintf("SELECT /*+ use_index(movie_companies, primary), no_reorder() */ * FROM movie_companies WHERE id>=%v AND id<=%v ORDER BY id DESC", l, r),
 			Label:  "DescTableScan",
 			TypeID: tid,
 		})
 	}
 
-	//SELECT /*+ use_index(cast_info, movie_id_cast_info) */ movie_id FROM cast_info WHERE movie_id>=? AND movie_id<=? ORDER BY movie_id DESC; -- index scan
 	tid = genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minMID, maxMID, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("SELECT /*+ use_index(cast_info, movie_id_cast_info) */ movie_id FROM cast_info WHERE movie_id>=%v AND movie_id<=%v ORDER BY movie_id DESC", l, r),
+			SQL:    fmt.Sprintf("SELECT /*+ use_index(movie_companies, movie_id_movie_companies), no_reorder() */ movie_id FROM movie_companies WHERE movie_id>=%v AND movie_id<=%v ORDER BY movie_id DESC", l, r),
 			Label:  "DescIndexScan",
 			TypeID: tid,
 		})
@@ -76,7 +72,6 @@ func genIMDBEvaluationLookupQueries(ins tidb.Instance, n int) (qs Queries) {
 	var minMID, maxMID int
 	mustReadOneLine(ins, `select min(movie_id), max(movie_id) from movie_companies`, &minMID, &maxMID)
 
-	//SELECT /*+ use_index(movie_companies, movie_id_movie_companies) */ * FROM movie_companies WHERE movie_id>=? AND movie_id<=?; -- lookup
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minMID, maxMID, i, n)
@@ -94,7 +89,6 @@ func genIMDBEvaluationAggQueries(ins tidb.Instance, n int) (qs Queries) {
 	var minCID, maxCID int
 	mustReadOneLine(ins, `select min(company_id), max(company_id) from movie_companies`, &minCID, &maxCID)
 
-	//SELECT /*+ use_index(movie_companies, company_id_movie_companies), stream_agg(), agg_to_cop() */ COUNT(*) FROM movie_companies WHERE company_id>=? AND company_id<=?;
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minCID, maxCID, i, n)
@@ -105,7 +99,6 @@ func genIMDBEvaluationAggQueries(ins tidb.Instance, n int) (qs Queries) {
 		})
 	}
 
-	//SELECT /*+ use_index(movie_companies, company_id_movie_companies), stream_agg(), agg_not_to_cop() */ COUNT(*) FROM movie_companies WHERE company_id>=? AND company_id<=?;
 	tid = genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minCID, maxCID, i, n)

@@ -65,12 +65,12 @@ CREATE TABLE `title` (      -- 2528312
 -- ########################## evaluation queries ##########################
 
 -- SCAN
-SELECT /*+ use_index(cast_info, primary) */ id FROM cast_info WHERE id>=? AND id<=?; -- table scan
-SELECT /*+ use_index(cast_info, movie_id_cast_info) */ movie_id FROM cast_info WHERE movie_id>=? AND movie_id<=?; -- index scan
+SELECT /*+ use_index(movie_companies, primary) */ * FROM movie_companies WHERE id>=? AND id<=?; -- table scan
+SELECT /*+ use_index(movie_companies, movie_id_movie_companies) */ movie_id FROM movie_companies WHERE movie_id>=? AND movie_id<=?; -- index scan
 
 -- DESC SCAN
-SELECT /*+ use_index(cast_info, primary), no_reorder() */ id FROM cast_info WHERE id>=? AND id<=? ORDER BY id DESC; -- table scan
-SELECT /*+ use_index(cast_info, movie_id_cast_info), no_reorder() */ movie_id FROM cast_info WHERE movie_id>=? AND movie_id<=? ORDER BY movie_id DESC; -- index scan
+SELECT /*+ use_index(movie_companies, primary), no_reorder() */ * FROM movie_companies WHERE id>=? AND id<=? ORDER BY id DESC; -- table scan
+SELECT /*+ use_index(movie_companies, movie_id_movie_companies), no_reorder() */ movie_id FROM movie_companies WHERE movie_id>=? AND movie_id<=? ORDER BY movie_id DESC; -- index scan
 
 -- LOOKUP
 SELECT /*+ use_index(movie_companies, movie_id_movie_companies) */ * FROM movie_companies WHERE movie_id>=? AND movie_id<=?; -- lookup

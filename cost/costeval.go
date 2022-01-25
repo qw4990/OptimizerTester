@@ -29,16 +29,16 @@ func CostEval() {
 	opts := []*evalOpt{
 		{"imdb", "imdb", "original", 30, 2, 3000},
 		{"imdb", "imdb", "calibrated", 30, 2, 3000},
-		{"tpch1g", "tpch", "original", 30, 2, 2000},
-		{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
-		{"synthetic", "synthetic", "original", 30, 2, 500},
-		{"synthetic", "synthetic", "calibrated", 30, 2, 500},
+		//{"tpch1g", "tpch", "original", 30, 2, 2000},
+		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
+		//{"synthetic", "synthetic", "original", 30, 2, 500},
+		//{"synthetic", "synthetic", "calibrated", 30, 2, 500},
 	}
 
 	for _, opt := range opts {
 		evalOnDataset(ins, opt)
 	}
-	drawSummary(opts)
+	//drawSummary(opts)
 
 	//genSyntheticData(ins, 100000, "synthetic")
 }
@@ -134,7 +134,7 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 		if opt.dataset == "synthetic" && r.TimeMS > 200 {
 			continue
 		}
-		//fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
+		fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
 		tmp = append(tmp, r)
 	}
 
