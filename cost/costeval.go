@@ -38,7 +38,7 @@ func CostEval() {
 	for _, opt := range opts {
 		evalOnDataset(ins, opt)
 	}
-	//drawSummary(opts)
+	drawSummary(opts)
 
 	//genSyntheticData(ins, 100000, "synthetic")
 }
@@ -139,6 +139,8 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 	}
 
 	drawCostRecordsTo(tmp, fmt.Sprintf("%v-%v-scatter.png", opt.db, opt.mode))
+	corr := KendallCorrelationByRecords(tmp)
+	fmt.Printf("[cost-eval] KendallCorrelation %v-%v=%v \n", opt.db, opt.mode, corr)
 }
 
 func drawSummary(opts []*evalOpt) {
@@ -170,6 +172,8 @@ func drawSummary(opts []*evalOpt) {
 			rs = append(rs, tmp...)
 		}
 		drawCostRecordsTo(rs, fmt.Sprintf("%v-%v-scatter.png", "summary", mode))
+		corr := KendallCorrelationByRecords(rs)
+		fmt.Printf("[cost-eval] KendallCorrelation summary-%v=%v \n", mode, corr)
 	}
 }
 

@@ -181,6 +181,15 @@ func parseTimeFromExecInfo(execInfo string) (timeMS float64) {
 	return float64(dur) / float64(time.Millisecond)
 }
 
+func KendallCorrelationByRecords(rs Records) float64 {
+	var xs, ys []float64
+	for _, r := range rs {
+		xs = append(xs, r.TimeMS)
+		ys = append(ys, r.Cost)
+	}
+	return KendallCorrelation(xs, ys)
+}
+
 func KendallCorrelation(estCosts, actTimes []float64) float64 {
 	n := len(estCosts)
 	tot := n * (n - 1) / 2
