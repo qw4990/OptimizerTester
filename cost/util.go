@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -114,60 +115,74 @@ func extractCostTimeFromQuery(ins tidb.Instance, query string, repeat, timeLimit
 	var totalPlanCost, totalTimeMS float64
 	for i := 0; i < repeat+1; i++ {
 		rs := ins.MustQuery(query)
-		rootOp, planCost, timeMS := extractCostTime(rs, query, checkRowCount)
-		fmt.Printf("[cost-eval/cali] iter: %v, cost: %v, timeMS: %v, query: %v\n", i, planCost, timeMS, query)
+		explainResult := ParseExplainAnalyzeResultsWithRows(rs)
+		fmt.Printf("[cost-eval/cali] iter: %v, cost: %v, timeMS: %v, query: %v\n", i, explainResult.PlanCost, explainResult.TimeMS, query)
 		if i == 0 {
 			continue // ignore the first processing
 		}
-		if timeLimitMS > 0 && int(timeMS) > timeLimitMS {
+		if checkRowCount {
+			for op := range explainResult.OperatorActRows {
+				if explainResult.OperatorActRows[op] != explainResult.OperatorEstRows[op] {
+					panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, query, explainResult.OperatorEstRows[op], explainResult.OperatorActRows[op]))
+				}
+			}
+		}
+		if timeLimitMS > 0 && int(explainResult.TimeMS) > timeLimitMS {
 			return "", 0, 0, true
 		}
-		totalPlanCost += planCost
-		totalTimeMS += timeMS
-		rootOperator = rootOp
+		totalPlanCost += explainResult.PlanCost
+		totalTimeMS += explainResult.TimeMS
+		rootOperator = explainResult.RootOperator
 	}
 	return rootOperator, totalPlanCost / float64(repeat), totalTimeMS / float64(repeat), false
 }
 
-func extractCostTime(explainAnalyzeResults *sql.Rows, q string, checkRowCount bool) (rootOperator string, planCost, timeMS float64) {
-	//mysql> explain analyze select /*+ use_index(t, b) */ * from synthetic.t where b>=1 and b<=100000;
-	//	+-------------------------------+-----------+-------------+---------+-----------+---------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+---------+------+
-	//	| id                            | estRows   | estCost     | actRows | task      | access object       | execution info                                                                                                                                                                                                                                                 | operator info                      | memory  | disk |
-	//	+-------------------------------+-----------+-------------+---------+-----------+---------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+---------+------+
-	//	| IndexLookUp_7                 | 100109.36 | 11149394.98 | 99986   | root      |                     | time:252.5ms, loops:99, index_task: {total_time: 134.2ms, fetch_handle: 98.2ms, build: 7.86µs, wait: 36ms}, table_task: {total_time: 666.2ms, num: 9, concurrency: 5}                                                                                          |                                    | 37.7 MB | N/A  |
-	//	| ├─IndexRangeScan_5(Build)     | 100109.36 | 5706253.48  | 99986   | cop[tikv] | table:t, index:b(b) | time:93.2ms, loops:102, cop_task: {num: 1, max: 89.6ms, proc_keys: 0, tot_proc: 89ms, rpc_num: 1, rpc_time: 89.6ms, copr_cache_hit_ratio: 0.00}, tikv_task:{time:59.4ms, loops:99986}                                                                          | range:[1,100000], keep order:false | N/A     | N/A  |
-	//	| └─TableRowIDScan_6(Probe)     | 100109.36 | 5706253.48  | 99986   | cop[tikv] | table:t             | time:592.1ms, loops:109, cop_task: {num: 9, max: 89.2ms, min: 10.4ms, avg: 54.1ms, p95: 89.2ms, tot_proc: 456ms, rpc_num: 9, rpc_time: 486.3ms, copr_cache_hit_ratio: 0.00}, tikv_task:{proc max:15ms, min:2.57ms, p80:10.9ms, p95:15ms, iters:99986, tasks:9} | keep order:false                   | N/A     | N/A  |
-	//	+-------------------------------+-----------+-------------+---------+-----------+---------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+---------+------+
-	rs := explainAnalyzeResults
-	var id, task, access, execInfo, opInfo, mem, disk, rootExecInfo string
-	var estRows, actRows, cost float64
-	rootOperator = "Unmatched"
+type ExplainAnalyzeResult struct {
+	RootOperator    string
+	PlanCost        float64
+	TimeMS          float64
+	OperatorActRows map[string]float64
+	OperatorEstRows map[string]float64
+}
+
+func ParseExplainAnalyzeResultsWithRows(rs *sql.Rows) *ExplainAnalyzeResult {
+	//mysql> explain analyze select /*+ display_cost(), trace_cost(), stream_agg(), agg_to_cop() */ count(1) from t where b>=1 and b<=10;
+	//	+-----------------------------+---------+------------------------------------------------------------------------------+---------+-----------+---------------------+-----------------------------------------------------------------------------------------------------------------------------------+---------------------------------+-----------+------+
+	//	| id                          | estRows | estCost                                                                      | actRows | task      | access object       | execution info                                                                                                                    | operator info                   | memory    | disk |
+	//	+-----------------------------+---------+------------------------------------------------------------------------------+---------+-----------+---------------------+-----------------------------------------------------------------------------------------------------------------------------------+---------------------------------+-----------+------+
+	//	| StreamAgg_13                | 1.00    | 35.08:[1 9.744245524296675 8.125 282.5831202046036 0 0 1]:484.2324168797954  | 1       | root      |                     | time:204.5µs, loops:2                                                                                                             | funcs:count(Column#7)->Column#5 | 380 Bytes | N/A  |
+	//	| └─IndexReader_14            | 1.00    | 32.08:[0 9.744245524296675 8.125 282.5831202046036 0 0 1]:481.2324168797954  | 1       | root      |                     | time:196µs, loops:2, cop_task: {num: 1, max: 114.7µs, proc_keys: 0, rpc_num: 1, rpc_time: 102.4µs, copr_cache_hit_ratio: 0.00}    | index:StreamAgg_8               | 176 Bytes | N/A  |
+	//	|   └─StreamAgg_8             | 1.00    | 473.11:[0 9.744245524296675 8.125 282.5831202046036 0 0 1]:481.2324168797954 | 1       | cop[tikv] |                     | tikv_task:{time:2.57µs, loops:20}                                                                                                 | funcs:count(1)->Column#7        | N/A       | N/A  |
+	//	|     └─IndexRangeScan_11     | 9.74    | 443.87:[0 0 0 282.5831202046036 0 0 1]:443.87468030690536                    | 20      | cop[tikv] | table:t, index:b(b) | tikv_task:{time:1.56µs, loops:20}                                                                                                 | range:[1,10], keep order:false  | N/A       | N/A  |
+	//	+-----------------------------+---------+------------------------------------------------------------------------------+---------+-----------+---------------------+-----------------------------------------------------------------------------------------------------------------------------------+---------------------------------+-----------+------+
+	//mysql> show warnings;
+	//+-------+------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	//| Level | Code | Message                                                                                                                                                              |
+	//	+-------+------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	//| Note  | 1105 | [COST] CostWeights: [1 9.744245524296675 8.125 282.5831202046036 0 0 1]                                                                                              |
+	//| Note  | 1105 | [COST] CostCalculation: [CPU, CopCPU, Net, Scan, DescScan, Mem, Seek] [1 9.744245524296675 8.125 282.5831202046036 0 0 1]*[3 3 1 1.5 3 0.001 20] = 484.2324168797954 |
+	//+-------+------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	var id, estRows, actRows, estCost, task, access, execInfo, opInfo, mem, disk string
+	r := &ExplainAnalyzeResult{OperatorActRows: make(map[string]float64), OperatorEstRows: make(map[string]float64)}
 
 	for rs.Next() {
-		if err := rs.Scan(&id, &estRows, &cost, &actRows, &task, &access, &execInfo, &opInfo, &mem, &disk); err != nil {
+		if err := rs.Scan(&id, &estRows, &estCost, &actRows, &task, &access, &execInfo, &opInfo, &mem, &disk); err != nil {
 			panic(err)
 		}
-		if checkRowCount && actRows != estRows && !strings.Contains(q, "agg") {
-			//fmt.Printf("[cost-eval] worker-%v not true-CE for query=%v, est=%v, act=%v\n", id, q, estRows, actRows)
-			panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, q, estRows, actRows))
-		}
-		if rootExecInfo == "" {
-			rootExecInfo, planCost = execInfo, cost
-		}
-		if rootOperator == "Unmatched" {
-			for _, operator := range []string{"Point", "Batch", "IndexReader", "IndexLookup", "TableReader", "Sort"} {
-				if strings.Contains(strings.ToLower(id), strings.ToLower(operator)) {
-					rootOperator = operator
-				}
-			}
+		operator, id := parseOperatorName(id)
+		r.OperatorEstRows[id] = mustStr2Float(estRows)
+		r.OperatorActRows[id] = mustStr2Float(actRows)
+		if r.RootOperator == "" {
+			r.RootOperator = operator
+			r.TimeMS = parseTimeFromExecInfo(execInfo)
+			tmp := strings.Split(estCost, ":")
+			r.PlanCost = mustStr2Float(tmp[0])
 		}
 	}
 	if err := rs.Close(); err != nil {
 		panic(err)
 	}
-
-	timeMS = parseTimeFromExecInfo(rootExecInfo)
-	return
+	return r
 }
 
 func parseTimeFromExecInfo(execInfo string) (timeMS float64) {
@@ -179,6 +194,38 @@ func parseTimeFromExecInfo(execInfo string) (timeMS float64) {
 		panic(fmt.Sprintf("invalid time %v", timeField))
 	}
 	return float64(dur) / float64(time.Millisecond)
+}
+
+func mustStr2Float(str string) float64 {
+	v, err := strconv.ParseFloat(str, 64)
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
+func parseOperatorName(str string) (name, nameWithID string) {
+	//	├─IndexRangeScan_5(Build)
+	begin := 0
+	for begin < len(str) {
+		if str[begin] < 'A' || str[begin] > 'Z' { // not a upper letter
+			begin++
+		}
+	}
+	end0 := begin
+	for end0 < len(str) {
+		if str[end0] != '_' {
+			end0++
+		}
+	}
+
+	end1 := end0 + 1
+	for end1 < len(str) {
+		if str[end1] >= '0' && str[end1] <= '9' {
+			end1++
+		}
+	}
+	return str[begin:end0], str[begin:end1]
 }
 
 func KendallCorrelationByRecords(rs Records) float64 {

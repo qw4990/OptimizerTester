@@ -2,6 +2,7 @@ package cost
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -19,7 +20,7 @@ func CostEval() {
 		Password: "",
 		Label:    "",
 	}
-	//opt.Addr = "127.0.0.1"
+	opt.Addr = "127.0.0.1"
 
 	ins, err := tidb.ConnectTo(opt)
 	if err != nil {
@@ -27,18 +28,18 @@ func CostEval() {
 	}
 
 	opts := []*evalOpt{
-		{"imdb", "imdb", "original", 30, 2, 3000},
-		{"imdb", "imdb", "calibrated", 30, 2, 3000},
-		{"tpch1g", "tpch", "original", 30, 2, 2000},
-		{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
+		//{"imdb", "imdb", "original", 30, 2, 3000},
+		//{"imdb", "imdb", "calibrated", 30, 2, 3000},
+		//{"tpch1g", "tpch", "original", 30, 2, 2000},
+		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
 		{"synthetic", "synthetic", "original", 30, 2, 500},
-		{"synthetic", "synthetic", "calibrated", 30, 2, 500},
+		//{"synthetic", "synthetic", "calibrated", 30, 2, 500},
 	}
 
 	for _, opt := range opts {
 		evalOnDataset(ins, opt)
 	}
-	drawSummary(opts)
+	//drawSummary(opts)
 
 	//genSyntheticData(ins, 100000, "synthetic")
 }
@@ -79,8 +80,8 @@ func (opt *evalOpt) InitSQLs() []string {
 			`set @@tidb_distsql_scan_concurrency=1`,
 			`set @@tidb_executor_concurrency=1`,
 			`set @@tidb_opt_tiflash_concurrency_factor=1`,
-			`set @@tidb_cost_calibration_mode=2`, // use true-CE
-			`set @@tidb_cost_variant=0`,          // use the original cost model
+			//`set @@tidb_cost_calibration_mode=2`, // use true-CE
+			//`set @@tidb_cost_variant=0`,          // use the original cost model
 		}
 	}
 	return initSQLs
@@ -121,6 +122,8 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 	} else {
 		fmt.Println("[cost-eval] read records from file successfully")
 	}
+	
+	os.Exit(0)
 
 	sort.Slice(rs, func(i, j int) bool {
 		return rs[i].TimeMS < rs[j].TimeMS
