@@ -110,11 +110,10 @@ func calculateCost(weights CostWeights, factors CostFactors) float64 {
 	return cost
 }
 
-func extractCostTimeFromQuery(ins tidb.Instance, query string, repeat, timeLimitMS int, checkRowCount bool) (rootOperator string, avgPlanCost, avgTimeMS float64, tle bool) {
-	query = "explain analyze " + query
+func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string, repeat, timeLimitMS int, checkRowCount bool) (rootOperator string, avgPlanCost, avgTimeMS float64, tle bool) {
 	var totalPlanCost, totalTimeMS float64
 	for i := 0; i < repeat+1; i++ {
-		rs := ins.MustQuery(query)
+		rs := ins.MustQuery(explainAnalyzeQuery)
 		explainResult := ParseExplainAnalyzeResultsWithRows(rs)
 		fmt.Printf("[cost-eval/cali] iter: %v, cost: %v, timeMS: %v, query: %v\n", i, explainResult.PlanCost, explainResult.TimeMS, query)
 		if i == 0 {
@@ -123,7 +122,7 @@ func extractCostTimeFromQuery(ins tidb.Instance, query string, repeat, timeLimit
 		if checkRowCount {
 			for op := range explainResult.OperatorActRows {
 				if explainResult.OperatorActRows[op] != explainResult.OperatorEstRows[op] {
-					panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, query, explainResult.OperatorEstRows[op], explainResult.OperatorActRows[op]))
+					panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, explainAnalyzeQuery, explainResult.OperatorEstRows[op], explainResult.OperatorActRows[op]))
 				}
 			}
 		}
@@ -216,12 +215,16 @@ func parseOperatorName(str string) (name, nameWithID string) {
 	for begin < len(str) {
 		if str[begin] < 'A' || str[begin] > 'Z' { // not a upper letter
 			begin++
+		} else {
+			break
 		}
 	}
 	end0 := begin
 	for end0 < len(str) {
 		if str[end0] != '_' {
 			end0++
+		} else {
+			break
 		}
 	}
 
@@ -229,9 +232,17 @@ func parseOperatorName(str string) (name, nameWithID string) {
 	for end1 < len(str) {
 		if str[end1] >= '0' && str[end1] <= '9' {
 			end1++
+		} else {
+			break
 		}
 	}
 	return str[begin:end0], str[begin:end1]
+}
+
+func injectHint(query, hint string) string {
+	hintBegin := strings.Index(query, "/*+ ")
+	hintBegin += len("/*+ ")
+	return query[:hintBegin] + hint + ", " + query[hintBegin:]
 }
 
 func KendallCorrelationByRecords(rs Records) float64 {

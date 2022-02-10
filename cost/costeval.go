@@ -32,7 +32,7 @@ func CostEval() {
 		//{"imdb", "imdb", "calibrated", 30, 2, 3000},
 		//{"tpch1g", "tpch", "original", 30, 2, 2000},
 		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
-		{"synthetic", "synthetic", "original", 30, 2, 500},
+		{"synthetic", "synthetic", "original", 2, 1, 500},
 		//{"synthetic", "synthetic", "calibrated", 30, 2, 500},
 	}
 
@@ -71,8 +71,6 @@ func (opt *evalOpt) InitSQLs() []string {
 			`set @@tidb_distsql_scan_concurrency=1`,
 			`set @@tidb_executor_concurrency=1`,
 			`set @@tidb_opt_tiflash_concurrency_factor=1`,
-			`set @@tidb_cost_calibration_mode=2`, // use true-CE
-			`set @@tidb_cost_variant=1`,          // use the new cost model
 		}
 	} else {
 		initSQLs = []string{
@@ -80,8 +78,6 @@ func (opt *evalOpt) InitSQLs() []string {
 			`set @@tidb_distsql_scan_concurrency=1`,
 			`set @@tidb_executor_concurrency=1`,
 			`set @@tidb_opt_tiflash_concurrency_factor=1`,
-			//`set @@tidb_cost_calibration_mode=2`, // use true-CE
-			//`set @@tidb_cost_variant=0`,          // use the original cost model
 		}
 	}
 	return initSQLs
@@ -219,10 +215,9 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 		fmt.Printf("[cost-eval] run query %v %v/%v %v\n", q, i, len(qs), time.Since(beginAt))
 
 		// step 1: explain-analyze the query actually and parse actRows from the results
-		q1 := "explain analyze " + q.SQL
-		rs := ins.MustQuery(q1)
+		query := "explain analyze " + injectHint(q.SQL, "display_cost(), trace_cost()")
+		rs := ins.MustQuery(query)
 		explainResult := ParseExplainAnalyzeResultsWithRows(rs)
-		checkErr(rs.Close())
 
 		// step 2: construct the cardinality injection hint and update the query hint
 		var cardHints []string
@@ -230,12 +225,10 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 			cardHints = append(cardHints, fmt.Sprintf("true_cardinality(%v=%v)", op, int(rows)))
 		}
 		cardHint := strings.Join(cardHints, ", ")
-		hintBegin := strings.Index(q.SQL, "/*+ ")
-		hintBegin += len("/*+ ")
-		q2 := q.SQL[:hintBegin] + cardHint + q.SQL[hintBegin:]
+		query = injectHint(query, cardHint)
 
 		// step 3: run the cardinality-injected query multiple times
-		label, planCost, timeMS, tle := extractCostTimeFromQuery(ins, q2, processRepeat, processTimeLimitMS, true)
+		label, planCost, timeMS, tle := extractCostTimeFromQuery(ins, query, processRepeat, processTimeLimitMS, true)
 		if tle { // skip all queries with the same TypeID
 			fmt.Println("[cost-eval] skip TLE queries")
 			tid := q.TypeID
