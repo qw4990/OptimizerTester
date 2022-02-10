@@ -122,7 +122,7 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 	} else {
 		fmt.Println("[cost-eval] read records from file successfully")
 	}
-	
+
 	os.Exit(0)
 
 	sort.Slice(rs, func(i, j int) bool {
@@ -217,7 +217,25 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 	for i < len(qs) {
 		q := qs[i]
 		fmt.Printf("[cost-eval] run query %v %v/%v %v\n", q, i, len(qs), time.Since(beginAt))
-		label, planCost, timeMS, tle := extractCostTimeFromQuery(ins, q.SQL, processRepeat, processTimeLimitMS, true)
+
+		// step 1: explain-analyze the query actually and parse actRows from the results
+		q1 := "explain analyze " + q.SQL
+		rs := ins.MustQuery(q1)
+		explainResult := ParseExplainAnalyzeResultsWithRows(rs)
+		checkErr(rs.Close())
+
+		// step 2: construct the cardinality injection hint and update the query hint
+		var cardHints []string
+		for op, rows := range explainResult.OperatorActRows {
+			cardHints = append(cardHints, fmt.Sprintf("true_cardinality(%v=%v)", op, int(rows)))
+		}
+		cardHint := strings.Join(cardHints, ", ")
+		hintBegin := strings.Index(q.SQL, "/*+ ")
+		hintBegin += len("/*+ ")
+		q2 := q.SQL[:hintBegin] + cardHint + q.SQL[hintBegin:]
+
+		// step 3: run the cardinality-injected query multiple times
+		label, planCost, timeMS, tle := extractCostTimeFromQuery(ins, q2, processRepeat, processTimeLimitMS, true)
 		if tle { // skip all queries with the same TypeID
 			fmt.Println("[cost-eval] skip TLE queries")
 			tid := q.TypeID

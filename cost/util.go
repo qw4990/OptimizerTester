@@ -204,6 +204,12 @@ func mustStr2Float(str string) float64 {
 	return v
 }
 
+func checkErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 func parseOperatorName(str string) (name, nameWithID string) {
 	//	├─IndexRangeScan_5(Build)
 	begin := 0
