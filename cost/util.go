@@ -115,16 +115,12 @@ func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string, rep
 	for i := 0; i < repeat+1; i++ {
 		rs := ins.MustQuery(explainAnalyzeQuery)
 		explainResult := ParseExplainAnalyzeResultsWithRows(rs)
-		fmt.Printf("[cost-eval/cali] iter: %v, cost: %v, timeMS: %v, query: %v\n", i, explainResult.PlanCost, explainResult.TimeMS, query)
+		fmt.Printf("[cost-eval/cali] iter: %v, cost: %v, timeMS: %v, query: %v\n", i, explainResult.PlanCost, explainResult.TimeMS, explainAnalyzeQuery)
 		if i == 0 {
 			continue // ignore the first processing
 		}
-		if checkRowCount {
-			for op := range explainResult.OperatorActRows {
-				if explainResult.OperatorActRows[op] != explainResult.OperatorEstRows[op] {
-					panic(fmt.Sprintf(`not true-CE for query=%v, est=%v, act=%v`, explainAnalyzeQuery, explainResult.OperatorEstRows[op], explainResult.OperatorActRows[op]))
-				}
-			}
+		if checkRowCount && !explainResult.UseTrueCardinality() {
+			panic(fmt.Sprintf(`not true-CE for query=%v`, explainAnalyzeQuery))
 		}
 		if timeLimitMS > 0 && int(explainResult.TimeMS) > timeLimitMS {
 			return "", 0, 0, true
@@ -142,6 +138,15 @@ type ExplainAnalyzeResult struct {
 	TimeMS          float64
 	OperatorActRows map[string]float64
 	OperatorEstRows map[string]float64
+}
+
+func (r ExplainAnalyzeResult) UseTrueCardinality() bool {
+	for op, act := range r.OperatorActRows {
+		if r.OperatorEstRows[op] != act {
+			return false
+		}
+	}
+	return true
 }
 
 func ParseExplainAnalyzeResultsWithRows(rs *sql.Rows) *ExplainAnalyzeResult {

@@ -20,7 +20,7 @@ func CostEval() {
 		Password: "",
 		Label:    "",
 	}
-	opt.Addr = "127.0.0.1"
+	//opt.Addr = "127.0.0.1"
 
 	ins, err := tidb.ConnectTo(opt)
 	if err != nil {
@@ -214,21 +214,9 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 		q := qs[i]
 		fmt.Printf("[cost-eval] run query %v %v/%v %v\n", q, i, len(qs), time.Since(beginAt))
 
-		// step 1: explain-analyze the query actually and parse actRows from the results
-		query := "explain analyze " + injectHint(q.SQL, "display_cost(), trace_cost()")
-		rs := ins.MustQuery(query)
-		explainResult := ParseExplainAnalyzeResultsWithRows(rs)
+		trueCardQuery := injectTrueCardinality(ins, q.SQL)
 
-		// step 2: construct the cardinality injection hint and update the query hint
-		var cardHints []string
-		for op, rows := range explainResult.OperatorActRows {
-			cardHints = append(cardHints, fmt.Sprintf("true_cardinality(%v=%v)", op, int(rows)))
-		}
-		cardHint := strings.Join(cardHints, ", ")
-		query = injectHint(query, cardHint)
-
-		// step 3: run the cardinality-injected query multiple times
-		label, planCost, timeMS, tle := extractCostTimeFromQuery(ins, query, processRepeat, processTimeLimitMS, true)
+		label, planCost, timeMS, tle := extractCostTimeFromQuery(ins, trueCardQuery, processRepeat, processTimeLimitMS, true)
 		if tle { // skip all queries with the same TypeID
 			fmt.Println("[cost-eval] skip TLE queries")
 			tid := q.TypeID
@@ -251,4 +239,37 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 	}
 
 	return records
+}
+
+func injectTrueCardinality(ins tidb.Instance, query string) string {
+	query = "explain analyze " + injectHint(query, "display_cost(), trace_cost()")
+	cardinality := make(map[string]float64)
+
+	// we need to run and inject cardinality multiple times since the plan may change after changing the cardinality
+	for {
+		// inject current true cardinality into this query
+		var cardHints []string
+		for op, rows := range cardinality {
+			cardHints = append(cardHints, fmt.Sprintf("true_cardinality(%v=%v)", op, int(rows)))
+		}
+		injectedQuery := query
+		if len(cardHints) > 0 {
+			sort.Strings(cardHints)
+			injectedQuery = injectHint(query, strings.Join(cardHints, ", "))
+		}
+
+		// run this query and check whether estRows are equal to actRows
+		rs := ins.MustQuery(injectedQuery)
+		explainResult := ParseExplainAnalyzeResultsWithRows(rs)
+		if explainResult.UseTrueCardinality() {
+			return injectedQuery
+		}
+
+		fmt.Println("### ", injectedQuery)
+
+		// add current actRows into the true cardinality hints next time
+		for op, act := range explainResult.OperatorActRows {
+			cardinality[op] = act
+		}
+	}
 }
