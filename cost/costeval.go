@@ -2,7 +2,6 @@ package cost
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -119,8 +118,6 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 		fmt.Println("[cost-eval] read records from file successfully")
 	}
 
-	os.Exit(0)
-
 	sort.Slice(rs, func(i, j int) bool {
 		return rs[i].TimeMS < rs[j].TimeMS
 	})
@@ -214,9 +211,13 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 		q := qs[i]
 		fmt.Printf("[cost-eval] run query %v %v/%v %v\n", q, i, len(qs), time.Since(beginAt))
 
-		trueCardQuery := injectTrueCardinality(ins, q.SQL)
+		trueCardQuery, tle := injectTrueCardinality(ins, q.SQL, processTimeLimitMS)
 
-		label, planCost, timeMS, tle := extractCostTimeFromQuery(ins, trueCardQuery, processRepeat, processTimeLimitMS, true)
+		var label string
+		var planCost, timeMS float64
+		if !tle {
+			label, planCost, timeMS, tle = extractCostTimeFromQuery(ins, trueCardQuery, processRepeat, processTimeLimitMS, true)
+		}
 		if tle { // skip all queries with the same TypeID
 			fmt.Println("[cost-eval] skip TLE queries")
 			tid := q.TypeID
@@ -241,7 +242,7 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 	return records
 }
 
-func injectTrueCardinality(ins tidb.Instance, query string) string {
+func injectTrueCardinality(ins tidb.Instance, query string, timeLimitMS int) (string, bool) {
 	query = "explain analyze " + injectHint(query, "display_cost(), trace_cost()")
 	cardinality := make(map[string]float64)
 
@@ -262,8 +263,11 @@ func injectTrueCardinality(ins tidb.Instance, query string) string {
 		// run this query and check whether estRows are equal to actRows
 		rs := ins.MustQuery(injectedQuery)
 		explainResult := ParseExplainAnalyzeResultsWithRows(rs)
+		if timeLimitMS > 0 && int(explainResult.TimeMS) > timeLimitMS {
+			return "", true
+		}
 		if explainResult.UseTrueCardinality() {
-			return injectedQuery
+			return injectedQuery, false
 		}
 
 		fmt.Println("### ", injectedQuery)
