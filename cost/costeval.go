@@ -30,9 +30,9 @@ func CostEval() {
 	opts := []*evalOpt{
 		//{"imdb", "imdb", "original", 30, 2, 3000},
 		//{"imdb", "imdb", "calibrated", 30, 2, 3000},
-		//{"tpch1g", "tpch", "original", 30, 2, 2000},
+		{"tpch1g", "tpch", "original", 2, 1, 2000},
 		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
-		{"synthetic", "synthetic", "original", 2, 1, 500},
+		//{"synthetic", "synthetic", "original", 2, 1, 500},
 		//{"synthetic", "synthetic", "calibrated", 30, 2, 500},
 	}
 
@@ -246,6 +246,7 @@ func injectTrueCardinality(ins tidb.Instance, query string) string {
 	cardinality := make(map[string]float64)
 
 	// we need to run and inject cardinality multiple times since the plan may change after changing the cardinality
+	i := 0
 	for {
 		// inject current true cardinality into this query
 		var cardHints []string
@@ -266,6 +267,10 @@ func injectTrueCardinality(ins tidb.Instance, query string) string {
 		}
 
 		fmt.Println("### ", injectedQuery)
+		i++
+		if i > 5 {
+			panic("cannot get a stable plan")
+		}
 
 		// add current actRows into the true cardinality hints next time
 		for op, act := range explainResult.OperatorActRows {
