@@ -88,7 +88,7 @@ func genSyntheticEvaluationScanQueries(ins tidb.Instance, n int) (qs Queries) {
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("select /*+ use_index(t, b) */ b, c from t where b>=%v and b<=%v", l, r),
+			SQL:    fmt.Sprintf("select /*+ use_index(t, bc) */ b, c from t where b>=%v and b<=%v", l, r),
 			Label:  "IndexScan",
 			TypeID: tid,
 		})
