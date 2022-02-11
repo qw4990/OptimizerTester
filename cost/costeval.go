@@ -31,14 +31,14 @@ func CostEval() {
 		//{"imdb", "imdb", "calibrated", 30, 2, 3000},
 		//{"tpch1g", "tpch", "original", 2, 1, 2000},
 		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
-		{"synthetic", "synthetic", "original", 2, 1, 500},
-		//{"synthetic", "synthetic", "calibrated", 30, 2, 500},
+		{"synthetic", "synthetic", "original", 15, 2, 500},
+		{"synthetic", "synthetic", "calibrated", 15, 2, 500},
 	}
 
 	for _, opt := range opts {
 		evalOnDataset(ins, opt)
 	}
-	//drawSummary(opts)
+	drawSummary(opts)
 
 	//genSyntheticData(ins, 100000, "synthetic")
 }
@@ -70,6 +70,7 @@ func (opt *evalOpt) InitSQLs() []string {
 			`set @@tidb_distsql_scan_concurrency=1`,
 			`set @@tidb_executor_concurrency=1`,
 			`set @@tidb_opt_tiflash_concurrency_factor=1`,
+			`set @@tidb_cost_variant=1`,
 		}
 	} else {
 		initSQLs = []string{
@@ -77,6 +78,7 @@ func (opt *evalOpt) InitSQLs() []string {
 			`set @@tidb_distsql_scan_concurrency=1`,
 			`set @@tidb_executor_concurrency=1`,
 			`set @@tidb_opt_tiflash_concurrency_factor=1`,
+			`set @@tidb_cost_variant=0`,
 		}
 	}
 	return initSQLs
