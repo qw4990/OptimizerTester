@@ -26,6 +26,10 @@ func genSyntheticEvaluationQueries(ins tidb.Instance, db string, n int) Queries 
 	qs = append(qs, genSyntheticEvaluationIndexLookup(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationSort(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationStreamAgg(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationHashAgg(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationHashJoin(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationStreamJoin(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationIndexJoin(ins, n)...)
 	return qs
 }
 
@@ -158,6 +162,22 @@ func genSyntheticEvaluationStreamAgg(ins tidb.Instance, n int) (qs Queries) {
 		})
 	}
 	return qs
+}
+
+func genSyntheticEvaluationHashAgg(ins tidb.Instance, n int) (qs Queries) {
+	return
+}
+
+func genSyntheticEvaluationHashJoin(ins tidb.Instance, n int) (qs Queries) {
+	return
+}
+
+func genSyntheticEvaluationStreamJoin(ins tidb.Instance, n int) (qs Queries) {
+	return
+}
+
+func genSyntheticEvaluationIndexJoin(ins tidb.Instance, n int) (qs Queries) {
+	return
 }
 
 func genSyntheticData(ins tidb.Instance, n int, db string) {
