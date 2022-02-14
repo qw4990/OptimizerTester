@@ -128,6 +128,9 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 		if r.Label == "IndexLookup" {
 			continue
 		}
+		if strings.Contains(r.Label, "Wide") || strings.Contains(r.Label, "Desc") {
+			continue
+		}
 		//if opt.dataset == "synthetic" && r.TimeMS > 200 {
 		//	continue
 		//}
