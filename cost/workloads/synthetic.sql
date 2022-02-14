@@ -24,6 +24,7 @@ set @@tidb_cost_variant=1;
 -- TiFlash Queries --
 
 -- Table Scan
+set @@session.tidb_enforce_mpp=1;
 EXPLAIN ANALYZE SELECT /*+ trace_cost(), display_cost(), true_cardinality(TableRangeScan_5=16), read_from_storage(tiflash[t]) */ a FROM t WHERE a>=0 AND a<=15; -- MPPScan
 
 
