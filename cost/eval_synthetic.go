@@ -228,9 +228,10 @@ func genSyntheticEvaluationTiFlashScan(ins tidb.Instance, n int) (qs Queries) {
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ a FROM t WHERE a>=%v AND a<=%v`, l, r),
-			Label:  "TiFlashScan",
-			TypeID: tid,
+			SQL:         fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ a FROM t WHERE a>=%v AND a<=%v`, l, r),
+			Label:       "TiFlashScan",
+			TypeID:      tid,
+			PlanChecker: checkTiFlashScan,
 		})
 	}
 	return
@@ -244,10 +245,11 @@ func genSyntheticEvaluationMPPTiDBAgg(ins tidb.Instance, n int) (qs Queries) {
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
-			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(*) FROM t WHERE b>=%v and b<=%v`, l, r),
-			Label:   "MPPTiDBAgg",
-			TypeID:  tid,
+			PreSQLs:     []string{`set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
+			SQL:         fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(*) FROM t WHERE b>=%v and b<=%v`, l, r),
+			Label:       "MPPTiDBAgg",
+			TypeID:      tid,
+			PlanChecker: checkMPPTiDBAgg,
 		})
 	}
 	return
@@ -261,10 +263,11 @@ func genSyntheticEvaluationMPP2PhaseAgg(ins tidb.Instance, n int) (qs Queries) {
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
-			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(*), b FROM t WHERE b>=%v and b<=%v GROUP BY b`, l, r),
-			Label:   "MPP2PhaseAgg",
-			TypeID:  tid,
+			PreSQLs:     []string{`set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
+			SQL:         fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(*), b FROM t WHERE b>=%v and b<=%v GROUP BY b`, l, r),
+			Label:       "MPP2PhaseAgg",
+			TypeID:      tid,
+			PlanChecker: checkMPP2PhaseAgg,
 		})
 	}
 	return
@@ -279,10 +282,11 @@ func genSyntheticEvaluationMPPHJ(ins tidb.Instance, n int) (qs Queries) {
 		l1, r1 := randRange(minB, maxB, i, n)
 		l2, r2 := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_enforce_mpp=1`, `set @@session.tidb_opt_broadcast_join=0`},
-			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t1, t2]) */ t1.b, t2.b FROM t t1, t t2 WHERE t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v`, l1, r1, l2, r2),
-			Label:   "MPPHJ",
-			TypeID:  tid,
+			PreSQLs:     []string{`set @@session.tidb_enforce_mpp=1`, `set @@session.tidb_opt_broadcast_join=0`},
+			SQL:         fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t1, t2]) */ t1.b, t2.b FROM t t1, t t2 WHERE t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v`, l1, r1, l2, r2),
+			Label:       "MPPHJ",
+			TypeID:      tid,
+			PlanChecker: checkMPPHJ,
 		})
 	}
 	return
@@ -297,10 +301,11 @@ func genSyntheticEvaluationMPPBCJ(ins tidb.Instance, n int) (qs Queries) {
 		l1, r1 := randRange(minB, maxB, i, n)
 		l2, r2 := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_enforce_mpp=0`, `set @@session.tidb_opt_broadcast_join=1`},
-			SQL:     fmt.Sprintf(`SELECT /*+ broadcast_join(t1, t2), read_from_storage(tiflash[t1, t2]) */ t1.b, t2.b FROM t t1, t t2 WHERE t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v`, l1, r1, l2, r2),
-			Label:   "MPPBCJ",
-			TypeID:  tid,
+			PreSQLs:     []string{`set @@session.tidb_enforce_mpp=0`, `set @@session.tidb_opt_broadcast_join=1`},
+			SQL:         fmt.Sprintf(`SELECT /*+ broadcast_join(t1, t2), read_from_storage(tiflash[t1, t2]) */ t1.b, t2.b FROM t t1, t t2 WHERE t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v`, l1, r1, l2, r2),
+			Label:       "MPPBCJ",
+			TypeID:      tid,
+			PlanChecker: checkMPPBCJ,
 		})
 	}
 	return

@@ -177,11 +177,14 @@ func drawSummary(opts []*evalOpt) {
 }
 
 type Query struct {
-	PreSQLs []string
-	SQL     string
-	Label   string
-	TypeID  int
+	PreSQLs     []string
+	SQL         string
+	Label       string
+	TypeID      int
+	PlanChecker PlanChecker
 }
+
+type PlanChecker func(rawPlan []string) (reason string, ok bool)
 
 type Queries []Query
 
@@ -223,7 +226,7 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 		var label string
 		var planCost, timeMS float64
 		if !tle {
-			label, planCost, timeMS, tle = extractCostTimeFromQuery(ins, trueCardQuery, processRepeat, processTimeLimitMS, true)
+			label, planCost, timeMS, tle = extractCostTimeFromQuery(ins, trueCardQuery, processRepeat, processTimeLimitMS, true, q.PlanChecker)
 		}
 		if tle { // skip all queries with the same TypeID
 			fmt.Println("[cost-eval] skip TLE queries")

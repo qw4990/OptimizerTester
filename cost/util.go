@@ -110,7 +110,7 @@ func calculateCost(weights CostWeights, factors CostFactors) float64 {
 	return cost
 }
 
-func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string, repeat, timeLimitMS int, checkRowCount bool) (rootOperator string, avgPlanCost, avgTimeMS float64, tle bool) {
+func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string, repeat, timeLimitMS int, checkRowCount bool, planChecker PlanChecker) (rootOperator string, avgPlanCost, avgTimeMS float64, tle bool) {
 	var totalPlanCost, totalTimeMS float64
 	for i := 0; i < repeat+1; i++ {
 		rs := ins.MustQuery(explainAnalyzeQuery)
@@ -125,6 +125,12 @@ func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string, rep
 		if timeLimitMS > 0 && int(explainResult.TimeMS) > timeLimitMS {
 			return "", 0, 0, true
 		}
+		if planChecker != nil {
+			reason, ok := planChecker(explainResult.RawPlan)
+			if !ok {
+				panic(fmt.Sprintf("unexpected plan for query=%v, reason=%v", explainAnalyzeQuery, reason))
+			}
+		}
 		totalPlanCost += explainResult.PlanCost
 		totalTimeMS += explainResult.TimeMS
 		rootOperator = explainResult.RootOperator
@@ -138,6 +144,7 @@ type ExplainAnalyzeResult struct {
 	TimeMS          float64
 	OperatorActRows map[string]float64
 	OperatorEstRows map[string]float64
+	RawPlan         []string
 }
 
 func (r ExplainAnalyzeResult) UseTrueCardinality() bool {
@@ -182,6 +189,7 @@ func ParseExplainAnalyzeResultsWithRows(rs *sql.Rows) *ExplainAnalyzeResult {
 			tmp := strings.Split(estCost, ":")
 			r.PlanCost = mustStr2Float(tmp[0])
 		}
+		r.RawPlan = append(r.RawPlan, strings.Join([]string{id, estRows, actRows, estCost, task, access, execInfo, opInfo, mem, disk}, "\t"))
 	}
 	if err := rs.Close(); err != nil {
 		panic(err)
@@ -248,6 +256,69 @@ func injectHint(query, hint string) string {
 	hintBegin := strings.Index(query, "/*+ ")
 	hintBegin += len("/*+ ")
 	return query[:hintBegin] + hint + ", " + query[hintBegin:]
+}
+
+func checkTiFlashScan(rawPlan []string) (reason string, ok bool) {
+	for _, line := range rawPlan {
+		if strings.Contains(line, "Scan") && strings.Contains(line, "tiflash") {
+			return "", true
+		}
+	}
+	return fmt.Sprintf("not a TiFlashScan, plan is \n" + strings.Join(rawPlan, "\n")), false
+}
+
+func checkMPPTiDBAgg(rawPlan []string) (reason string, ok bool) {
+	var tidbAgg, tiflashAgg bool
+	for _, line := range rawPlan {
+		if strings.Contains(line, "Agg") {
+			if strings.Contains(line, "root") {
+				tidbAgg = true
+			}
+			if strings.Contains(line, "tiflash") {
+				tiflashAgg = true
+			}
+		}
+	}
+	if tidbAgg && tiflashAgg {
+		return "", true
+	}
+	return fmt.Sprintf("not a MPPTiDBAgg, plan is \n" + strings.Join(rawPlan, "\n")), false
+}
+
+func checkMPP2PhaseAgg(rawPlan []string) (reason string, ok bool) {
+	var tidbAgg, tiflashAgg bool
+	for _, line := range rawPlan {
+		if strings.Contains(line, "Agg") {
+			if strings.Contains(line, "root") {
+				tidbAgg = true
+			}
+			if strings.Contains(line, "tiflash") {
+				tiflashAgg = true
+			}
+		}
+	}
+	if !tidbAgg && tiflashAgg { // all agg work is done in TiFlash
+		return "", true
+	}
+	return fmt.Sprintf("not a MPPTiDBAgg, plan is \n" + strings.Join(rawPlan, "\n")), false
+}
+
+func checkMPPHJ(rawPlan []string) (reason string, ok bool) {
+	for _, line := range rawPlan {
+		if strings.Contains(line, "ExchangeType: HashPartition") {
+			return "", true
+		}
+	}
+	return fmt.Sprintf("not a MPPHJ, plan is \n" + strings.Join(rawPlan, "\n")), false
+}
+
+func checkMPPBCJ(rawPlan []string) (reason string, ok bool) {
+	for _, line := range rawPlan {
+		if strings.Contains(line, "Broadcast") {
+			return "", true
+		}
+	}
+	return fmt.Sprintf("not a MPPBCJ, plan is \n" + strings.Join(rawPlan, "\n")), false
 }
 
 func KendallCorrelationByRecords(rs Records) float64 {
