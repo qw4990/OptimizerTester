@@ -258,6 +258,22 @@ func injectHint(query, hint string) string {
 	return query[:hintBegin] + hint + ", " + query[hintBegin:]
 }
 
+func getPlanChecker(label string) PlanChecker {
+	switch strings.ToLower(label) {
+	case "tiflashscan":
+		return checkTiFlashScan
+	case "mpptidbagg":
+		return checkMPPTiDBAgg
+	case "mpp2phaseagg":
+		return checkMPP2PhaseAgg
+	case "mpphj":
+		return checkMPPHJ
+	case "mppbcj":
+		return checkMPPBCJ
+	}
+	return nil
+}
+
 func checkTiFlashScan(rawPlan []string) (reason string, ok bool) {
 	for _, line := range rawPlan {
 		if strings.Contains(line, "Scan") && strings.Contains(line, "tiflash") {

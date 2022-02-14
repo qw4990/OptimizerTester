@@ -19,7 +19,8 @@ func CostEval() {
 		Password: "",
 		Label:    "",
 	}
-	//opt.Addr = "127.0.0.1"
+	opt.Addr = "127.0.0.1"
+	opt.Port = 4001
 
 	ins, err := tidb.ConnectTo(opt)
 	if err != nil {
@@ -31,17 +32,17 @@ func CostEval() {
 		//{"imdb", "imdb", "calibrated", 30, 2, 3000},
 		//{"tpch1g", "tpch", "original", 2, 1, 2000},
 		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
-		{"synthetic", "synthetic", "original", 10, 1, 500},
-		{"synthetic", "synthetic", "calibrated", 10, 1, 500},
+		{"synthetic", "synthetic", "original", 3, 1, 500},
+		//{"synthetic", "synthetic", "calibrated", 10, 1, 500},
 	}
 
 	for _, opt := range opts {
-		fmt.Println("--->>>> ", opt)
-		//evalOnDataset(ins, opt)
+		//fmt.Println("--->>>> ", opt)
+		evalOnDataset(ins, opt)
 	}
 	//drawSummary(opts)
 
-	genSyntheticData(ins, 100000, "synthetic")
+	//genSyntheticData(ins, 100000, "synthetic")
 }
 
 type evalOpt struct {
@@ -177,11 +178,10 @@ func drawSummary(opts []*evalOpt) {
 }
 
 type Query struct {
-	PreSQLs     []string
-	SQL         string
-	Label       string
-	TypeID      int
-	PlanChecker PlanChecker
+	PreSQLs []string
+	SQL     string
+	Label   string
+	TypeID  int
 }
 
 type PlanChecker func(rawPlan []string) (reason string, ok bool)
@@ -199,7 +199,6 @@ type Records []Record
 
 func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []string, factors *CostFactors, processRepeat, processTimeLimitMS int) Records {
 	beginAt := time.Now()
-	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	for _, q := range initSQLs {
 		ins.MustExec(q)
 	}
@@ -221,12 +220,13 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 		for _, sql := range q.PreSQLs {
 			ins.MustQuery(sql)
 		}
+		ins.MustExec(fmt.Sprintf(`use %v`, db))
 
 		trueCardQuery, tle := injectTrueCardinality(ins, q.SQL, processTimeLimitMS)
 		var label string
 		var planCost, timeMS float64
 		if !tle {
-			label, planCost, timeMS, tle = extractCostTimeFromQuery(ins, trueCardQuery, processRepeat, processTimeLimitMS, true, q.PlanChecker)
+			label, planCost, timeMS, tle = extractCostTimeFromQuery(ins, trueCardQuery, processRepeat, processTimeLimitMS, true, getPlanChecker(q.Label))
 		}
 		if tle { // skip all queries with the same TypeID
 			fmt.Println("[cost-eval] skip TLE queries")
