@@ -32,8 +32,8 @@ func CostEval() {
 		//{"imdb", "imdb", "calibrated", 30, 2, 3000},
 		//{"tpch1g", "tpch", "original", 2, 1, 2000},
 		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
-		{"synthetic", "synthetic", "original", 3, 1, 500},
-		//{"synthetic", "synthetic", "calibrated", 10, 1, 500},
+		{"synthetic", "synthetic", "original", 3, 1, 3000},
+		{"synthetic", "synthetic", "calibrated", 3, 1, 3000},
 	}
 
 	for _, opt := range opts {
@@ -131,9 +131,9 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 		if r.Label == "IndexLookup" {
 			continue
 		}
-		if opt.dataset == "synthetic" && r.TimeMS > 200 {
-			continue
-		}
+		//if opt.dataset == "synthetic" && r.TimeMS > 200 {
+		//	continue
+		//}
 		fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
 		tmp = append(tmp, r)
 	}
@@ -199,6 +199,7 @@ type Records []Record
 
 func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []string, factors *CostFactors, processRepeat, processTimeLimitMS int) Records {
 	beginAt := time.Now()
+	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	for _, q := range initSQLs {
 		ins.MustExec(q)
 	}
@@ -218,9 +219,8 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 		fmt.Printf("[cost-eval] run query %v %v/%v %v\n", q, i, len(qs), time.Since(beginAt))
 
 		for _, sql := range q.PreSQLs {
-			ins.MustQuery(sql)
+			ins.MustExec(sql)
 		}
-		ins.MustExec(fmt.Sprintf(`use %v`, db))
 
 		trueCardQuery, tle := injectTrueCardinality(ins, q.SQL, processTimeLimitMS)
 		var label string
