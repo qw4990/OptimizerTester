@@ -28,7 +28,7 @@ func genSyntheticEvaluationQueries(ins tidb.Instance, db string, n int) Queries 
 	qs = append(qs, genSyntheticEvaluationStreamAgg(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationHashAgg(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationHashJoin(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationStreamJoin(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationMergeJoin(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationIndexJoin(ins, n)...)
 	return qs
 }
@@ -165,14 +165,55 @@ func genSyntheticEvaluationStreamAgg(ins tidb.Instance, n int) (qs Queries) {
 }
 
 func genSyntheticEvaluationHashAgg(ins tidb.Instance, n int) (qs Queries) {
+	var minB, maxB int
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+
+	tid := genTypeID()
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n)
+		qs = append(qs, Query{
+			SQL:    fmt.Sprintf(`select /*+ use_index(t, b), hash_agg() */ count(1) from t where b>=%v and b<=%v`, l, r),
+			Label:  "HashAgg",
+			TypeID: tid,
+		})
+	}
+
 	return
 }
 
 func genSyntheticEvaluationHashJoin(ins tidb.Instance, n int) (qs Queries) {
+	var minB, maxB int
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+
+	tid := genTypeID()
+	for i := 0; i < n; i++ {
+		l1, r1 := randRange(minB, maxB, i, n)
+		l2, r2 := randRange(minB, maxB, i, n)
+		qs = append(qs, Query{
+			SQL:    fmt.Sprintf("select /*+ use_index(t1, b), use_index(t2, b), tidb_hj(t1, t2) */ t1.b, t2.b from t t1, t t2 where t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v", l1, r1, l2, r2),
+			Label:  "HashJoin",
+			TypeID: tid,
+		})
+	}
 	return
 }
 
-func genSyntheticEvaluationStreamJoin(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvaluationMergeJoin(ins tidb.Instance, n int) (qs Queries) {
+	var minB, maxB int
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+
+	tid := genTypeID()
+	for i := 0; i < n; i++ {
+		l1, r1 := randRange(minB, maxB, i, n)
+		l2, r2 := randRange(minB, maxB, i, n)
+		qs = append(qs, Query{
+			SQL:    fmt.Sprintf("select /*+ use_index(t1, b), use_index(t2, b), tidb_smj(t1, t2) */ t1.b, t2.b from t t1, t t2 where t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v", l1, r1, l2, r2),
+			Label:  "HashJoin",
+			TypeID: tid,
+		})
+	}
+	return
+
 	return
 }
 
