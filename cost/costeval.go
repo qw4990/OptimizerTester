@@ -68,7 +68,6 @@ func (opt *evalOpt) InitSQLs() []string {
 	var initSQLs []string
 	if strings.ToLower(opt.mode) == "calibrated" {
 		initSQLs = []string{
-			`set @@tidb_index_lookup_size=1024`,
 			`set @@tidb_distsql_scan_concurrency=1`,
 			`set @@tidb_executor_concurrency=1`,
 			`set @@tidb_opt_tiflash_concurrency_factor=1`,
@@ -76,7 +75,6 @@ func (opt *evalOpt) InitSQLs() []string {
 		}
 	} else {
 		initSQLs = []string{
-			`set @@tidb_index_lookup_size=1024`,
 			`set @@tidb_distsql_scan_concurrency=1`,
 			`set @@tidb_executor_concurrency=1`,
 			`set @@tidb_opt_tiflash_concurrency_factor=1`,
@@ -162,9 +160,9 @@ func drawSummary(opts []*evalOpt) {
 				if r.Label == "IndexLookup" {
 					continue
 				}
-				if opt.dataset == "synthetic" && r.TimeMS > 200 {
-					continue
-				}
+				//if opt.dataset == "synthetic" && r.TimeMS > 200 {
+				//	continue
+				//}
 				//fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
 				tmp = append(tmp, r)
 			}

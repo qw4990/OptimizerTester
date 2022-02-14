@@ -30,7 +30,7 @@ func genSyntheticEvaluationQueries(ins tidb.Instance, db string, n int) Queries 
 	//qs = append(qs, genSyntheticEvaluationHashJoin(ins, n)...)
 	//qs = append(qs, genSyntheticEvaluationMergeJoin(ins, n)...)
 	//qs = append(qs, genSyntheticEvaluationIndexJoin(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationTiFlashScan(ins, n)...)
+	//qs = append(qs, genSyntheticEvaluationTiFlashScan(ins, n)...)
 	//qs = append(qs, genSyntheticEvaluationMPPTiDBAgg(ins, n)...)
 	//qs = append(qs, genSyntheticEvaluationMPP2PhaseAgg(ins, n)...)
 	//qs = append(qs, genSyntheticEvaluationMPPHJ(ins, n)...)
