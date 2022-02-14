@@ -11,20 +11,106 @@ create table t (
 
 ALTER TABLE t SET TIFLASH REPLICA 1;
 
+use synthetic;
+set @@tidb_distsql_scan_concurrency=1;
+set @@tidb_executor_concurrency=1;
+set @@tidb_opt_tiflash_concurrency_factor=1;
+set @@tidb_cost_variant=1;
+-- disable coprocessor cache
+-- disable plan cache
+
+
 
 -- TiFlash Queries --
 
 -- Table Scan
-EXPLAIN ANALYZE SELECT /*+ trace_cost(), display_cost(), true_cardinality(TableRangeScan_5=16), read_from_storage(tiflash[t]) */ a FROM t WHERE a>=0 AND a<=15;
+EXPLAIN ANALYZE SELECT /*+ trace_cost(), display_cost(), true_cardinality(TableRangeScan_5=16), read_from_storage(tiflash[t]) */ a FROM t WHERE a>=0 AND a<=15; -- MPPScan
 
 
 -- MPP Agg
 set @@session.tidb_allow_mpp=1;
 set @@session.tidb_enforce_mpp=1;
 
-EXPLAIN ANALYZE SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(*) FROM t; -- MPPTiDB
+EXPLAIN ANALYZE SELECT /*+ display_cost(), trace_cost(), read_from_storage(tiflash[t]) */ COUNT(*) FROM t WHERE b>=1 and b<=10; -- MPPTiDB
 
-EXPLAIN ANALYZE SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(*), b FROM t GROUP BY b; -- MPP2Phase
+EXPLAIN ANALYZE SELECT /*+ display_cost(), trace_cost(), read_from_storage(tiflash[t]) */ COUNT(*), b FROM t WHERE b>=1 and b<=10 GROUP BY b; -- MPP2Phase
+
+-- MPP JOIN
+set @@session.tidb_allow_mpp=1;
+set @@session.tidb_broadcast_join_threshold_size = 1;
+set @@session.tidb_broadcast_join_threshold_count = 1;
+set @@session.tidb_opt_broadcast_join=1;
+
+set @@session.tidb_enforce_mpp=1;
+set @@session.tidb_opt_broadcast_join=0;
+EXPLAIN ANALYZE SELECT /*+ display_cost(), trace_cost(), read_from_storage(tiflash[t1, t2]) */ t1.b, t2.b FROM t t1, t t2 WHERE t1.b=t2.b and t1.b>=1 and t1.b<=100 and t2.b>=1 and t2.b<=100; -- MPPHJ
+
+
+set @@session.tidb_enforce_mpp=0;
+set @@session.tidb_opt_broadcast_join=1;
+EXPLAIN ANALYZE SELECT /*+ display_cost(), trace_cost(), broadcast_join(t1, t2), read_from_storage(tiflash[t1, t2]) */ t1.b from t t1 left join t t2 on t1.b=t2.b where t1.b>=1 and t1.b<=100 and t2.b>=1 and t2.b<=100; -- MPPBCJ
+
+
+
+
+
+
+
+
+
+
+mysql> EXPLAIN ANALYZE SELECT /*+ display_cost(), trace_cost(), broadcast_join(t1, t2), read_from_storage(tiflash[t1, t2]) */ t1.b from t t1 left join t t2 on t1.b=t2.b where t1.b>=1 and t1.b<=100 and t2.b>=1 and t2.b<=100; -- MPPBCJ
++----------------------------------------+----------+-------------------------------------------------------------------------+---------+--------------+---------------+---------------------------------------------------------------------------------------+--------------------------------------------------------------------------+---------+------+
+| id                                     | estRows  | estCost                                                                 | actRows | task         | access object | execution info                                                                        | operator info                                                            | memory  | disk |
++----------------------------------------+----------+-------------------------------------------------------------------------+---------+--------------+---------------+---------------------------------------------------------------------------------------+--------------------------------------------------------------------------+---------+------+
+| Projection_6                           | 312.50   | 573239.75:[879.00,20000.00,312.50,340000.00,0.00,250.00,2.00]:572989.75 | 238     | root         |               | time:87.3ms, loops:2, Concurrency:OFF                                                 | synthetic.t.b                                                            | 4.28 KB | N/A  |
+| └─TableReader_16                       | 312.50   | 572296.25:[564.50,20000.00,312.50,340000.00,0.00,250.00,2.00]:572046.25 | 238     | root         |               | time:87.3ms, loops:2, cop_task: {num: 1, max: 0s, proc_keys: 0, copr_cache: disabled} | data:ExchangeSender_15                                                   | N/A     | N/A  |
+|   └─ExchangeSender_15                  | 312.50   | 571983.75:[564.50,20000.00,0.00,340000.00,0.00,250.00,2.00]:571733.75   | 238     | cop[tiflash] |               | tiflash_task:{time:29.6ms, loops:3, threads:8}                                        | ExchangeType: PassThrough                                                | N/A     | N/A  |
+|     └─HashJoin_8                       | 312.50   | 571983.75:[564.50,20000.00,0.00,340000.00,0.00,250.00,2.00]:571733.75   | 238     | cop[tiflash] |               | tiflash_task:{time:29.6ms, loops:3, threads:8}                                        | inner join, equal:[eq(synthetic.t.b, synthetic.t.b)]                     | N/A     | N/A  |
+|       ├─ExchangeReceiver_12(Build)     | 250.00   | 285270.00:[0.00,10000.00,0.00,170000.00,0.00,0.00,1.00]:285020.00       | 100     | cop[tiflash] |               | tiflash_task:{time:19.6ms, loops:3, threads:8}                                        |                                                                          | N/A     | N/A  |
+|       │ └─ExchangeSender_11            | 250.00   | 285270.00:[0.00,10000.00,0.00,170000.00,0.00,0.00,1.00]:285020.00       | 100     | cop[tiflash] |               | tiflash_task:{time:20.8ms, loops:3, threads:1}                                        | ExchangeType: Broadcast                                                  | N/A     | N/A  |
+|       │   └─Selection_10               | 250.00   | 285020.00:[0.00,10000.00,0.00,170000.00,0.00,0.00,1.00]:285020.00       | 100     | cop[tiflash] |               | tiflash_task:{time:20.8ms, loops:3, threads:1}                                        | ge(synthetic.t.b, 1), le(synthetic.t.b, 100), not(isnull(synthetic.t.b)) | N/A     | N/A  |
+|       │     └─TableFullScan_9          | 10000.00 | 255020.00:[0.00,0.00,0.00,170000.00,0.00,0.00,1.00]:255020.00           | 100000  | cop[tiflash] | table:t1      | tiflash_task:{time:18.8ms, loops:3, threads:1}                                        | keep order:false, stats:pseudo                                           | N/A     | N/A  |
+|       └─Selection_14(Probe)            | 250.00   | 285020.00:[0.00,10000.00,0.00,170000.00,0.00,0.00,1.00]:285020.00       | 100     | cop[tiflash] |               | tiflash_task:{time:16.6ms, loops:3, threads:1}                                        | ge(synthetic.t.b, 1), le(synthetic.t.b, 100), not(isnull(synthetic.t.b)) | N/A     | N/A  |
+|         └─TableFullScan_13             | 10000.00 | 255020.00:[0.00,0.00,0.00,170000.00,0.00,0.00,1.00]:255020.00           | 100000  | cop[tiflash] | table:t2      | tiflash_task:{time:15.6ms, loops:3, threads:1}                                        | keep order:false, stats:pseudo                                           | N/A     | N/A  |
++----------------------------------------+----------+-------------------------------------------------------------------------+---------+--------------+---------------+---------------------------------------------------------------------------------------+--------------------------------------------------------------------------+---------+------+
+10 rows in set, 14 warnings (0.22 sec)
+
+mysql> 
+mysql> set @@session.tidb_opt_broadcast_join=0;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> EXPLAIN ANALYZE SELECT /*+ display_cost(), trace_cost(), read_from_storage(tiflash[t1, t2]) */ t1.b, t2.b FROM t t1, t t2 WHERE t1.b=t2.b and t1.b>=1 and t1.b<=100 and t2.b>=1 and t2.b<=100; -- MPPHJ
++--------------------------------------+----------+-------------------------------------------------------------------------+---------+--------------+---------------+----------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------+--------+------+
+| id                                   | estRows  | estCost                                                                 | actRows | task         | access object | execution info                                                                                     | operator info                                                               | memory | disk |
++--------------------------------------+----------+-------------------------------------------------------------------------+---------+--------------+---------------+----------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------+--------+------+
+| TableReader_23                       | 312.50   | 572546.25:[564.50,20000.00,312.50,340000.00,0.00,250.00,2.00]:572046.25 | 238     | root         |               | time:88.5ms, loops:2, cop_task: {num: 3, max: 0s, min: 0s, avg: 0s, p95: 0s, copr_cache: disabled} | data:ExchangeSender_22                                                      | N/A    | N/A  |
+| └─ExchangeSender_22                  | 312.50   | 572233.75:[564.50,20000.00,0.00,340000.00,0.00,250.00,2.00]:571733.75   | 238     | cop[tiflash] |               | tiflash_task:{time:17.7ms, loops:3, threads:8}                                                     | ExchangeType: PassThrough                                                   | N/A    | N/A  |
+|   └─HashJoin_9                       | 312.50   | 572233.75:[564.50,20000.00,0.00,340000.00,0.00,250.00,2.00]:571733.75   | 238     | cop[tiflash] |               | tiflash_task:{time:17.7ms, loops:3, threads:8}                                                     | inner join, equal:[eq(synthetic.t.b, synthetic.t.b)]                        | N/A    | N/A  |
+|     ├─ExchangeReceiver_17(Build)     | 250.00   | 285270.00:[0.00,10000.00,0.00,170000.00,0.00,0.00,1.00]:285020.00       | 100     | cop[tiflash] |               | tiflash_task:{time:17.7ms, loops:3, threads:8}                                                     |                                                                             | N/A    | N/A  |
+|     │ └─ExchangeSender_16            | 250.00   | 285270.00:[0.00,10000.00,0.00,170000.00,0.00,0.00,1.00]:285020.00       | 100     | cop[tiflash] |               | tiflash_task:{time:17.8ms, loops:3, threads:1}                                                     | ExchangeType: HashPartition, Hash Cols: [name: synthetic.t.b, collate: N/A] | N/A    | N/A  |
+|     │   └─Selection_15               | 250.00   | 285020.00:[0.00,10000.00,0.00,170000.00,0.00,0.00,1.00]:285020.00       | 100     | cop[tiflash] |               | tiflash_task:{time:17.8ms, loops:3, threads:1}                                                     | ge(synthetic.t.b, 1), le(synthetic.t.b, 100), not(isnull(synthetic.t.b))    | N/A    | N/A  |
+|     │     └─TableFullScan_14         | 10000.00 | 255020.00:[0.00,0.00,0.00,170000.00,0.00,0.00,1.00]:255020.00           | 100000  | cop[tiflash] | table:t1      | tiflash_task:{time:14.8ms, loops:3, threads:1}                                                     | keep order:false, stats:pseudo                                              | N/A    | N/A  |
+|     └─ExchangeReceiver_21(Probe)     | 250.00   | 285270.00:[0.00,10000.00,0.00,170000.00,0.00,0.00,1.00]:285020.00       | 100     | cop[tiflash] |               | tiflash_task:{time:2.7ms, loops:3, threads:8}                                                      |                                                                             | N/A    | N/A  |
+|       └─ExchangeSender_20            | 250.00   | 285270.00:[0.00,10000.00,0.00,170000.00,0.00,0.00,1.00]:285020.00       | 100     | cop[tiflash] |               | tiflash_task:{time:16.1ms, loops:3, threads:1}                                                     | ExchangeType: HashPartition, Hash Cols: [name: synthetic.t.b, collate: N/A] | N/A    | N/A  |
+|         └─Selection_19               | 250.00   | 285020.00:[0.00,10000.00,0.00,170000.00,0.00,0.00,1.00]:285020.00       | 100     | cop[tiflash] |               | tiflash_task:{time:16.1ms, loops:3, threads:1}                                                     | ge(synthetic.t.b, 1), le(synthetic.t.b, 100), not(isnull(synthetic.t.b))    | N/A    | N/A  |
+|           └─TableFullScan_18         | 10000.00 | 255020.00:[0.00,0.00,0.00,170000.00,0.00,0.00,1.00]:255020.00           | 100000  | cop[tiflash] | table:t2      | tiflash_task:{time:13.1ms, loops:3, threads:1}                                                     | keep order:false, stats:pseudo                                              | N/A    | N/A  |
++--------------------------------------+----------+-------------------------------------------------------------------------+---------+--------------+---------------+----------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------+--------+------+
+11 rows in set, 12 warnings (0.26 sec)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 -- SIMPLE DATA --

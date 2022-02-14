@@ -36,11 +36,12 @@ func CostEval() {
 	}
 
 	for _, opt := range opts {
-		evalOnDataset(ins, opt)
+		fmt.Println("--->>>> ", opt)
+		//evalOnDataset(ins, opt)
 	}
-	drawSummary(opts)
+	//drawSummary(opts)
 
-	//genSyntheticData(ins, 100000, "synthetic")
+	genSyntheticData(ins, 100000, "synthetic")
 }
 
 type evalOpt struct {
@@ -176,9 +177,10 @@ func drawSummary(opts []*evalOpt) {
 }
 
 type Query struct {
-	SQL    string
-	Label  string
-	TypeID int
+	PreSQLs []string
+	SQL     string
+	Label   string
+	TypeID  int
 }
 
 type Queries []Query
