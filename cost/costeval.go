@@ -215,8 +215,11 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 		q := qs[i]
 		fmt.Printf("[cost-eval] run query %v %v/%v %v\n", q, i, len(qs), time.Since(beginAt))
 
-		trueCardQuery, tle := injectTrueCardinality(ins, q.SQL, processTimeLimitMS)
+		for _, sql := range q.PreSQLs {
+			ins.MustQuery(sql)
+		}
 
+		trueCardQuery, tle := injectTrueCardinality(ins, q.SQL, processTimeLimitMS)
 		var label string
 		var planCost, timeMS float64
 		if !tle {
