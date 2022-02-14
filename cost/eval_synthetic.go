@@ -21,15 +21,15 @@ import (
 func genSyntheticEvaluationQueries(ins tidb.Instance, db string, n int) Queries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	qs := make(Queries, 0, 1024)
-	qs = append(qs, genSyntheticEvaluationTableScan(ins, n)...)
+	//qs = append(qs, genSyntheticEvaluationTableScan(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationIndexScan(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationIndexLookup(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationSort(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationStreamAgg(ins, n)...)
+	//qs = append(qs, genSyntheticEvaluationIndexLookup(ins, n)...)
+	//qs = append(qs, genSyntheticEvaluationSort(ins, n)...)
+	//qs = append(qs, genSyntheticEvaluationStreamAgg(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationHashAgg(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationHashJoin(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationMergeJoin(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationIndexJoin(ins, n)...)
+	//qs = append(qs, genSyntheticEvaluationIndexJoin(ins, n)...)
 	return qs
 }
 
@@ -208,7 +208,7 @@ func genSyntheticEvaluationMergeJoin(ins tidb.Instance, n int) (qs Queries) {
 		l2, r2 := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
 			SQL:    fmt.Sprintf("select /*+ use_index(t1, b), use_index(t2, b), tidb_smj(t1, t2) */ t1.b, t2.b from t t1, t t2 where t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v", l1, r1, l2, r2),
-			Label:  "HashJoin",
+			Label:  "MergeJoin",
 			TypeID: tid,
 		})
 	}
