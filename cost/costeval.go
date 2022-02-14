@@ -41,7 +41,6 @@ func CostEval() {
 		evalOnDataset(ins, opt)
 	}
 	//drawSummary(opts)
-
 	//genSyntheticData(ins, 100000, "synthetic")
 }
 
@@ -199,6 +198,7 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 	beginAt := time.Now()
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	for _, q := range initSQLs {
+		fmt.Printf("[cost-eval] init SQL %v;\n", q)
 		ins.MustExec(q)
 	}
 
