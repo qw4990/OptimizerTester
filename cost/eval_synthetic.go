@@ -30,6 +30,7 @@ func genSyntheticEvaluationQueries(ins tidb.Instance, db string, n int) Queries 
 	//qs = append(qs, genSyntheticEvaluationHashJoin(ins, n)...)
 	//qs = append(qs, genSyntheticEvaluationMergeJoin(ins, n)...)
 	//qs = append(qs, genSyntheticEvaluationIndexJoin(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationMPPScan(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationTiFlashScan(ins, n)...)
 	//qs = append(qs, genSyntheticEvaluationMPPTiDBAgg(ins, n)...)
 	//qs = append(qs, genSyntheticEvaluationMPP2PhaseAgg(ins, n)...)
@@ -228,10 +229,27 @@ func genSyntheticEvaluationTiFlashScan(ins tidb.Instance, n int) (qs Queries) {
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
 		qs = append(qs, Query{
+			PreSQLs: []string{"set @@session.tidb_enforce_mpp=0"},
+			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ a FROM t WHERE a>=%v AND a<=%v`, l, r),
+			Label:   "TiFlashScan",
+			TypeID:  tid,
+		})
+	}
+	return
+}
+
+func genSyntheticEvaluationMPPScan(ins tidb.Instance, n int) (qs Queries) {
+	var minA, maxA int
+	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
+
+	tid := genTypeID()
+	for i := 0; i < n; i++ {
+		l, r := randRange(minA, maxA, i, n)
+		qs = append(qs, Query{
 			PreSQLs: []string{"set @@session.tidb_enforce_mpp=1"}, // use MPPScan
-			SQL:    fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ a FROM t WHERE a>=%v AND a<=%v`, l, r),
-			Label:  "MPPScan",
-			TypeID: tid,
+			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ a FROM t WHERE a>=%v AND a<=%v`, l, r),
+			Label:   "MPPScan",
+			TypeID:  tid,
 		})
 	}
 	return

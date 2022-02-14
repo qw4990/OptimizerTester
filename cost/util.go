@@ -260,6 +260,8 @@ func injectHint(query, hint string) string {
 
 func getPlanChecker(label string) PlanChecker {
 	switch strings.ToLower(label) {
+	case "tiflashscan":
+		return checkTiFlashScan
 	case "mppscan":
 		return checkMPPScan
 	case "mpptidbagg":
@@ -272,6 +274,22 @@ func getPlanChecker(label string) PlanChecker {
 		return checkMPPBCJ
 	}
 	return nil
+}
+
+func checkTiFlashScan(rawPlan []string) (reason string, ok bool) {
+	var tiflashScan, exchanger bool
+	for _, line := range rawPlan {
+		if strings.Contains(line, "Scan") && strings.Contains(line, "tiflash") {
+			tiflashScan = true
+		}
+		if strings.Contains(line, "ExchangeSender") {
+			exchanger = true
+		}
+	}
+	if tiflashScan && !exchanger {
+		return "", true
+	}
+	return fmt.Sprintf("not a TiFlashScan, plan is \n" + strings.Join(rawPlan, "\n")), false
 }
 
 func checkMPPScan(rawPlan []string) (reason string, ok bool) {
