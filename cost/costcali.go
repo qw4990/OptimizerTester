@@ -61,10 +61,18 @@ func CostCalibration() {
 		//"DescTableScan",
 		//"DescIndexScan",
 		//"IndexLookup",
-		//"Wide-IndexLookup",
-		//"Agg-PushedDown",
-		//"Agg-NotPushedDown",
+		//"WideIndexLookup",
+		//"StreamAgg",
+		//"HashAgg",
 		//"Sort",
+		//"HashJoin",
+		//"MergeJoin",
+		//"TiFlashScan",
+		//"MPPScan",
+		//"MPPTiDBAgg",
+		//"MPP2PhaseAgg",
+		//"MPPHJ",
+		//"MPPBCJ",
 	}
 	rs = filterCaliRecordsByLabel(rs, whiteList, nil)
 
