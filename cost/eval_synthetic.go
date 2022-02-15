@@ -23,21 +23,21 @@ func genSyntheticEvaluationQueries(ins tidb.Instance, db string, n int) Queries 
 	qs := make(Queries, 0, 1024)
 	
 	// TiKV Plans
-	//qs = append(qs, genSyntheticEvaluationTableScan(ins, n)...)
-	//qs = append(qs, genSyntheticEvaluationIndexScan(ins, n)...)
-	//qs = append(qs, genSyntheticEvaluationSort(ins, n)...)
-	//qs = append(qs, genSyntheticEvaluationStreamAgg(ins, n)...)
-	//qs = append(qs, genSyntheticEvaluationHashAgg(ins, n)...)
-	//qs = append(qs, genSyntheticEvaluationHashJoin(ins, n)...)
-	//qs = append(qs, genSyntheticEvaluationMergeJoin(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationTableScan(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationIndexScan(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationSort(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationStreamAgg(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationHashAgg(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationHashJoin(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationMergeJoin(ins, n)...)
 	//qs = append(qs, genSyntheticEvaluationIndexLookup(ins, n)...)
 	//qs = append(qs, genSyntheticEvaluationIndexJoin(ins, n)...)
 
 	// TiFlash Plans
-	//qs = append(qs, genSyntheticEvaluationMPPScan(ins, n)...)
-	//qs = append(qs, genSyntheticEvaluationTiFlashScan(ins, n)...)
-	//qs = append(qs, genSyntheticEvaluationMPPTiDBAgg(ins, n)...)
-	//qs = append(qs, genSyntheticEvaluationMPP2PhaseAgg(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationMPPScan(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationTiFlashScan(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationMPPTiDBAgg(ins, n)...)
+	qs = append(qs, genSyntheticEvaluationMPP2PhaseAgg(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationMPPHJ(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationMPPBCJ(ins, n)...)
 	return qs
