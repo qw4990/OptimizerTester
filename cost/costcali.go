@@ -54,7 +54,7 @@ type CaliRecords []CaliRecord
 
 // CostCalibration ...
 func CostCalibration() {
-	recordsPath := "./cost-calibration-data/cost-calibration-data/synthetic-original-records.json"
+	recordsPath := "./cost-calibration-data/synthetic-original-records.json"
 	var rs Records
 	if err := readFrom(recordsPath, &rs); err != nil {
 		panic(err)
