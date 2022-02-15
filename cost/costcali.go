@@ -54,6 +54,7 @@ func CostCalibration() {
 	}
 
 	whiteList := []string{
+		// TiKV Plans
 		"TableScan",
 		"IndexScan",
 		"WideTableScan",
@@ -67,20 +68,22 @@ func CostCalibration() {
 		"MergeJoin",
 		//"IndexLookup",
 		//"WideIndexLookup",
-		//"TiFlashScan",
-		//"MPPScan",
-		//"MPPTiDBAgg",
-		//"MPP2PhaseAgg",
-		//"MPPHJ",
-		//"MPPBCJ",
+
+		// TiFlash Plans
+		"TiFlashScan",
+		"MPPScan",
+		"MPPTiDBAgg",
+		"MPP2PhaseAgg",
+		"MPPHJ",
+		"MPPBCJ",
 	}
 	rs = filterCaliRecordsByLabel(rs, whiteList, nil)
 
 	// ====== Manual Calibration ======
 	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
 	// (30,	30,		4,		100,	150,		0,		1.2*1e7)
-	//recalculateAndDraw(rs, &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7})
-	recalculateAndDraw(rs, nil)
+	recalculateAndDraw(rs, &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7})
+	//recalculateAndDraw(rs, nil)
 
 	// ====== Automatic Regression ======
 	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
