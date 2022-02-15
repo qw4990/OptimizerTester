@@ -145,7 +145,7 @@ func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string,
 				panic(fmt.Sprintf("cost weights changed from %v to %v for q=%v", cw, explainResult.TraceWeights, explainAnalyzeQuery))
 			}
 		}
-		if math.Abs(explainResult.TraceCost-explainResult.PlanCost)/explainResult.PlanCost > 0.05 {
+		if math.Abs(explainResult.TraceCost-explainResult.PlanCost)/explainResult.PlanCost > 0.10 {
 			panic(fmt.Sprintf("wrong calCost %v:%v for q=%v", explainResult.TraceCost, explainResult.PlanCost, explainAnalyzeQuery))
 		}
 	}
