@@ -248,7 +248,7 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 			Cost:        planCost,
 			TimeMS:      timeMS,
 			Label:       label,
-			SQL:         q.SQL,
+			SQL:         trueCardQuery,
 			CostWeights: cw,
 		})
 		i++
