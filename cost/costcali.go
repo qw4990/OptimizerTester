@@ -28,6 +28,15 @@ func (cw CostWeights) EqualTo(that CostWeights) bool {
 	return true
 }
 
+func (cw CostWeights) IsZero() bool {
+	for _, v := range cw {
+		if v != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func NewCostWeights(cpu, copCPU, net, scan, descScan, mem, seek float64) CostWeights {
 	return CostWeights{cpu, copCPU, net, scan, descScan, mem, seek}
 }

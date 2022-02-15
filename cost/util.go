@@ -138,7 +138,7 @@ func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string,
 		rootOperator = explainResult.RootOperator
 
 		// cost trace
-		if i == 0 {
+		if cw.IsZero() {
 			cw = explainResult.TraceWeights
 		} else {
 			if !cw.EqualTo(explainResult.TraceWeights) {
