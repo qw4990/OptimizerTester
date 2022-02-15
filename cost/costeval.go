@@ -34,7 +34,7 @@ func CostEval() {
 		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
 		//{"synthetic", "synthetic", "original", 10, 1, 3000},
 		//{"synthetic", "synthetic", "calibrated", 10, 1, 3000},
-		{"synthetic", "synthetic", "calibrating", 15, 1, 3000},
+		{"synthetic", "synthetic", "calibrating", 30, 3, 3000},
 	}
 
 	for _, opt := range opts {
