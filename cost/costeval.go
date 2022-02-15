@@ -32,8 +32,9 @@ func CostEval() {
 		//{"imdb", "imdb", "calibrated", 30, 2, 3000},
 		//{"tpch1g", "tpch", "original", 2, 1, 2000},
 		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
-		{"synthetic", "synthetic", "original", 10, 1, 3000},
+		//{"synthetic", "synthetic", "original", 10, 1, 3000},
 		//{"synthetic", "synthetic", "calibrated", 10, 1, 3000},
+		{"synthetic", "synthetic", "calibrating", 15, 1, 3000},
 	}
 
 	for _, opt := range opts {
@@ -64,21 +65,16 @@ func (opt *evalOpt) Factors() *CostFactors {
 }
 
 func (opt *evalOpt) InitSQLs() []string {
-	var initSQLs []string
-	if strings.ToLower(opt.mode) == "calibrated" {
-		initSQLs = []string{
-			`set @@tidb_distsql_scan_concurrency=1`,
-			`set @@tidb_executor_concurrency=1`,
-			`set @@tidb_opt_tiflash_concurrency_factor=1`,
-			`set @@tidb_cost_variant=1`,
-		}
-	} else {
-		initSQLs = []string{
-			`set @@tidb_distsql_scan_concurrency=1`,
-			`set @@tidb_executor_concurrency=1`,
-			`set @@tidb_opt_tiflash_concurrency_factor=1`,
-			`set @@tidb_cost_variant=0`,
-		}
+	initSQLs := []string{
+		`set @@tidb_distsql_scan_concurrency=1`,
+		`set @@tidb_executor_concurrency=1`,
+		`set @@tidb_opt_tiflash_concurrency_factor=1`,
+	}
+	switch strings.ToLower(opt.mode) {
+	case "calibrated", "calibrating":
+		initSQLs = append(initSQLs, `set @@tidb_cost_variant=1`)
+	case "original":
+		initSQLs = append(initSQLs, `set @@tidb_cost_variant=0`)
 	}
 	return initSQLs
 }
