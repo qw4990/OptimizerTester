@@ -99,7 +99,8 @@ func (opt *evalOpt) GenQueries(ins tidb.Instance) Queries {
 func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 	fmt.Println("[cost-eval] start cost model evaluation ", opt.db, opt.dataset, opt.mode)
 	var qs Queries
-	queryFile := filepath.Join("./cost-calibration-data", fmt.Sprintf("%v-queries.json", opt.db))
+	dataDir := "./cost-calibration-data"
+	queryFile := filepath.Join(dataDir, fmt.Sprintf("%v-queries.json", opt.db))
 	if err := readFrom(queryFile, &qs); err != nil {
 		fmt.Println("[cost-eval] read queries file error: ", err)
 		qs = opt.GenQueries(ins)
@@ -110,7 +111,7 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 	}
 
 	var rs Records
-	recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-%v-records.json", opt.db, opt.mode))
+	recordFile := filepath.Join(dataDir, fmt.Sprintf("%v-%v-records.json", opt.db, opt.mode))
 	if err := readFrom(recordFile, &rs); err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
 		rs = runCostEvalQueries(ins, opt.db, qs, opt.InitSQLs(), opt.Factors(), opt.processRepeat, opt.processTimeLimitMS)
