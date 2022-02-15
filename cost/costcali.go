@@ -72,11 +72,11 @@ func CostCalibration() {
 
 	whiteList := []string{
 		"TableScan",
-		"IndexScan",
+		//"IndexScan",
 		"WideTableScan",
-		"WideIndexScan",
-		"DescTableScan",
-		"DescIndexScan",
+		//"WideIndexScan",
+		//"DescTableScan",
+		//"DescIndexScan",
 		//"IndexLookup",
 		//"Wide-IndexLookup",
 		//"Agg-PushedDown",
@@ -84,8 +84,8 @@ func CostCalibration() {
 		//"Sort",
 	}
 	crs = filterCaliRecordsByLabel(crs, whiteList, nil)
-	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
-	//crs = maskRecords(crs, [NumFactors]bool{true, false, true, true, false, false, false})
+	//(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
+	crs = maskRecords(crs, [NumFactors]bool{false, false, true, true, false, false, false})
 	ret := regressionCostFactors(crs)
 	fmt.Println(ret.String())
 }
