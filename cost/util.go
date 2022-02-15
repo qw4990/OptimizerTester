@@ -52,7 +52,7 @@ func randRange(minVal, maxVal, iter, totalRepeat int) (int, int) {
 }
 
 func saveTo(f string, r interface{}) {
-	data, err := json.Marshal(r)
+	data, err := json.MarshalIndent(r, "", "    ")
 	if err != nil {
 		panic(err)
 	}
