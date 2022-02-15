@@ -112,7 +112,7 @@ func calculateCost(weights CostWeights, factors CostFactors) float64 {
 
 func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string,
 	repeat, timeLimitMS int, checkRowCount bool,
-	planChecker PlanChecker) (rootOperator string, avgPlanCost, avgTimeMS float64, tle bool, weights CostWeights) {
+	planChecker PlanChecker) (rootOperator string, avgPlanCost, avgTimeMS float64, tle bool, cw CostWeights) {
 	var totalPlanCost, totalTimeMS float64
 	for i := 0; i < repeat+1; i++ {
 		rs := ins.MustQuery(explainAnalyzeQuery)
@@ -125,7 +125,7 @@ func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string,
 			panic(fmt.Sprintf(`not true-CE for query=%v`, explainAnalyzeQuery))
 		}
 		if timeLimitMS > 0 && int(explainResult.TimeMS) > timeLimitMS {
-			return "", 0, 0, true, weights
+			return "", 0, 0, true, cw
 		}
 		if planChecker != nil {
 			reason, ok := planChecker(explainResult.RawPlan)
@@ -137,25 +137,32 @@ func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string,
 		totalTimeMS += explainResult.TimeMS
 		rootOperator = explainResult.RootOperator
 
-		rs = ins.MustQuery("show warnings")
-		cw, calCost := ParseCostWeightsFromWarnings(rs)
+		// cost trace
 		if i == 0 {
-			weights = cw
+			cw = explainResult.TraceWeights
 		} else {
-			if !cw.EqualTo(weights) {
-				panic(fmt.Sprintf("cost weights changed from %v to %v for q=%v", weights, cw, explainAnalyzeQuery))
+			if !cw.EqualTo(explainResult.TraceWeights) {
+				panic(fmt.Sprintf("cost weights changed from %v to %v for q=%v", cw, explainResult.TraceWeights, explainAnalyzeQuery))
 			}
 		}
-		if math.Abs(calCost-explainResult.PlanCost)/explainResult.PlanCost > 0.05 {
-			panic(fmt.Sprintf("wrong calCost %v:%v for q=%v", calCost, explainResult.PlanCost, explainAnalyzeQuery))
+		if math.Abs(explainResult.TraceCost-explainResult.PlanCost)/explainResult.PlanCost > 0.05 {
+			panic(fmt.Sprintf("wrong calCost %v:%v for q=%v", explainResult.TraceCost, explainResult.PlanCost, explainAnalyzeQuery))
 		}
 	}
-	return rootOperator, totalPlanCost / float64(repeat), totalTimeMS / float64(repeat), false, weights
+	return rootOperator, totalPlanCost / float64(repeat), totalTimeMS / float64(repeat), false, cw
 }
 
+//+------------------------+----------+-------------------------------------------------------------------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
+//| id                     | estRows  | estCost                                                           | actRows | task      | access object | execution info                                                                                                                                                                                                                                              | operator info                                   | memory  | disk |
+//	+------------------------+----------+-------------------------------------------------------------------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
+//| TableReader_6          | 10000.00 | 52418.00:[0.00,0.00,81250.00,470000.00,0.00,0.00,1.00]:786270.00  | 10000   | root      |               | time:9.93ms, loops:11, cop_task: {num: 1, max: 9.75ms, proc_keys: 10000, tot_proc: 5ms, tot_wait: 2ms, rpc_num: 1, rpc_time: 9.7ms, copr_cache: disabled}                                                                                                   | data:TableRangeScan_5                           | 78.5 KB | N/A  |
+//| └─TableRangeScan_5     | 10000.00 | 705020.00:[0.00,0.00,81250.00,470000.00,0.00,0.00,1.00]:786270.00 | 10000   | cop[tikv] | table:t       | tikv_task:{time:5ms, loops:14}, scan_detail: {total_process_keys: 10000, total_process_keys_size: 270000, total_keys: 10500, rocksdb: {delete_skipped_count: 0, key_skipped_count: 10499, block: {cache_hit_count: 33, read_count: 0, read_byte: 0 Bytes}}} | range:[1,10000], keep order:false, stats:pseudo | N/A     | N/A  |
+//+------------------------+----------+-------------------------------------------------------------------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
 type ExplainAnalyzeResult struct {
 	RootOperator    string
 	PlanCost        float64
+	TraceCost       float64
+	TraceWeights    CostWeights
 	TimeMS          float64
 	OperatorActRows map[string]float64
 	OperatorEstRows map[string]float64
@@ -172,15 +179,12 @@ func (r ExplainAnalyzeResult) UseTrueCardinality() bool {
 }
 
 func ParseExplainAnalyzeResultsWithRows(rs *sql.Rows) *ExplainAnalyzeResult {
-	//mysql> explain analyze select /*+ display_cost(), trace_cost(), stream_agg(), agg_to_cop() */ count(1) from t where b>=1 and b<=10;
-	//	+-----------------------------+---------+------------------------------------------------------------------------------+---------+-----------+---------------------+-----------------------------------------------------------------------------------------------------------------------------------+---------------------------------+-----------+------+
-	//	| id                          | estRows | estCost                                                                      | actRows | task      | access object       | execution info                                                                                                                    | operator info                   | memory    | disk |
-	//	+-----------------------------+---------+------------------------------------------------------------------------------+---------+-----------+---------------------+-----------------------------------------------------------------------------------------------------------------------------------+---------------------------------+-----------+------+
-	//	| StreamAgg_13                | 1.00    | 35.08:[1 9.744245524296675 8.125 282.5831202046036 0 0 1]:484.2324168797954  | 1       | root      |                     | time:204.5µs, loops:2                                                                                                             | funcs:count(Column#7)->Column#5 | 380 Bytes | N/A  |
-	//	| └─IndexReader_14            | 1.00    | 32.08:[0 9.744245524296675 8.125 282.5831202046036 0 0 1]:481.2324168797954  | 1       | root      |                     | time:196µs, loops:2, cop_task: {num: 1, max: 114.7µs, proc_keys: 0, rpc_num: 1, rpc_time: 102.4µs, copr_cache_hit_ratio: 0.00}    | index:StreamAgg_8               | 176 Bytes | N/A  |
-	//	|   └─StreamAgg_8             | 1.00    | 473.11:[0 9.744245524296675 8.125 282.5831202046036 0 0 1]:481.2324168797954 | 1       | cop[tikv] |                     | tikv_task:{time:2.57µs, loops:20}                                                                                                 | funcs:count(1)->Column#7        | N/A       | N/A  |
-	//	|     └─IndexRangeScan_11     | 9.74    | 443.87:[0 0 0 282.5831202046036 0 0 1]:443.87468030690536                    | 20      | cop[tikv] | table:t, index:b(b) | tikv_task:{time:1.56µs, loops:20}                                                                                                 | range:[1,10], keep order:false  | N/A       | N/A  |
-	//	+-----------------------------+---------+------------------------------------------------------------------------------+---------+-----------+---------------------+-----------------------------------------------------------------------------------------------------------------------------------+---------------------------------+-----------+------+
+	//+------------------------+----------+-------------------------------------------------------------------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
+	//| id                     | estRows  | estCost                                                           | actRows | task      | access object | execution info                                                                                                                                                                                                                                              | operator info                                   | memory  | disk |
+	//	+------------------------+----------+-------------------------------------------------------------------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
+	//| TableReader_6          | 10000.00 | 52418.00:[0.00,0.00,81250.00,470000.00,0.00,0.00,1.00]:786270.00  | 10000   | root      |               | time:9.93ms, loops:11, cop_task: {num: 1, max: 9.75ms, proc_keys: 10000, tot_proc: 5ms, tot_wait: 2ms, rpc_num: 1, rpc_time: 9.7ms, copr_cache: disabled}                                                                                                   | data:TableRangeScan_5                           | 78.5 KB | N/A  |
+	//| └─TableRangeScan_5     | 10000.00 | 705020.00:[0.00,0.00,81250.00,470000.00,0.00,0.00,1.00]:786270.00 | 10000   | cop[tikv] | table:t       | tikv_task:{time:5ms, loops:14}, scan_detail: {total_process_keys: 10000, total_process_keys_size: 270000, total_keys: 10500, rocksdb: {delete_skipped_count: 0, key_skipped_count: 10499, block: {cache_hit_count: 33, read_count: 0, read_byte: 0 Bytes}}} | range:[1,10000], keep order:false, stats:pseudo | N/A     | N/A  |
+	//+------------------------+----------+-------------------------------------------------------------------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
 	var id, estRows, actRows, estCost, task, access, execInfo, opInfo, mem, disk string
 	r := &ExplainAnalyzeResult{OperatorActRows: make(map[string]float64), OperatorEstRows: make(map[string]float64)}
 
@@ -196,6 +200,13 @@ func ParseExplainAnalyzeResultsWithRows(rs *sql.Rows) *ExplainAnalyzeResult {
 			r.TimeMS = parseTimeFromExecInfo(execInfo)
 			tmp := strings.Split(estCost, ":")
 			r.PlanCost = mustStr2Float(tmp[0])
+			r.TraceCost = mustStr2Float(tmp[2])
+
+			tmp[1] = strings.Trim(tmp[1], " []")
+			weightStrs := strings.Split(tmp[1], ",")
+			for i := 0; i < NumFactors; i++ {
+				r.TraceWeights[i] = mustStr2Float(weightStrs[i])
+			}
 		}
 		r.RawPlan = append(r.RawPlan, strings.Join([]string{id, estRows, actRows, estCost, task, access, execInfo, opInfo, mem, disk}, "\t"))
 	}
@@ -203,53 +214,6 @@ func ParseExplainAnalyzeResultsWithRows(rs *sql.Rows) *ExplainAnalyzeResult {
 		panic(err)
 	}
 	return r
-}
-
-func ParseCostWeightsFromWarnings(rs *sql.Rows) (cw CostWeights, calculatedCost float64) {
-	//mysql> show warnings;
-	//+-------+------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-	//| Level | Code | Message                                                                                                                                                              |
-	//	+-------+------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-	//| Note  | 1105 | [COST] CostWeights: [1 9.744245524296675 8.125 282.5831202046036 0 0 1]                                                                                              |
-	//| Note  | 1105 | [COST] CostCalculation: [CPU, CopCPU, Net, Scan, DescScan, Mem, Seek] [1 9.744245524296675 8.125 282.5831202046036 0 0 1]*[3 3 1 1.5 3 0.001 20] = 484.2324168797954 |
-	//+-------+------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-	//  (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
-	var level, code, msg string
-	for rs.Next() {
-		if err := rs.Scan(&level, &code, &msg); err != nil {
-			panic(err)
-		}
-		if strings.Contains(msg, "[COST] CostWeights") {
-			tmps := strings.Split(msg, ":")
-			tmp := tmps[len(tmps)-1]
-			tmp = strings.Trim(tmp, " []")
-			ns := strings.Split(tmp, " ")
-			if len(ns) != NumFactors {
-				panic(msg)
-			}
-			for i := 0; i < NumFactors; i++ {
-				var err error
-				cw[i], err = strconv.ParseFloat(ns[i], 64)
-				if err != nil {
-					panic(err)
-				}
-			}
-		}
-		if strings.Contains(msg, "[COST] CostCalculation") {
-			tmps := strings.Split(msg, "=")
-			tmp := tmps[len(tmps)-1]
-			tmp = strings.TrimSpace(tmp)
-			var err error
-			calculatedCost, err = strconv.ParseFloat(tmp, 64)
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-	if err := rs.Close(); err != nil {
-		panic(err)
-	}
-	return
 }
 
 func parseTimeFromExecInfo(execInfo string) (timeMS float64) {
