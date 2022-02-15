@@ -3,7 +3,6 @@ package cost
 import (
 	"fmt"
 	"strings"
-	"time"
 )
 
 const NumFactors = 7
@@ -42,32 +41,12 @@ func NewCostWeights(cpu, copCPU, net, scan, descScan, mem, seek float64) CostWei
 	return CostWeights{cpu, copCPU, net, scan, descScan, mem, seek}
 }
 
-type CaliRecord struct {
-	SQL     string
-	Label   string
-	Weights CostWeights
-	TimeNS  float64
-	Cost    float64
-}
-
-type CaliRecords []CaliRecord
-
 // CostCalibration ...
 func CostCalibration() {
 	recordsPath := "./cost-calibration-data/synthetic-calibrating-records.json"
 	var rs Records
 	if err := readFrom(recordsPath, &rs); err != nil {
 		panic(err)
-	}
-	var crs CaliRecords
-	for _, r := range rs {
-		crs = append(crs, CaliRecord{
-			SQL:     r.SQL,
-			Label:   r.Label,
-			Weights: r.CostWeights,
-			TimeNS:  r.TimeMS * float64(time.Millisecond/time.Nanosecond),
-			Cost:    r.Cost,
-		})
 	}
 
 	whiteList := []string{
@@ -83,19 +62,19 @@ func CostCalibration() {
 		//"Agg-NotPushedDown",
 		//"Sort",
 	}
-	crs = filterCaliRecordsByLabel(crs, whiteList, nil)
+	rs = filterCaliRecordsByLabel(rs, whiteList, nil)
 	//(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
-	crs = maskRecords(crs, [NumFactors]bool{false, false, true, true, false, false, false})
-	ret := regressionCostFactors(crs)
+	rs = maskRecords(rs, [NumFactors]bool{false, false, true, true, false, false, false})
+	ret := regressionCostFactors(rs)
 	fmt.Println(ret.String())
 }
 
-func maskRecords(rs CaliRecords, mask [NumFactors]bool) CaliRecords {
-	ret := make(CaliRecords, 0, len(rs))
+func maskRecords(rs Records, mask [NumFactors]bool) Records {
+	ret := make(Records, 0, len(rs))
 	for _, r := range rs {
 		for k := 0; k < NumFactors; k++ {
 			if mask[k] == false {
-				r.Weights[k] = 0
+				r.CostWeights[k] = 0
 			}
 		}
 		ret = append(ret, r)
@@ -103,8 +82,8 @@ func maskRecords(rs CaliRecords, mask [NumFactors]bool) CaliRecords {
 	return ret
 }
 
-func filterCaliRecordsByLabel(rs CaliRecords, whiteList, blackList []string) CaliRecords {
-	ret := make(CaliRecords, 0, len(rs))
+func filterCaliRecordsByLabel(rs Records, whiteList, blackList []string) Records {
+	ret := make(Records, 0, len(rs))
 	for _, r := range rs {
 		if whiteList != nil {
 			for _, label := range whiteList {

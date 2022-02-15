@@ -26,16 +26,16 @@ func mxNormalize(vals []float64) (normalized []float64, scale float64) {
 	return
 }
 
-func normalize(rs CaliRecords) (ret CaliRecords, scale [NumFactors]float64) {
+func normalize(rs Records) (ret Records, scale [NumFactors]float64) {
 	vals := make([]float64, len(rs))
 
 	// normalize time
 	for i := range rs {
-		vals[i] = rs[i].TimeNS
+		vals[i] = rs[i].TimeMS
 	}
 	vals, _ = mxNormalize(vals)
 	for i := range rs {
-		rs[i].TimeNS = vals[i]
+		rs[i].TimeMS = vals[i]
 	}
 
 	// normalize cost
@@ -50,21 +50,21 @@ func normalize(rs CaliRecords) (ret CaliRecords, scale [NumFactors]float64) {
 	// normalize weights
 	for k := 0; k < NumFactors; k++ {
 		for i := range rs {
-			vals[i] = rs[i].Weights[k]
+			vals[i] = rs[i].CostWeights[k]
 		}
 		vals, scale[k] = mxNormalize(vals)
 		for i := range rs {
-			rs[i].Weights[k] = vals[i]
+			rs[i].CostWeights[k] = vals[i]
 		}
 	}
 
 	for _, r := range rs {
-		fmt.Println("Record>> ", r.Label, r.SQL, r.Weights.String(), r.Cost, r.TimeNS)
+		fmt.Println("Record>> ", r.Label, r.SQL, r.CostWeights, r.Cost, r.TimeMS)
 	}
 	return rs, scale
 }
 
-func regressionCostFactors(rs CaliRecords) CostFactors {
+func regressionCostFactors(rs Records) CostFactors {
 	var scale [NumFactors]float64
 	rs, scale = normalize(rs)
 	x, y := convert2XY(rs)
@@ -154,20 +154,20 @@ func regressionCostFactors(rs CaliRecords) CostFactors {
 	return fv
 }
 
-func convert2XY(rs CaliRecords) (*tensor.Dense, *tensor.Dense) {
+func convert2XY(rs Records) (*tensor.Dense, *tensor.Dense) {
 	by := make([]float64, 0, len(rs))
 	for _, r := range rs {
-		by = append(by, r.TimeNS)
+		by = append(by, r.TimeMS)
 	}
 	y := tensor.New(tensor.WithShape(len(rs)), tensor.WithBacking(by))
 
-	bx := make([]float64, 0, len(rs)*len(rs[0].Weights))
+	bx := make([]float64, 0, len(rs)*len(rs[0].CostWeights))
 	for _, r := range rs {
-		for _, w := range r.Weights {
+		for _, w := range r.CostWeights {
 			bx = append(bx, w)
 		}
 	}
-	x := tensor.New(tensor.WithShape(len(rs), len(rs[0].Weights)), tensor.WithBacking(bx))
+	x := tensor.New(tensor.WithShape(len(rs), len(rs[0].CostWeights)), tensor.WithBacking(bx))
 
 	return x, y
 }
