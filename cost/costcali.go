@@ -55,18 +55,18 @@ func CostCalibration() {
 
 	whiteList := []string{
 		"TableScan",
-		//"IndexScan",
+		"IndexScan",
 		"WideTableScan",
-		//"WideIndexScan",
-		//"DescTableScan",
-		//"DescIndexScan",
+		"WideIndexScan",
+		"DescTableScan",
+		"DescIndexScan",
+		"StreamAgg",
+		"HashAgg",
+		"Sort",
+		"HashJoin",
+		"MergeJoin",
 		//"IndexLookup",
 		//"WideIndexLookup",
-		//"StreamAgg",
-		//"HashAgg",
-		//"Sort",
-		//"HashJoin",
-		//"MergeJoin",
 		//"TiFlashScan",
 		//"MPPScan",
 		//"MPPTiDBAgg",
@@ -77,8 +77,10 @@ func CostCalibration() {
 	rs = filterCaliRecordsByLabel(rs, whiteList, nil)
 
 	// ====== Manual Calibration ======
-	// // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
-	recalculateAndDraw(rs, CostFactors{0, 0, 1, 25, 0, 0, 0})
+	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
+	// (30,	30,		4,		100,	150,		0,		1.2*1e7)
+	//recalculateAndDraw(rs, &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7})
+	recalculateAndDraw(rs, nil)
 
 	// ====== Automatic Regression ======
 	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
@@ -87,9 +89,11 @@ func CostCalibration() {
 	//fmt.Println(ret.String())
 }
 
-func recalculateAndDraw(rs Records, factors CostFactors) {
+func recalculateAndDraw(rs Records, factors *CostFactors) {
 	for i := range rs {
-		rs[i].Cost = rs[i].CostWeights.CalCost(factors)
+		if factors != nil {
+			rs[i].Cost = rs[i].CostWeights.CalCost(*factors)
+		}
 	}
 
 	drawCostRecordsTo(rs, fmt.Sprintf("%v-%v-scatter.png", "synthetic", "calibrating"))
