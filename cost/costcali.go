@@ -37,8 +37,12 @@ func (cw CostWeights) IsZero() bool {
 	return true
 }
 
-func NewCostWeights(cpu, copCPU, net, scan, descScan, mem, seek float64) CostWeights {
-	return CostWeights{cpu, copCPU, net, scan, descScan, mem, seek}
+func (cw CostWeights) CalCost(factors CostFactors) float64 {
+	var cost float64
+	for i := range cw {
+		cost += cw[i] * factors[i]
+	}
+	return cost
 }
 
 // CostCalibration ...
@@ -63,10 +67,24 @@ func CostCalibration() {
 		//"Sort",
 	}
 	rs = filterCaliRecordsByLabel(rs, whiteList, nil)
-	//(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
-	rs = maskRecords(rs, [NumFactors]bool{false, false, true, true, false, false, false})
-	ret := regressionCostFactors(rs)
-	fmt.Println(ret.String())
+
+	// ====== Manual Calibration ======
+	// // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
+	recalculateAndDraw(rs, CostFactors{0, 0, 1, 25, 0, 0, 0})
+
+	// ====== Automatic Regression ======
+	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
+	//rs = maskRecords(rs, [NumFactors]bool{false, false, true, true, false, false, false})
+	//ret := regressionCostFactors(rs)
+	//fmt.Println(ret.String())
+}
+
+func recalculateAndDraw(rs Records, factors CostFactors) {
+	for i := range rs {
+		rs[i].Cost = rs[i].CostWeights.CalCost(factors)
+	}
+
+	drawCostRecordsTo(rs, fmt.Sprintf("%v-%v-scatter.png", "synthetic", "calibrating"))
 }
 
 func maskRecords(rs Records, mask [NumFactors]bool) Records {
