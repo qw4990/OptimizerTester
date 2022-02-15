@@ -99,7 +99,7 @@ func (opt *evalOpt) GenQueries(ins tidb.Instance) Queries {
 func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 	fmt.Println("[cost-eval] start cost model evaluation ", opt.db, opt.dataset, opt.mode)
 	var qs Queries
-	queryFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-queries.json", opt.db))
+	queryFile := filepath.Join("./cost-calibration-data", fmt.Sprintf("%v-queries.json", opt.db))
 	if err := readFrom(queryFile, &qs); err != nil {
 		fmt.Println("[cost-eval] read queries file error: ", err)
 		qs = opt.GenQueries(ins)
