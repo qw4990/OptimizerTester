@@ -281,7 +281,7 @@ func injectTrueCardinality(ins tidb.Instance, query string, timeLimitMS int) (st
 		if timeLimitMS > 0 && int(explainResult.TimeMS) > timeLimitMS {
 			return "", true
 		}
-		if explainResult.UseTrueCardinality() {
+		if i > 0 && explainResult.UseTrueCardinality() {
 			return injectedQuery, false
 		}
 
