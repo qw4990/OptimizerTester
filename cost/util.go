@@ -110,7 +110,9 @@ func calculateCost(weights CostWeights, factors CostFactors) float64 {
 	return cost
 }
 
-func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string, repeat, timeLimitMS int, checkRowCount bool, planChecker PlanChecker) (rootOperator string, avgPlanCost, avgTimeMS float64, tle bool) {
+func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string,
+	repeat, timeLimitMS int, checkRowCount bool,
+	planChecker PlanChecker) (rootOperator string, avgPlanCost, avgTimeMS float64, tle bool, weights CostWeights) {
 	var totalPlanCost, totalTimeMS float64
 	for i := 0; i < repeat+1; i++ {
 		rs := ins.MustQuery(explainAnalyzeQuery)
@@ -123,7 +125,7 @@ func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string, rep
 			panic(fmt.Sprintf(`not true-CE for query=%v`, explainAnalyzeQuery))
 		}
 		if timeLimitMS > 0 && int(explainResult.TimeMS) > timeLimitMS {
-			return "", 0, 0, true
+			return "", 0, 0, true, weights
 		}
 		if planChecker != nil {
 			reason, ok := planChecker(explainResult.RawPlan)
@@ -134,8 +136,21 @@ func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string, rep
 		totalPlanCost += explainResult.PlanCost
 		totalTimeMS += explainResult.TimeMS
 		rootOperator = explainResult.RootOperator
+
+		rs = ins.MustQuery("show warnings")
+		cw, calCost := ParseCostWeightsFromWarnings(rs)
+		if i == 0 {
+			weights = cw
+		} else {
+			if !cw.EqualTo(weights) {
+				panic(fmt.Sprintf("cost weights changed from %v to %v for q=%v", weights, cw, explainAnalyzeQuery))
+			}
+		}
+		if math.Abs(calCost-explainResult.PlanCost)/explainResult.PlanCost > 0.05 {
+			panic(fmt.Sprintf("wrong calCost %v:%v for q=%v", calCost, explainResult.PlanCost, explainAnalyzeQuery))
+		}
 	}
-	return rootOperator, totalPlanCost / float64(repeat), totalTimeMS / float64(repeat), false
+	return rootOperator, totalPlanCost / float64(repeat), totalTimeMS / float64(repeat), false, weights
 }
 
 type ExplainAnalyzeResult struct {
@@ -166,13 +181,6 @@ func ParseExplainAnalyzeResultsWithRows(rs *sql.Rows) *ExplainAnalyzeResult {
 	//	|   └─StreamAgg_8             | 1.00    | 473.11:[0 9.744245524296675 8.125 282.5831202046036 0 0 1]:481.2324168797954 | 1       | cop[tikv] |                     | tikv_task:{time:2.57µs, loops:20}                                                                                                 | funcs:count(1)->Column#7        | N/A       | N/A  |
 	//	|     └─IndexRangeScan_11     | 9.74    | 443.87:[0 0 0 282.5831202046036 0 0 1]:443.87468030690536                    | 20      | cop[tikv] | table:t, index:b(b) | tikv_task:{time:1.56µs, loops:20}                                                                                                 | range:[1,10], keep order:false  | N/A       | N/A  |
 	//	+-----------------------------+---------+------------------------------------------------------------------------------+---------+-----------+---------------------+-----------------------------------------------------------------------------------------------------------------------------------+---------------------------------+-----------+------+
-	//mysql> show warnings;
-	//+-------+------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-	//| Level | Code | Message                                                                                                                                                              |
-	//	+-------+------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-	//| Note  | 1105 | [COST] CostWeights: [1 9.744245524296675 8.125 282.5831202046036 0 0 1]                                                                                              |
-	//| Note  | 1105 | [COST] CostCalculation: [CPU, CopCPU, Net, Scan, DescScan, Mem, Seek] [1 9.744245524296675 8.125 282.5831202046036 0 0 1]*[3 3 1 1.5 3 0.001 20] = 484.2324168797954 |
-	//+-------+------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 	var id, estRows, actRows, estCost, task, access, execInfo, opInfo, mem, disk string
 	r := &ExplainAnalyzeResult{OperatorActRows: make(map[string]float64), OperatorEstRows: make(map[string]float64)}
 
@@ -195,6 +203,53 @@ func ParseExplainAnalyzeResultsWithRows(rs *sql.Rows) *ExplainAnalyzeResult {
 		panic(err)
 	}
 	return r
+}
+
+func ParseCostWeightsFromWarnings(rs *sql.Rows) (cw CostWeights, calculatedCost float64) {
+	//mysql> show warnings;
+	//+-------+------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	//| Level | Code | Message                                                                                                                                                              |
+	//	+-------+------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	//| Note  | 1105 | [COST] CostWeights: [1 9.744245524296675 8.125 282.5831202046036 0 0 1]                                                                                              |
+	//| Note  | 1105 | [COST] CostCalculation: [CPU, CopCPU, Net, Scan, DescScan, Mem, Seek] [1 9.744245524296675 8.125 282.5831202046036 0 0 1]*[3 3 1 1.5 3 0.001 20] = 484.2324168797954 |
+	//+-------+------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+	//  (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
+	var level, code, msg string
+	for rs.Next() {
+		if err := rs.Scan(&level, &code, &msg); err != nil {
+			panic(err)
+		}
+		if strings.Contains(msg, "[COST] CostWeights") {
+			tmps := strings.Split(msg, ":")
+			tmp := tmps[len(tmps)-1]
+			tmp = strings.Trim(tmp, " []")
+			ns := strings.Split(tmp, " ")
+			if len(ns) != NumFactors {
+				panic(msg)
+			}
+			for i := 0; i < NumFactors; i++ {
+				var err error
+				cw[i], err = strconv.ParseFloat(ns[i], 64)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+		if strings.Contains(msg, "[COST] CostCalculation") {
+			tmps := strings.Split(msg, "=")
+			tmp := tmps[len(tmps)-1]
+			tmp = strings.TrimSpace(tmp)
+			var err error
+			calculatedCost, err = strconv.ParseFloat(tmp, 64)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	if err := rs.Close(); err != nil {
+		panic(err)
+	}
+	return
 }
 
 func parseTimeFromExecInfo(execInfo string) (timeMS float64) {

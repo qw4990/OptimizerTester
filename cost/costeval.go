@@ -189,10 +189,11 @@ type PlanChecker func(rawPlan []string) (reason string, ok bool)
 type Queries []Query
 
 type Record struct {
-	Cost   float64
-	TimeMS float64
-	Label  string
-	SQL    string
+	Cost        float64
+	TimeMS      float64
+	Label       string
+	SQL         string
+	CostWeights CostWeights
 }
 
 type Records []Record
@@ -226,8 +227,9 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 		trueCardQuery, tle := injectTrueCardinality(ins, q.SQL, processTimeLimitMS)
 		var label string
 		var planCost, timeMS float64
+		var cw CostWeights
 		if !tle {
-			label, planCost, timeMS, tle = extractCostTimeFromQuery(ins, trueCardQuery, processRepeat, processTimeLimitMS, true, getPlanChecker(q.Label))
+			label, planCost, timeMS, tle, cw = extractCostTimeFromQuery(ins, trueCardQuery, processRepeat, processTimeLimitMS, true, getPlanChecker(q.Label))
 		}
 		if tle { // skip all queries with the same TypeID
 			fmt.Println("[cost-eval] skip TLE queries")
@@ -242,10 +244,11 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 			label = q.Label
 		}
 		records = append(records, Record{
-			Cost:   planCost,
-			TimeMS: timeMS,
-			Label:  label,
-			SQL:    q.SQL,
+			Cost:        planCost,
+			TimeMS:      timeMS,
+			Label:       label,
+			SQL:         q.SQL,
+			CostWeights: cw,
 		})
 		i++
 	}
