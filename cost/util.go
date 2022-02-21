@@ -381,6 +381,18 @@ func checkMPPBCJ(rawPlan []string) (reason string, ok bool) {
 	return fmt.Sprintf("not a MPPBCJ, plan is \n" + strings.Join(rawPlan, "\n")), false
 }
 
+func filterQueriesByLabel(qs Queries, whiteList []string) (ret Queries) {
+	for _, q := range qs {
+		for _, label := range whiteList {
+			if strings.Contains(strings.ToLower(q.Label), strings.ToLower(label)) {
+				ret = append(ret, q)
+				break
+			}
+		}
+	}
+	return
+}
+
 func KendallCorrelationByRecords(rs Records) float64 {
 	var xs, ys []float64
 	for _, r := range rs {

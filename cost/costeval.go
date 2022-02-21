@@ -32,8 +32,8 @@ func CostEval() {
 		//{"imdb", "imdb", "calibrated", 30, 2, 3000},
 		//{"tpch1g", "tpch", "original", 2, 1, 2000},
 		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
-		{"synthetic", "synthetic", "original", 20, 1, 3000},
-		//{"synthetic", "synthetic", "calibrated", 10, 1, 3000},
+		{"synthetic", "synthetic", "original", 20, 2, 3000},
+		{"synthetic", "synthetic", "calibrated", 20, 2, 3000},
 		//{"synthetic", "synthetic", "calibrating", 20, 2, 3000},
 	}
 
@@ -105,6 +105,8 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 	} else {
 		fmt.Println("[cost-eval] read queries from file successfully ")
 	}
+
+	qs = filterQueriesByLabel(qs, []string{"TableScan", "IndexScan", "MPPScan"})
 
 	var rs Records
 	recordFile := filepath.Join(dataDir, fmt.Sprintf("%v-%v-records.json", opt.db, opt.mode))
