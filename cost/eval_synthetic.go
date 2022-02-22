@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"strings"
 	"time"
-	
+
 	"github.com/qw4990/OptimizerTester/tidb"
 )
 
@@ -25,6 +25,8 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 
 	// TiKV Plans
 	qs = append(qs, genSyntheticEvalTableScan(ins, n)...)
+	qs = append(qs, genSyntheticEvalDescTableScan(ins, n)...)
+	qs = append(qs, genSyntheticEvalWideTableScan(ins, n)...)
 	qs = append(qs, genSyntheticEvalIndexScan(ins, n)...)
 	qs = append(qs, genSyntheticEvalSort(ins, n)...)
 	qs = append(qs, genSyntheticEvalStreamAgg(ins, n)...)
@@ -64,7 +66,6 @@ func genSyntheticEvalIndexLookup(ins tidb.Instance, n int) (qs Queries) {
 func genSyntheticEvalTableScan(ins tidb.Instance, n int) (qs Queries) {
 	var minA, maxA int
 	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
-
 	tid := genTypeID() // TableScan
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
@@ -74,18 +75,13 @@ func genSyntheticEvalTableScan(ins tidb.Instance, n int) (qs Queries) {
 			TypeID: tid,
 		})
 	}
+	return
+}
 
-	tid = genTypeID()
-	for i := 0; i < n; i++ { // WideTableScan
-		l, r := randRange(minA, maxA, i, n)
-		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("select /*+ use_index(t, primary) */ a, c from t where a>=%v and a<=%v", l, r),
-			Label:  "WideTableScan",
-			TypeID: tid,
-		})
-	}
-
-	tid = genTypeID()
+func genSyntheticEvalDescTableScan(ins tidb.Instance, n int) (qs Queries) {
+	var minA, maxA int
+	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
+	tid := genTypeID()
 	for i := 0; i < n; i++ { // DescTableScan
 		l, r := randRange(minA, maxA, i, n)
 		qs = append(qs, Query{
@@ -94,7 +90,22 @@ func genSyntheticEvalTableScan(ins tidb.Instance, n int) (qs Queries) {
 			TypeID: tid,
 		})
 	}
-	return qs
+	return
+}
+
+func genSyntheticEvalWideTableScan(ins tidb.Instance, n int) (qs Queries) {
+	var minA, maxA int
+	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
+	tid := genTypeID()
+	for i := 0; i < n; i++ { // WideTableScan
+		l, r := randRange(minA, maxA, i, n)
+		qs = append(qs, Query{
+			SQL:    fmt.Sprintf("select /*+ use_index(t, primary) */ a, c from t where a>=%v and a<=%v", l, r),
+			Label:  "WideTableScan",
+			TypeID: tid,
+		})
+	}
+	return
 }
 
 func genSyntheticEvalIndexScan(ins tidb.Instance, n int) (qs Queries) {
