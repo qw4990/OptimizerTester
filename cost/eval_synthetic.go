@@ -2,10 +2,11 @@ package cost
 
 import (
 	"fmt"
-	"github.com/qw4990/OptimizerTester/tidb"
 	"math/rand"
 	"strings"
 	"time"
+	
+	"github.com/qw4990/OptimizerTester/tidb"
 )
 
 //create table t (
@@ -21,7 +22,7 @@ import (
 func genSyntheticEvaluationQueries(ins tidb.Instance, db string, n int) Queries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	qs := make(Queries, 0, 1024)
-	
+
 	// TiKV Plans
 	qs = append(qs, genSyntheticEvaluationTableScan(ins, n)...)
 	qs = append(qs, genSyntheticEvaluationIndexScan(ins, n)...)
