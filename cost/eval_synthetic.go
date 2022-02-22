@@ -42,7 +42,7 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	qs = append(qs, genSyntheticEvalMPPScan(ins, n)...)
 	qs = append(qs, genSyntheticEvalTiFlashScan(ins, n)...)
 	qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, n)...)
-	qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, n)...)
+	qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, 0.75, n)...)
 	qs = append(qs, genSyntheticEvalMPPHJ(ins, n)...)
 	qs = append(qs, genSyntheticEvalMPPBCJ(ins, n)...)
 	return qs
@@ -298,9 +298,10 @@ func genSyntheticEvalMPPTiDBAgg(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvalMPP2PhaseAgg(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalMPP2PhaseAgg(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
