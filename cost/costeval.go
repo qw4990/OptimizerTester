@@ -58,7 +58,7 @@ func (opt *evalOpt) Factors() *CostFactors {
 	if opt.mode == "calibrated" {
 		//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek, 		TiFlashScan)
 		//(30,	30,		4,		100,	150,		0,		1.2*1e7, 	10)
-		factors := &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7, 10}
+		factors := &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7, 15}
 		return factors
 	}
 	return nil
