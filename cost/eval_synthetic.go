@@ -28,6 +28,8 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	qs = append(qs, genSyntheticEvalDescTableScan(ins, n)...)
 	qs = append(qs, genSyntheticEvalWideTableScan(ins, n)...)
 	qs = append(qs, genSyntheticEvalIndexScan(ins, n)...)
+	qs = append(qs, genSyntheticEvalDescIndexScan(ins, n)...)
+	qs = append(qs, genSyntheticEvalWideIndexScan(ins, n)...)
 	qs = append(qs, genSyntheticEvalSort(ins, n)...)
 	qs = append(qs, genSyntheticEvalStreamAgg(ins, n)...)
 	qs = append(qs, genSyntheticEvalHashAgg(ins, n)...)
@@ -111,7 +113,6 @@ func genSyntheticEvalWideTableScan(ins tidb.Instance, n int) (qs Queries) {
 func genSyntheticEvalIndexScan(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
-
 	tid := genTypeID()
 	for i := 0; i < n; i++ { // IndexScan
 		l, r := randRange(minB, maxB, i, n)
@@ -121,23 +122,33 @@ func genSyntheticEvalIndexScan(ins tidb.Instance, n int) (qs Queries) {
 			TypeID: tid,
 		})
 	}
+	return
+}
 
-	tid = genTypeID()
-	for i := 0; i < n; i++ { // WideIndexScan
-		l, r := randRange(minB, maxB, i, n)
-		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("select /*+ use_index(t, bc) */ b, c from t where b>=%v and b<=%v", l, r),
-			Label:  "WideIndexScan",
-			TypeID: tid,
-		})
-	}
-
-	tid = genTypeID()
+func genSyntheticEvalDescIndexScan(ins tidb.Instance, n int) (qs Queries) {
+	var minB, maxB int
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	tid := genTypeID()
 	for i := 0; i < n; i++ { // DescIndexScan
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
 			SQL:    fmt.Sprintf(`select /*+ use_index(t, b), no_reorder() */ b from t where b>=%v and b<=%v order by b desc`, l, r),
 			Label:  "DescIndexScan",
+			TypeID: tid,
+		})
+	}
+	return
+}
+
+func genSyntheticEvalWideIndexScan(ins tidb.Instance, n int) (qs Queries) {
+	var minB, maxB int
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	tid := genTypeID()
+	for i := 0; i < n; i++ { // WideIndexScan
+		l, r := randRange(minB, maxB, i, n)
+		qs = append(qs, Query{
+			SQL:    fmt.Sprintf("select /*+ use_index(t, bc) */ b, c from t where b>=%v and b<=%v", l, r),
+			Label:  "WideIndexScan",
 			TypeID: tid,
 		})
 	}
