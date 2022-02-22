@@ -19,32 +19,32 @@ import (
 //	key bc(b, c)
 //);
 
-func genSyntheticEvaluationQueries(ins tidb.Instance, db string, n int) Queries {
+func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	qs := make(Queries, 0, 1024)
 
 	// TiKV Plans
-	qs = append(qs, genSyntheticEvaluationTableScan(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationIndexScan(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationSort(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationStreamAgg(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationHashAgg(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationHashJoin(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationMergeJoin(ins, n)...)
-	//qs = append(qs, genSyntheticEvaluationIndexLookup(ins, n)...)
-	//qs = append(qs, genSyntheticEvaluationIndexJoin(ins, n)...)
+	qs = append(qs, genSyntheticEvalTableScan(ins, n)...)
+	qs = append(qs, genSyntheticEvalIndexScan(ins, n)...)
+	qs = append(qs, genSyntheticEvalSort(ins, n)...)
+	qs = append(qs, genSyntheticEvalStreamAgg(ins, n)...)
+	qs = append(qs, genSyntheticEvalHashAgg(ins, n)...)
+	qs = append(qs, genSyntheticEvalHashJoin(ins, n)...)
+	qs = append(qs, genSyntheticEvalMergeJoin(ins, n)...)
+	//qs = append(qs, genSyntheticEvalIndexLookup(ins, n)...)
+	//qs = append(qs, genSyntheticEvalIndexJoin(ins, n)...)
 
 	// TiFlash Plans
-	qs = append(qs, genSyntheticEvaluationMPPScan(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationTiFlashScan(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationMPPTiDBAgg(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationMPP2PhaseAgg(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationMPPHJ(ins, n)...)
-	qs = append(qs, genSyntheticEvaluationMPPBCJ(ins, n)...)
+	qs = append(qs, genSyntheticEvalMPPScan(ins, n)...)
+	qs = append(qs, genSyntheticEvalTiFlashScan(ins, n)...)
+	qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, n)...)
+	qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, n)...)
+	qs = append(qs, genSyntheticEvalMPPHJ(ins, n)...)
+	qs = append(qs, genSyntheticEvalMPPBCJ(ins, n)...)
 	return qs
 }
 
-func genSyntheticEvaluationIndexLookup(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalIndexLookup(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
@@ -61,7 +61,7 @@ func genSyntheticEvaluationIndexLookup(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvaluationTableScan(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalTableScan(ins tidb.Instance, n int) (qs Queries) {
 	var minA, maxA int
 	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
 
@@ -97,7 +97,7 @@ func genSyntheticEvaluationTableScan(ins tidb.Instance, n int) (qs Queries) {
 	return qs
 }
 
-func genSyntheticEvaluationIndexScan(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalIndexScan(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
@@ -133,7 +133,7 @@ func genSyntheticEvaluationIndexScan(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvaluationSort(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalSort(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
@@ -149,7 +149,7 @@ func genSyntheticEvaluationSort(ins tidb.Instance, n int) (qs Queries) {
 	return qs
 }
 
-func genSyntheticEvaluationStreamAgg(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalStreamAgg(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
@@ -175,7 +175,7 @@ func genSyntheticEvaluationStreamAgg(ins tidb.Instance, n int) (qs Queries) {
 	return qs
 }
 
-func genSyntheticEvaluationHashAgg(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalHashAgg(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
@@ -192,7 +192,7 @@ func genSyntheticEvaluationHashAgg(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvaluationHashJoin(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalHashJoin(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
@@ -209,7 +209,7 @@ func genSyntheticEvaluationHashJoin(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvaluationMergeJoin(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalMergeJoin(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
@@ -226,7 +226,7 @@ func genSyntheticEvaluationMergeJoin(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvaluationTiFlashScan(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalTiFlashScan(ins tidb.Instance, n int) (qs Queries) {
 	var minA, maxA int
 	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
 
@@ -243,7 +243,7 @@ func genSyntheticEvaluationTiFlashScan(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvaluationMPPScan(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalMPPScan(ins tidb.Instance, n int) (qs Queries) {
 	var minA, maxA int
 	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
 
@@ -260,7 +260,7 @@ func genSyntheticEvaluationMPPScan(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvaluationMPPTiDBAgg(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalMPPTiDBAgg(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
@@ -277,7 +277,7 @@ func genSyntheticEvaluationMPPTiDBAgg(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvaluationMPP2PhaseAgg(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalMPP2PhaseAgg(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
@@ -294,7 +294,7 @@ func genSyntheticEvaluationMPP2PhaseAgg(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvaluationMPPHJ(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalMPPHJ(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
@@ -312,7 +312,7 @@ func genSyntheticEvaluationMPPHJ(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvaluationMPPBCJ(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalMPPBCJ(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 
@@ -330,7 +330,7 @@ func genSyntheticEvaluationMPPBCJ(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvaluationIndexJoin(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalIndexJoin(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 

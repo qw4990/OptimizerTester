@@ -84,7 +84,7 @@ func (opt *evalOpt) GenQueries(ins tidb.Instance) Queries {
 	case "imdb":
 		return genIMDBEvaluationQueries(ins, opt.db, opt.queryScale)
 	case "synthetic":
-		return genSyntheticEvaluationQueries(ins, opt.db, opt.queryScale)
+		return genSyntheticEvalQueries(ins, opt.db, opt.queryScale)
 	case "tpch":
 		return genTPCHEvaluationQueries(ins, opt.db, opt.queryScale)
 	default:
