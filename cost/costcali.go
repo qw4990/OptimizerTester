@@ -49,7 +49,7 @@ func (cw CostWeights) CalCost(factors CostFactors) float64 {
 
 // CostCalibration ...
 func CostCalibration() {
-	recordsPath := "./cost-calibration-data/synthetic-calibrating-records.json"
+	recordsPath := "./cost-calibration-data/synthetic-calibrated-records.json"
 	var rs Records
 	if err := readFrom(recordsPath, &rs); err != nil {
 		panic(err)
@@ -63,28 +63,28 @@ func CostCalibration() {
 		"WideIndexScan",
 		"DescTableScan",
 		"DescIndexScan",
-		"StreamAgg",
-		"HashAgg",
-		"Sort",
-		"HashJoin",
-		"MergeJoin",
+		//"StreamAgg",
+		//"HashAgg",
+		//"Sort",
+		//"HashJoin",
+		//"MergeJoin",
 		//"IndexLookup",
 		//"WideIndexLookup",
 
 		// TiFlash Plans
 		"TiFlashScan",
 		"MPPScan",
-		"MPPTiDBAgg",
-		"MPP2PhaseAgg",
-		"MPPHJ",
-		"MPPBCJ",
+		//"MPPTiDBAgg",
+		//"MPP2PhaseAgg",
+		//"MPPHJ",
+		//"MPPBCJ",
 	}
 	rs = filterCaliRecordsByLabel(rs, whiteList, nil)
 
 	// ====== Manual Calibration ======
 	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek, TiFlashScan)
 	// (30,	30,		4,		100,	150,		0,		1.2*1e7, 	10)
-	recalculateAndDraw(rs, &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7, 10})
+	recalculateAndDraw(rs, &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7, 15})
 	//recalculateAndDraw(rs, nil)
 
 	// ====== Automatic Regression ======
