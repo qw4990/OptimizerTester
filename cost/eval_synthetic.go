@@ -25,11 +25,11 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 
 	// TiKV Plans
 	qs = append(qs, genSyntheticEvalTableScan(ins, n)...)
-	qs = append(qs, genSyntheticEvalDescTableScan(ins, n)...)
-	qs = append(qs, genSyntheticEvalWideTableScan(ins, n)...)
+	qs = append(qs, genSyntheticEvalDescTableScan(ins, 0.75, n)...)
+	qs = append(qs, genSyntheticEvalWideTableScan(ins, 0.3, n)...)
 	qs = append(qs, genSyntheticEvalIndexScan(ins, n)...)
-	qs = append(qs, genSyntheticEvalDescIndexScan(ins, n)...)
-	qs = append(qs, genSyntheticEvalWideIndexScan(ins, n)...)
+	qs = append(qs, genSyntheticEvalDescIndexScan(ins, 0.75, n)...)
+	qs = append(qs, genSyntheticEvalWideIndexScan(ins, 0.3, n)...)
 	qs = append(qs, genSyntheticEvalSort(ins, n)...)
 	qs = append(qs, genSyntheticEvalStreamAgg(ins, n)...)
 	qs = append(qs, genSyntheticEvalHashAgg(ins, n)...)
@@ -80,9 +80,10 @@ func genSyntheticEvalTableScan(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvalDescTableScan(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalDescTableScan(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minA, maxA int
 	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
+	maxA = int(float64(maxA) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ { // DescTableScan
 		l, r := randRange(minA, maxA, i, n)
@@ -95,9 +96,10 @@ func genSyntheticEvalDescTableScan(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvalWideTableScan(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalWideTableScan(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minA, maxA int
 	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
+	maxA = int(float64(maxA) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ { // WideTableScan
 		l, r := randRange(minA, maxA, i, n)
@@ -125,9 +127,10 @@ func genSyntheticEvalIndexScan(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvalDescIndexScan(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalDescIndexScan(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ { // DescIndexScan
 		l, r := randRange(minB, maxB, i, n)
@@ -140,9 +143,10 @@ func genSyntheticEvalDescIndexScan(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvalWideIndexScan(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalWideIndexScan(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ { // WideIndexScan
 		l, r := randRange(minB, maxB, i, n)
