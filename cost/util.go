@@ -84,6 +84,9 @@ func setCostFactors(ins tidb.Instance, factors CostFactors) {
 		fmt.Println(sql)
 		ins.MustExec(sql)
 	}
+	tiflashScan := fmt.Sprintf("set @@tidb_opt_tiflash_scan_factor=%v;", factors[3]/10)
+	fmt.Println(tiflashScan)
+	ins.MustExec(tiflashScan)
 }
 
 func readCostFactors(ins tidb.Instance) (factors CostFactors) {

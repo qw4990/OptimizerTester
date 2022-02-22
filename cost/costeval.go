@@ -32,8 +32,8 @@ func CostEval() {
 		//{"imdb", "imdb", "calibrated", 30, 2, 3000},
 		//{"tpch1g", "tpch", "original", 2, 1, 2000},
 		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
-		{"synthetic", "synthetic", "original", 20, 2, 3000},
-		{"synthetic", "synthetic", "calibrated", 20, 2, 3000},
+		//{"synthetic", "synthetic", "original", 20, 2, 300},
+		{"synthetic", "synthetic", "calibrated", 20, 2, 300},
 		//{"synthetic", "synthetic", "calibrating", 20, 2, 3000},
 	}
 
@@ -42,7 +42,7 @@ func CostEval() {
 		evalOnDataset(ins, opt)
 	}
 	//drawSummary(opts)
-	//genSyntheticData(ins, 100000, "synthetic")
+	//genSyntheticData(ins, 1000000, "synthetic")
 }
 
 type evalOpt struct {
@@ -127,9 +127,9 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 		if r.Label == "IndexLookup" {
 			continue
 		}
-		if strings.Contains(r.Label, "Wide") || strings.Contains(r.Label, "Desc") {
-			continue
-		}
+		//if strings.Contains(r.Label, "Wide") || strings.Contains(r.Label, "Desc") {
+		//	continue
+		//}
 		//if opt.dataset == "synthetic" && r.TimeMS > 200 {
 		//	continue
 		//}
