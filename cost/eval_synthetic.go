@@ -30,11 +30,11 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	qs = append(qs, genSyntheticEvalIndexScan(ins, n)...)
 	qs = append(qs, genSyntheticEvalDescIndexScan(ins, 0.75, n)...)
 	qs = append(qs, genSyntheticEvalWideIndexScan(ins, 0.3, n)...)
-	qs = append(qs, genSyntheticEvalSort(ins, n)...)
-	qs = append(qs, genSyntheticEvalStreamAgg(ins, n)...)
-	qs = append(qs, genSyntheticEvalHashAgg(ins, n)...)
-	qs = append(qs, genSyntheticEvalHashJoin(ins, n)...)
-	qs = append(qs, genSyntheticEvalMergeJoin(ins, n)...)
+	qs = append(qs, genSyntheticEvalSort(ins, 0.5, n)...)
+	qs = append(qs, genSyntheticEvalStreamAgg(ins, 0.75, n)...)
+	qs = append(qs, genSyntheticEvalHashAgg(ins, 0.75, n)...)
+	qs = append(qs, genSyntheticEvalHashJoin(ins, 0.2, n)...)
+	qs = append(qs, genSyntheticEvalMergeJoin(ins, 0.2, n)...)
 	//qs = append(qs, genSyntheticEvalIndexLookup(ins, n)...)
 	//qs = append(qs, genSyntheticEvalIndexJoin(ins, n)...)
 
@@ -159,10 +159,10 @@ func genSyntheticEvalWideIndexScan(ins tidb.Instance, scale float64, n int) (qs 
 	return
 }
 
-func genSyntheticEvalSort(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalSort(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
-
+	maxB = int(float64(maxB) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
@@ -172,13 +172,13 @@ func genSyntheticEvalSort(ins tidb.Instance, n int) (qs Queries) {
 			TypeID: tid,
 		})
 	}
-	return qs
+	return
 }
 
-func genSyntheticEvalStreamAgg(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalStreamAgg(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
-
+	maxB = int(float64(maxB) * scale)
 	tid := genTypeID() // pushed down
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
@@ -188,7 +188,6 @@ func genSyntheticEvalStreamAgg(ins tidb.Instance, n int) (qs Queries) {
 			TypeID: tid,
 		})
 	}
-
 	tid = genTypeID() // not pushed down
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
@@ -198,12 +197,13 @@ func genSyntheticEvalStreamAgg(ins tidb.Instance, n int) (qs Queries) {
 			TypeID: tid,
 		})
 	}
-	return qs
+	return
 }
 
-func genSyntheticEvalHashAgg(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalHashAgg(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
@@ -216,9 +216,10 @@ func genSyntheticEvalHashAgg(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvalHashJoin(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalHashJoin(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l1, r1 := randRange(minB, maxB, i, n)
@@ -232,9 +233,10 @@ func genSyntheticEvalHashJoin(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvalMergeJoin(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalMergeJoin(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l1, r1 := randRange(minB, maxB, i, n)
