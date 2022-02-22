@@ -200,7 +200,6 @@ func genSyntheticEvalStreamAgg(ins tidb.Instance, n int) (qs Queries) {
 func genSyntheticEvalHashAgg(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
-
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
@@ -210,14 +209,12 @@ func genSyntheticEvalHashAgg(ins tidb.Instance, n int) (qs Queries) {
 			TypeID: tid,
 		})
 	}
-
 	return
 }
 
 func genSyntheticEvalHashJoin(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
-
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l1, r1 := randRange(minB, maxB, i, n)
@@ -234,7 +231,6 @@ func genSyntheticEvalHashJoin(ins tidb.Instance, n int) (qs Queries) {
 func genSyntheticEvalMergeJoin(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
-
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l1, r1 := randRange(minB, maxB, i, n)
@@ -251,7 +247,6 @@ func genSyntheticEvalMergeJoin(ins tidb.Instance, n int) (qs Queries) {
 func genSyntheticEvalTiFlashScan(ins tidb.Instance, n int) (qs Queries) {
 	var minA, maxA int
 	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
-
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
@@ -268,7 +263,6 @@ func genSyntheticEvalTiFlashScan(ins tidb.Instance, n int) (qs Queries) {
 func genSyntheticEvalMPPScan(ins tidb.Instance, n int) (qs Queries) {
 	var minA, maxA int
 	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
-
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
@@ -285,7 +279,6 @@ func genSyntheticEvalMPPScan(ins tidb.Instance, n int) (qs Queries) {
 func genSyntheticEvalMPPTiDBAgg(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
-
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
@@ -302,7 +295,6 @@ func genSyntheticEvalMPPTiDBAgg(ins tidb.Instance, n int) (qs Queries) {
 func genSyntheticEvalMPP2PhaseAgg(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
-
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
@@ -319,7 +311,6 @@ func genSyntheticEvalMPP2PhaseAgg(ins tidb.Instance, n int) (qs Queries) {
 func genSyntheticEvalMPPHJ(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
-
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l1, r1 := randRange(minB, maxB, i, n)
@@ -337,7 +328,6 @@ func genSyntheticEvalMPPHJ(ins tidb.Instance, n int) (qs Queries) {
 func genSyntheticEvalMPPBCJ(ins tidb.Instance, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
-
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l1, r1 := randRange(minB, maxB, i, n)
