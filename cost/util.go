@@ -75,18 +75,16 @@ func readFrom(f string, r interface{}) error {
 var costFactorVars = []string{"tidb_opt_cpu_factor",
 	"tidb_opt_copcpu_factor", "tidb_opt_network_factor",
 	"tidb_opt_scan_factor", "tidb_opt_desc_factor",
-	"tidb_opt_memory_factor", "tidb_opt_seek_factor"}
+	"tidb_opt_memory_factor", "tidb_opt_seek_factor", 
+	"tidb_opt_tiflash_scan_factor"}
 
 func setCostFactors(ins tidb.Instance, factors CostFactors) {
-	fmt.Println("SET COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek):", factors)
+	fmt.Println("SET COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek, TiFlashScan):", factors)
 	for i := 0; i < NumFactors; i++ {
 		sql := fmt.Sprintf("set @@%v=%v;", costFactorVars[i], factors[i])
 		fmt.Println(sql)
 		ins.MustExec(sql)
 	}
-	tiflashScan := fmt.Sprintf("set @@tidb_opt_tiflash_scan_factor=%v;", factors[3]/10)
-	fmt.Println(tiflashScan)
-	ins.MustExec(tiflashScan)
 }
 
 func readCostFactors(ins tidb.Instance) (factors CostFactors) {
@@ -101,7 +99,7 @@ func readCostFactors(ins tidb.Instance) (factors CostFactors) {
 			panic(err)
 		}
 	}
-	fmt.Println("READ COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek):", factors)
+	fmt.Println("READ COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek, TiFlashScan):", factors)
 	return
 }
 

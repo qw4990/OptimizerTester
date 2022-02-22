@@ -33,7 +33,7 @@ func CostEval() {
 		//{"tpch1g", "tpch", "original", 2, 1, 2000},
 		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
 		//{"synthetic", "synthetic", "original", 20, 2, 300},
-		{"synthetic", "synthetic", "calibrated", 20, 2, 300},
+		{"synthetic", "synthetic", "calibrated", 10, 1, 300},
 		//{"synthetic", "synthetic", "calibrating", 20, 2, 3000},
 	}
 
@@ -56,9 +56,9 @@ type evalOpt struct {
 
 func (opt *evalOpt) Factors() *CostFactors {
 	if opt.mode == "calibrated" {
-		//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek)
-		//(30,	30,		4,		100,	150,		0,		1.2*1e7)
-		factors := &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7}
+		//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek, 		TiFlashScan)
+		//(30,	30,		4,		100,	150,		0,		1.2*1e7, 	10)
+		factors := &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7, 10}
 		return factors
 	}
 	return nil

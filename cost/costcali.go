@@ -5,18 +5,20 @@ import (
 	"strings"
 )
 
-const NumFactors = 7
+const NumFactors = 8
 
-type CostFactors [NumFactors]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
+type CostFactors [NumFactors]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek, TiFlashScan)
 
 func (fv CostFactors) String() string {
-	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f, Seek: %.2f]", fv[0], fv[1], fv[2], fv[3], fv[4], fv[5], fv[6])
+	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f, Seek: %.2f, TiFlashScan: %.2f]",
+		fv[0], fv[1], fv[2], fv[3], fv[4], fv[5], fv[6], fv[7])
 }
 
-type CostWeights [NumFactors]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
+type CostWeights [NumFactors]float64 // (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek, TiFlashScan)
 
 func (cw CostWeights) String() string {
-	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f, Seek: %.2f]", cw[0], cw[1], cw[2], cw[3], cw[4], cw[5], cw[6])
+	return fmt.Sprintf("[CPU: %.2f, copCPU: %.2f, Net: %.2f, Scan: %.2f, DescScan: %.2f, Mem: %.2f, Seek: %.2f, TiFlashScan: %.2f]",
+		cw[0], cw[1], cw[2], cw[3], cw[4], cw[5], cw[6], cw[7])
 }
 
 func (cw CostWeights) EqualTo(that CostWeights) bool {
@@ -80,13 +82,13 @@ func CostCalibration() {
 	rs = filterCaliRecordsByLabel(rs, whiteList, nil)
 
 	// ====== Manual Calibration ======
-	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
-	// (30,	30,		4,		100,	150,		0,		1.2*1e7)
-	recalculateAndDraw(rs, &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7})
+	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek, TiFlashScan)
+	// (30,	30,		4,		100,	150,		0,		1.2*1e7, 	10)
+	recalculateAndDraw(rs, &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7, 10})
 	//recalculateAndDraw(rs, nil)
 
 	// ====== Automatic Regression ======
-	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
+	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek, TiFlashScan)
 	//rs = maskRecords(rs, [NumFactors]bool{false, false, true, true, false, false, false})
 	//ret := regressionCostFactors(rs)
 	//fmt.Println(ret.String())
