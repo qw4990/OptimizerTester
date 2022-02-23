@@ -32,6 +32,8 @@ FORLOOP:
 		if len(tasks) > 0 {
 			nextTaskToSend = tasks[0]
 			tmpQueryTaskChan = queryTaskChan
+		} else if inChan == nil {
+			break
 		}
 		select {
 		case <-finishChan:
@@ -54,7 +56,7 @@ FORLOOP:
 			}
 			tracedCnt++
 			if tracedCnt%20 == 0 {
-				fmt.Printf("[%s] %d statements have been traced.\n", logTime(), tracedCnt)
+				fmt.Printf("[%s] %d statements have been traced. %d trace records collected.\n", logTime(), tracedCnt, recordsCnt)
 			}
 			for _, record := range records {
 				if needDedup {

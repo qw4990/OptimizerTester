@@ -29,7 +29,8 @@ func RunQueryGen(dsns []string, outputFile, dbName, tableName string, n uint) er
 	var err error
 	queryTaskChan := make(chan *tidb.QueryTask, 100)
 	for i, dsn := range dsns {
-		err = tidb.StartQueryRunner(dsn, queryTaskChan, concurrencyForEachDSN, 1, uint(i))
+		setMemQuotaSQL := "set @@tidb_mem_quota_query = 3221225472;"
+		err = tidb.StartQueryRunner(dsn, queryTaskChan, concurrencyForEachDSN, 1, uint(i), setMemQuotaSQL)
 		if err != nil {
 			return err
 		}
@@ -222,6 +223,17 @@ func queryResultToStr(value interface{}, ft types.FieldType) string {
 		ft.Tp != mysql.TypeLonglong &&
 		ft.Tp != mysql.TypeInt24 &&
 		ft.Tp != mysql.TypeNewDecimal {
+		if ft.Tp == mysql.TypeBlob ||
+			ft.Tp == mysql.TypeTinyBlob ||
+			ft.Tp == mysql.TypeMediumBlob ||
+			ft.Tp == mysql.TypeLongBlob ||
+			ft.Tp == mysql.TypeString ||
+			ft.Tp == mysql.TypeVarchar ||
+			ft.Tp == mysql.TypeVarString {
+			if len(result) > 20 {
+				result = result[:21]
+			}
+		}
 		result = strings.ReplaceAll(result, "\"", "\\\"")
 		result = "\"" + result + "\""
 	}

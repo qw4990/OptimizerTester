@@ -28,23 +28,46 @@ func logTime() string {
 	return string(str)
 }
 
-func RunCEBench(queryLocation string, dsns []string, jsonLocation, outDir string, dedup bool, threshold, concurrencyForEachDSN uint) error {
+type InputOption struct {
+	QueryPath string
+	DSNs      []string
+	JSONPaths []string
+}
+
+type OtherOption struct {
+	OutPath               string
+	Dedup                 bool
+	PErrorThreshold       uint
+	ConcurrencyForEachDSN uint
+	Labels                []string
+}
+
+func RunCEBench(inOpt *InputOption, otherOpt *OtherOption) error {
+	queryLocation := inOpt.QueryPath
+	dsns := inOpt.DSNs
+	jsonLocations := inOpt.JSONPaths
+	outDir := otherOpt.OutPath
+	dedup := otherOpt.Dedup
+	threshold := otherOpt.PErrorThreshold
+	concurrencyForEachDSN := otherOpt.ConcurrencyForEachDSN
 	needDedup = dedup
 	// 1. Collect estimation information.
 	var allEstInfos EstInfos
-	estInfoMap := make(map[string]EstInfos)
-	if len(jsonLocation) > 0 {
-		jsonBytes, err := ioutil.ReadFile(jsonLocation)
-		if err != nil {
-			panic(err)
-		}
-		err = json.Unmarshal(jsonBytes, &estInfoMap)
-		if err != nil {
-			panic(err)
-		}
-		for _, infos := range estInfoMap {
-			for _, info := range infos {
-				allEstInfos = append(allEstInfos, info)
+	if len(jsonLocations) > 0 {
+		for _, location := range jsonLocations {
+			tmpEstInfoMap := make(map[string]EstInfos)
+			jsonBytes, err := ioutil.ReadFile(location)
+			if err != nil {
+				panic(err)
+			}
+			err = json.Unmarshal(jsonBytes, &tmpEstInfoMap)
+			if err != nil {
+				panic(err)
+			}
+			for _, infos := range tmpEstInfoMap {
+				for _, info := range infos {
+					allEstInfos = append(allEstInfos, info)
+				}
 			}
 		}
 	} else if len(queryLocation) > 0 && len(dsns) > 0 {
@@ -79,6 +102,7 @@ func RunCEBench(queryLocation string, dsns []string, jsonLocation, outDir string
 	if needDedup {
 		allEstInfos = DedupEstInfo(allEstInfos)
 	}
+	estInfoMap := make(map[string]EstInfos)
 	for _, info := range allEstInfos {
 		estInfoMap[info.Type] = append(estInfoMap[info.Type], info)
 	}
@@ -126,19 +150,19 @@ func RunCEBench(queryLocation string, dsns []string, jsonLocation, outDir string
 
 	WriteToFileForInfos(allEstInfos, "All", outDir, reportF)
 
-	_, err = reportF.Write([]byte("\n### Globally Worst 10 cases:\n"))
+	_, err = reportF.Write([]byte("\n### Globally Worst 20 cases:\n"))
 	if err != nil {
 		panic(err)
 	}
-	WriteWorst10(allEstInfos, reportF)
+	WriteWorstN(allEstInfos, reportF, 20)
 
 	for tp, infos := range estInfoMap {
 		WriteToFileForInfos(infos, tp, outDir, reportF)
-		_, err = reportF.Write([]byte("\n### Worst 10 cases:\n"))
+		_, err = reportF.Write([]byte("\n### Worst 20 cases:\n"))
 		if err != nil {
 			panic(err)
 		}
-		WriteWorst10(infos, reportF)
+		WriteWorstN(infos, reportF, 20)
 	}
 
 	_, err = reportF.Write([]byte(fmt.Sprintf("\n## All cases with p-error above the threshold (%d):\n", threshold)))
@@ -149,11 +173,12 @@ func RunCEBench(queryLocation string, dsns []string, jsonLocation, outDir string
 }
 
 type EstInfo struct {
-	Expr   string
-	Type   string
-	Est    uint64
-	Actual uint64
-	pError float64
+	Expr      string
+	Type      string
+	Est       uint64
+	Actual    uint64
+	TableName string
+	pError    float64
 }
 
 type EstInfos []*EstInfo
@@ -185,10 +210,11 @@ func CollectEstInfo(inChan <-chan *tidb.QueryResult) EstInfos {
 		}
 		traceRecord := queryRes.Payload.(*CETraceRecord)
 		estRes := EstInfo{
-			Expr:   traceRecord.Expr,
-			Type:   traceRecord.Type,
-			Est:    traceRecord.RowCount,
-			Actual: actualCnt,
+			Expr:      traceRecord.Expr,
+			Type:      traceRecord.Type,
+			Est:       traceRecord.RowCount,
+			Actual:    actualCnt,
+			TableName: traceRecord.TableName,
 		}
 		allEstInfos = append(allEstInfos, &estRes)
 	}
@@ -244,9 +270,9 @@ type bucket struct {
 	highExclusive bool
 }
 
-var xAxisNames = []string{"(-inf", "[-6561", "[-2187", "[-729", "[-243", "[-81", "[-27", "[-9", "[-3",
-	"[-1, 1]",
-	"3]", "9]", "27]", "81]", "243]", "729]", "2187]", "6561]", "+inf)",
+var xAxisNames = []string{"(-inf,-6561)", "[-6561,-2187)", "[-2187,-729)", "[-729,-243)", "[-243,-81)", "[-81,-27)", "[-27,-9)", "[-9,-3)", "[-3-1)",
+	"[-1,1]",
+	"(1,3]", "(3,9]", "(9,27]", "(27,81]", "(81,243]", "(243,729]", "(729,2187]", "(2187,6561]", "(6561,+inf)",
 }
 
 // (-inf, -3^8), [-3^8, -3^7), [-3^7, -3^6), [-3^6, -3^5), [-3^5, -3^4), [-3^4, -3^3), [-3^3, -3^2), [-3^2, -3^1), [-3^1, -3^0),
