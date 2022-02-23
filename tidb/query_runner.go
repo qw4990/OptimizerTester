@@ -39,7 +39,7 @@ type QueryResult struct {
 	Result  [][]interface{}
 }
 
-func StartQueryRunner(dsn string, inChan chan *QueryTask, concurrency, nTaskSender, dsnID uint) error {
+func StartQueryRunner(dsn string, inChan chan *QueryTask, concurrency, nTaskSender, dsnID uint, initSQLs ...string) error {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return errors.Trace(err)
@@ -48,14 +48,22 @@ func StartQueryRunner(dsn string, inChan chan *QueryTask, concurrency, nTaskSend
 		return errors.Trace(err)
 	}
 	for i := uint(0); i < concurrency; i++ {
-		go queryRunner(db, inChan, nTaskSender, dsnID, i)
+		go queryRunner(db, inChan, nTaskSender, dsnID, i, initSQLs)
 	}
 	return nil
 }
 
 var nExitedTaskSender atomic.Uint64
 
-func queryRunner(db *sql.DB, inChan chan *QueryTask, nTaskSender, dsnID, runnerID uint) {
+func queryRunner(db *sql.DB, inChan chan *QueryTask, nTaskSender, dsnID, runnerID uint, initSQLs []string) {
+	for _, sqlStr := range initSQLs {
+		_, err := db.Exec(sqlStr)
+		if err != nil {
+			// TODO
+			fmt.Printf("[%s] SQL: %s\n", logTime(), sqlStr)
+			panic(err)
+		}
+	}
 	for task := range inChan {
 		if task == nil {
 			continue
