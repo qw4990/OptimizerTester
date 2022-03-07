@@ -19,13 +19,23 @@ import (
 //	key bc(b, c)
 //);
 
+var syntheticExecTimeRatio = map[string]float64{
+	// for 2000000 rows
+	"TableScan":   1, // 1.2s
+	"MPPScan":     1, // 1.2s
+	"TiFlashScan": 1, // 1.2s
+	"MPPTiDBAgg":  1, // 1.2s
+}
+
 func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	qs := make(Queries, 0, 1024)
 
+	scale := 0.5
+
 	// TiKV Plans
-	qs = append(qs, genSyntheticEvalTableScan(ins, 1, n)...)
-	qs = append(qs, genSyntheticEvalDescTableScan(ins, 0.75, n)...)
+	qs = append(qs, genSyntheticEvalTableScan(ins, scale*syntheticExecTimeRatio["TableScan"], n)...)
+	//qs = append(qs, genSyntheticEvalDescTableScan(ins, 0.75, n)...)
 	//qs = append(qs, genSyntheticEvalWideTableScan(ins, 0.3, n)...)
 	//qs = append(qs, genSyntheticEvalIndexScan(ins, n)...)
 	//qs = append(qs, genSyntheticEvalDescIndexScan(ins, 0.75, n)...)
@@ -39,9 +49,9 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	//qs = append(qs, genSyntheticEvalIndexJoin(ins, n)...)
 
 	// TiFlash Plans
-	qs = append(qs, genSyntheticEvalMPPScan(ins, n)...)
-	qs = append(qs, genSyntheticEvalTiFlashScan(ins, n)...)
-	qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, n)...)
+	qs = append(qs, genSyntheticEvalMPPScan(ins, scale*syntheticExecTimeRatio["MPPScan"], n)...)
+	qs = append(qs, genSyntheticEvalTiFlashScan(ins, scale*syntheticExecTimeRatio["TiFlashScan"], n)...)
+	qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, scale*syntheticExecTimeRatio["MPPTiDBAgg"], n)...)
 	//qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, 0.75, n)...)
 	//qs = append(qs, genSyntheticEvalMPPHJ(ins, n)...)
 	//qs = append(qs, genSyntheticEvalMPPBCJ(ins, n)...)
@@ -251,9 +261,10 @@ func genSyntheticEvalMergeJoin(ins tidb.Instance, scale float64, n int) (qs Quer
 	return
 }
 
-func genSyntheticEvalTiFlashScan(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalTiFlashScan(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minA, maxA int
 	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
+	maxA = int(float64(maxA) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
@@ -267,9 +278,10 @@ func genSyntheticEvalTiFlashScan(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvalMPPScan(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalMPPScan(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minA, maxA int
 	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
+	maxA = int(float64(maxA) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
@@ -283,9 +295,10 @@ func genSyntheticEvalMPPScan(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvalMPPTiDBAgg(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalMPPTiDBAgg(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
