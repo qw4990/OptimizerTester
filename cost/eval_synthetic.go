@@ -21,20 +21,27 @@ import (
 
 var syntheticExecTimeRatio = map[string]float64{
 	// for 2000000 rows
-	"TableScan":   1, // 1.2s
-	"MPPScan":     1, // 1.2s
-	"TiFlashScan": 1, // 1.2s
-	"MPPTiDBAgg":  1, // 1.2s
+	"TableScan":   1,  // 1.2s
+	"MPPScan":     10, // 100ms
+	"TiFlashScan": 4,  // 250ms
+	"MPPTiDBAgg":  4,  // 250ms
+}
+
+func getSyntheticScale(queryType string) float64 {
+	scale := 0.1
+	scale *= syntheticExecTimeRatio[queryType]
+	if scale > 1 {
+		scale = 1
+	}
+	return scale
 }
 
 func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	qs := make(Queries, 0, 1024)
 
-	scale := 0.5
-
 	// TiKV Plans
-	qs = append(qs, genSyntheticEvalTableScan(ins, scale*syntheticExecTimeRatio["TableScan"], n)...)
+	qs = append(qs, genSyntheticEvalTableScan(ins, getSyntheticScale("TableScan"), n)...)
 	//qs = append(qs, genSyntheticEvalDescTableScan(ins, 0.75, n)...)
 	//qs = append(qs, genSyntheticEvalWideTableScan(ins, 0.3, n)...)
 	//qs = append(qs, genSyntheticEvalIndexScan(ins, n)...)
@@ -49,9 +56,9 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	//qs = append(qs, genSyntheticEvalIndexJoin(ins, n)...)
 
 	// TiFlash Plans
-	qs = append(qs, genSyntheticEvalMPPScan(ins, scale*syntheticExecTimeRatio["MPPScan"], n)...)
-	qs = append(qs, genSyntheticEvalTiFlashScan(ins, scale*syntheticExecTimeRatio["TiFlashScan"], n)...)
-	qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, scale*syntheticExecTimeRatio["MPPTiDBAgg"], n)...)
+	qs = append(qs, genSyntheticEvalMPPScan(ins, getSyntheticScale("MPPScan"), n)...)
+	qs = append(qs, genSyntheticEvalTiFlashScan(ins, getSyntheticScale("TiFlashScan"), n)...)
+	qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, getSyntheticScale("MPPTiDBAgg"), n)...)
 	//qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, 0.75, n)...)
 	//qs = append(qs, genSyntheticEvalMPPHJ(ins, n)...)
 	//qs = append(qs, genSyntheticEvalMPPBCJ(ins, n)...)

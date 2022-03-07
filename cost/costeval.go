@@ -41,7 +41,7 @@ func CostEval() {
 		//fmt.Println("--->>>> ", opt)
 		evalOnDataset(ins, opt)
 	}
-	//drawSummary(opts)
+	drawSummary(opts)
 	//genSyntheticData(ins, 1000000, "synthetic")
 }
 
