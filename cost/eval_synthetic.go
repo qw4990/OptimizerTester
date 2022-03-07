@@ -24,17 +24,17 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	qs := make(Queries, 0, 1024)
 
 	// TiKV Plans
-	qs = append(qs, genSyntheticEvalTableScan(ins, n)...)
+	qs = append(qs, genSyntheticEvalTableScan(ins, 1, n)...)
 	qs = append(qs, genSyntheticEvalDescTableScan(ins, 0.75, n)...)
-	qs = append(qs, genSyntheticEvalWideTableScan(ins, 0.3, n)...)
-	qs = append(qs, genSyntheticEvalIndexScan(ins, n)...)
-	qs = append(qs, genSyntheticEvalDescIndexScan(ins, 0.75, n)...)
-	qs = append(qs, genSyntheticEvalWideIndexScan(ins, 0.3, n)...)
-	qs = append(qs, genSyntheticEvalSort(ins, 0.5, n)...)
-	qs = append(qs, genSyntheticEvalStreamAgg(ins, 0.75, n)...)
-	qs = append(qs, genSyntheticEvalHashAgg(ins, 0.75, n)...)
-	qs = append(qs, genSyntheticEvalHashJoin(ins, 0.2, n)...)
-	qs = append(qs, genSyntheticEvalMergeJoin(ins, 0.2, n)...)
+	//qs = append(qs, genSyntheticEvalWideTableScan(ins, 0.3, n)...)
+	//qs = append(qs, genSyntheticEvalIndexScan(ins, n)...)
+	//qs = append(qs, genSyntheticEvalDescIndexScan(ins, 0.75, n)...)
+	//qs = append(qs, genSyntheticEvalWideIndexScan(ins, 0.3, n)...)
+	//qs = append(qs, genSyntheticEvalSort(ins, 0.5, n)...)
+	//qs = append(qs, genSyntheticEvalStreamAgg(ins, 0.75, n)...)
+	//qs = append(qs, genSyntheticEvalHashAgg(ins, 0.75, n)...)
+	//qs = append(qs, genSyntheticEvalHashJoin(ins, 0.2, n)...)
+	//qs = append(qs, genSyntheticEvalMergeJoin(ins, 0.2, n)...)
 	//qs = append(qs, genSyntheticEvalIndexLookup(ins, n)...)
 	//qs = append(qs, genSyntheticEvalIndexJoin(ins, n)...)
 
@@ -42,9 +42,9 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	qs = append(qs, genSyntheticEvalMPPScan(ins, n)...)
 	qs = append(qs, genSyntheticEvalTiFlashScan(ins, n)...)
 	qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, n)...)
-	qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, 0.75, n)...)
-	qs = append(qs, genSyntheticEvalMPPHJ(ins, n)...)
-	qs = append(qs, genSyntheticEvalMPPBCJ(ins, n)...)
+	//qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, 0.75, n)...)
+	//qs = append(qs, genSyntheticEvalMPPHJ(ins, n)...)
+	//qs = append(qs, genSyntheticEvalMPPBCJ(ins, n)...)
 	return qs
 }
 
@@ -65,9 +65,10 @@ func genSyntheticEvalIndexLookup(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
-func genSyntheticEvalTableScan(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalTableScan(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minA, maxA int
 	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
+	maxA = int(float64(maxA) * scale)
 	tid := genTypeID() // TableScan
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
