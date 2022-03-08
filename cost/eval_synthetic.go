@@ -21,18 +21,28 @@ import (
 
 var syntheticExecTimeRatio = map[string]float64{
 	// for 2000000 rows
-	"TableScan":   1,  // 1.2s
-	"StreamAgg":   1,  // 1.2s
-	"HashAgg":     1,  // 1.2s
-	"TiFlashScan": 4,  // 250ms
-	"TiFlashAgg":  40, // 25ms
-	"MPPScan":     10, // 100ms
-	"MPPTiDBAgg":  4,  // 250ms
+	"TableScan":     1,   // 1.2s
+	"DescTableScan": 1,   // 1.2s
+	"WideTableScan": 0.3, // 3s
+	"IndexScan":     1,
+	"DescIndexScan": 1,
+	"WideIndexScan": 0.3,
+	"Sort":          1,  // 1.3s
+	"StreamAgg":     1,  // 1.2s
+	"HashAgg":       1,  // 1.2s
+	"TiFlashScan":   4,  // 250ms
+	"TiFlashAgg":    40, // 25ms
+	"MPPScan":       10, // 100ms
+	"MPPTiDBAgg":    4,  // 250ms
 }
 
 func getSyntheticScale(queryType string) float64 {
 	scale := 0.05
-	scale *= syntheticExecTimeRatio[queryType]
+	ratio, ok := syntheticExecTimeRatio[queryType]
+	if !ok {
+		panic(queryType)
+	}
+	scale *= ratio
 	if scale > 1 {
 		scale = 1
 	}
@@ -45,12 +55,12 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 
 	// TiKV Plans
 	qs = append(qs, genSyntheticEvalTableScan(ins, getSyntheticScale("TableScan"), n)...)
-	//qs = append(qs, genSyntheticEvalDescTableScan(ins, 0.75, n)...)
-	//qs = append(qs, genSyntheticEvalWideTableScan(ins, 0.3, n)...)
-	//qs = append(qs, genSyntheticEvalIndexScan(ins, n)...)
-	//qs = append(qs, genSyntheticEvalDescIndexScan(ins, 0.75, n)...)
-	//qs = append(qs, genSyntheticEvalWideIndexScan(ins, 0.3, n)...)
-	//qs = append(qs, genSyntheticEvalSort(ins, 0.5, n)...)
+	qs = append(qs, genSyntheticEvalDescTableScan(ins, getSyntheticScale("DescTableScan"), n)...)
+	qs = append(qs, genSyntheticEvalWideTableScan(ins, getSyntheticScale("WideTableScan"), n)...)
+	qs = append(qs, genSyntheticEvalIndexScan(ins, getSyntheticScale("IndexScan"), n)...)
+	qs = append(qs, genSyntheticEvalDescIndexScan(ins, getSyntheticScale("DescIndexScan"), n)...)
+	qs = append(qs, genSyntheticEvalWideIndexScan(ins, getSyntheticScale("WideIndexScan"), n)...)
+	qs = append(qs, genSyntheticEvalSort(ins, getSyntheticScale("Sort"), n)...)
 	qs = append(qs, genSyntheticEvalStreamAgg(ins, getSyntheticScale("StreamAgg"), n)...)
 	qs = append(qs, genSyntheticEvalHashAgg(ins, getSyntheticScale("HashAgg"), n)...)
 	//qs = append(qs, genSyntheticEvalHashJoin(ins, 0.2, n)...)
@@ -134,9 +144,10 @@ func genSyntheticEvalWideTableScan(ins tidb.Instance, scale float64, n int) (qs 
 	return
 }
 
-func genSyntheticEvalIndexScan(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalIndexScan(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ { // IndexScan
 		l, r := randRange(minB, maxB, i, n)
