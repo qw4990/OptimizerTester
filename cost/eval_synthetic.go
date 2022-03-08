@@ -22,6 +22,8 @@ import (
 var syntheticExecTimeRatio = map[string]float64{
 	// for 2000000 rows
 	"TableScan":   1,  // 1.2s
+	"StreamAgg":   1,  // 1.2s
+	"HashAgg":     1,  // 1.2s
 	"TiFlashScan": 4,  // 250ms
 	"TiFlashAgg":  40, // 25ms
 	"MPPScan":     10, // 100ms
@@ -49,8 +51,8 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	//qs = append(qs, genSyntheticEvalDescIndexScan(ins, 0.75, n)...)
 	//qs = append(qs, genSyntheticEvalWideIndexScan(ins, 0.3, n)...)
 	//qs = append(qs, genSyntheticEvalSort(ins, 0.5, n)...)
-	//qs = append(qs, genSyntheticEvalStreamAgg(ins, 0.75, n)...)
-	//qs = append(qs, genSyntheticEvalHashAgg(ins, 0.75, n)...)
+	qs = append(qs, genSyntheticEvalStreamAgg(ins, getSyntheticScale("StreamAgg"), n)...)
+	qs = append(qs, genSyntheticEvalHashAgg(ins, getSyntheticScale("HashAgg"), n)...)
 	//qs = append(qs, genSyntheticEvalHashJoin(ins, 0.2, n)...)
 	//qs = append(qs, genSyntheticEvalMergeJoin(ins, 0.2, n)...)
 	//qs = append(qs, genSyntheticEvalIndexLookup(ins, n)...)
