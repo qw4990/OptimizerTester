@@ -31,7 +31,7 @@ var syntheticExecTimeRatio = map[string]float64{
 }
 
 func getSyntheticScale(queryType string) float64 {
-	scale := 0.1
+	scale := 0.05
 	scale *= syntheticExecTimeRatio[queryType]
 	if scale > 1 {
 		scale = 1
