@@ -21,19 +21,24 @@ import (
 
 var syntheticExecTimeRatio = map[string]float64{
 	// for 2000000 rows
+	// TiDB Plans
 	"TableScan":     1,   // 1.2s
 	"DescTableScan": 1,   // 1.2s
 	"WideTableScan": 0.3, // 3s
 	"IndexScan":     1,
 	"DescIndexScan": 1,
 	"WideIndexScan": 0.3,
-	"Sort":          1,  // 1.3s
-	"StreamAgg":     1,  // 1.2s
-	"HashAgg":       1,  // 1.2s
-	"TiFlashScan":   4,  // 250ms
-	"TiFlashAgg":    40, // 25ms
-	"MPPScan":       10, // 100ms
-	"MPPTiDBAgg":    4,  // 250ms
+	"Sort":          1,   // 1.3s
+	"StreamAgg":     1,   // 1.2s
+	"HashAgg":       1,   // 1.2s
+	"HashJoin":      0.2, // 5s
+	"MergeJoin":     0.2,
+
+	// TiFlash & MPP Plans
+	"TiFlashScan": 4,  // 250ms
+	"TiFlashAgg":  40, // 25ms
+	"MPPScan":     10, // 100ms
+	"MPPTiDBAgg":  4,  // 250ms
 }
 
 func getSyntheticScale(queryType string) float64 {
@@ -63,8 +68,8 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	qs = append(qs, genSyntheticEvalSort(ins, getSyntheticScale("Sort"), n)...)
 	qs = append(qs, genSyntheticEvalStreamAgg(ins, getSyntheticScale("StreamAgg"), n)...)
 	qs = append(qs, genSyntheticEvalHashAgg(ins, getSyntheticScale("HashAgg"), n)...)
-	//qs = append(qs, genSyntheticEvalHashJoin(ins, 0.2, n)...)
-	//qs = append(qs, genSyntheticEvalMergeJoin(ins, 0.2, n)...)
+	qs = append(qs, genSyntheticEvalHashJoin(ins, getSyntheticScale("HashJoin"), n)...)
+	qs = append(qs, genSyntheticEvalMergeJoin(ins, getSyntheticScale("MergeJoin"), n)...)
 	//qs = append(qs, genSyntheticEvalIndexLookup(ins, n)...)
 	//qs = append(qs, genSyntheticEvalIndexJoin(ins, n)...)
 
