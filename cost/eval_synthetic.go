@@ -276,7 +276,7 @@ func genSyntheticEvalTiFlashScan(ins tidb.Instance, scale float64, n int) (qs Qu
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{"set @@session.tidb_enforce_mpp=0"},
+			PreSQLs: []string{`set @@session.tidb_allow_mpp=0`, "set @@session.tidb_enforce_mpp=0"},
 			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ a FROM t WHERE a>=%v AND a<=%v`, l, r),
 			Label:   "TiFlashScan",
 			TypeID:  tid,
@@ -293,7 +293,7 @@ func genSyntheticEvalMPPScan(ins tidb.Instance, scale float64, n int) (qs Querie
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{"set @@session.tidb_enforce_mpp=1"}, // use MPPScan
+			PreSQLs: []string{`set @@session.tidb_allow_mpp=1`, "set @@session.tidb_enforce_mpp=1"}, // use MPPScan
 			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ a FROM t WHERE a>=%v AND a<=%v`, l, r),
 			Label:   "MPPScan",
 			TypeID:  tid,
