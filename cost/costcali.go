@@ -76,9 +76,9 @@ func CostCalibration() {
 		"TiFlashAgg",
 		"MPPScan",
 		"MPPTiDBAgg",
-		"MPP2PhaseAgg",
 		"MPPHJ",
-		"MPPBCJ",
+		//"MPP2PhaseAgg",
+		//"MPPBCJ",
 	}
 	rs = filterCaliRecordsByLabel(rs, whiteList, nil)
 
@@ -87,9 +87,9 @@ func CostCalibration() {
 	// (30,	30,		4,		100,	150,		0,		1.2*1e7, 	10)
 	recalculateAndDraw(rs,
 		&CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7, 10}, // for TiDB Plans
-		&CostFactors{2, 2, 4, 100, 150, 0, 1.2 * 1e7, 4},    // for TiFlash Plans
-		&CostFactors{2, 2, 1, 100, 150, 0, 1.2 * 1e7, 4}) // for MPP Plans
-	//recalculateAndDraw(rs, nil)
+		&CostFactors{30, 2, 4, 100, 150, 0, 1.2 * 1e7, 4},   // for TiFlash Plans, 1) CopCPU is used as TiFlash CPU here
+		&CostFactors{30, 2, 1, 100, 150, 0, 1.2 * 1e7, 4}) // for MPP Plans, 1) it using stream net mode
+	//recalculateAndDraw(rs, nil, nil, nil)
 
 	// ====== Automatic Regression ======
 	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek, TiFlashScan)
@@ -107,6 +107,10 @@ func recalculateAndDraw(rs Records, fs4TiDB, fs4TiFlash, fs4MPP *CostFactors) {
 			fs = fs4MPP
 		}
 		if fs != nil {
+			if rs[i].Label == "TiFlashAgg" { // CopCPU weights for TiFlash is accumulated in 
+				rs[i].CostWeights[0], rs[i].CostWeights[1] = rs[i].CostWeights[1], rs[i].CostWeights[0]
+			}
+
 			rs[i].Cost = rs[i].CostWeights.CalCost(*fs)
 			fmt.Println("[record]", rs[i].Label, rs[i].SQL, rs[i].CostWeights, fs, rs[i].Cost, rs[i].TimeMS)
 		}
