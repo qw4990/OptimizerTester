@@ -333,7 +333,7 @@ func genSyntheticEvalMPPScan(ins tidb.Instance, scale float64, n int) (qs Querie
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_allow_mpp=1`, "set @@session.tidb_enforce_mpp=1"}, // use MPPScan
+			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, "set @@session.tidb_enforce_mpp=1"}, // use MPPScan
 			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ a FROM t WHERE a>=%v AND a<=%v`, l, r),
 			Label:   "MPPScan",
 			TypeID:  tid,
@@ -350,7 +350,7 @@ func genSyntheticEvalMPPTiDBAgg(ins tidb.Instance, scale float64, n int) (qs Que
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
+			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
 			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(*) FROM t WHERE b>=%v and b<=%v`, l, r),
 			Label:   "MPPTiDBAgg",
 			TypeID:  tid,
@@ -367,7 +367,7 @@ func genSyntheticEvalMPP2PhaseAgg(ins tidb.Instance, scale float64, n int) (qs Q
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
+			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
 			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(*), b FROM t WHERE b>=%v and b<=%v GROUP BY b`, l, r),
 			Label:   "MPP2PhaseAgg",
 			TypeID:  tid,
@@ -385,7 +385,7 @@ func genSyntheticEvalMPPHJ(ins tidb.Instance, scale float64, n int) (qs Queries)
 		l1, r1 := randRange(minB, maxB, i, n)
 		l2, r2 := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`, `set @@session.tidb_opt_broadcast_join=0`},
+			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`, `set @@session.tidb_opt_broadcast_join=0`},
 			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t1, t2]) */ t1.b, t2.b FROM t t1, t t2 WHERE t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v`, l1, r1, l2, r2),
 			Label:   "MPPHJ",
 			TypeID:  tid,
@@ -403,7 +403,7 @@ func genSyntheticEvalMPPBCJ(ins tidb.Instance, scale float64, n int) (qs Queries
 		l1, r1 := randRange(minB, maxB, i, n)
 		l2, r2 := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_enforce_mpp=0`, `set @@session.tidb_opt_broadcast_join=1`},
+			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_enforce_mpp=0`, `set @@session.tidb_opt_broadcast_join=1`},
 			SQL:     fmt.Sprintf(`SELECT /*+ broadcast_join(t1, t2), read_from_storage(tiflash[t1, t2]) */ t1.b, t2.b FROM t t1, t t2 WHERE t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v`, l1, r1, l2, r2),
 			Label:   "MPPBCJ",
 			TypeID:  tid,
