@@ -297,7 +297,7 @@ func genSyntheticEvalTiFlashAgg(ins tidb.Instance, scale float64, n int) (qs Que
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_allow_mpp=0`, "set @@session.tidb_enforce_mpp=0"},
+			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=0`, `set @@session.tidb_allow_mpp=0`, "set @@session.tidb_enforce_mpp=0"},
 			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ count(*) FROM t WHERE a>=%v AND a<=%v`, l, r),
 			Label:   `TiFlashAgg`,
 			TypeID:  tid,
