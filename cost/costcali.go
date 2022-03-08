@@ -58,27 +58,27 @@ func CostCalibration() {
 	whiteList := []string{
 		// TiKV Plans
 		"TableScan",
-		//"IndexScan",
-		//"WideTableScan",
-		//"WideIndexScan",
-		//"DescTableScan",
-		//"DescIndexScan",
+		"IndexScan",
+		"WideTableScan",
+		"WideIndexScan",
+		"DescTableScan",
+		"DescIndexScan",
 		"StreamAgg",
 		"HashAgg",
-		//"Sort",
-		//"HashJoin",
-		//"MergeJoin",
+		"Sort",
+		"HashJoin",
+		"MergeJoin",
 		//"IndexLookup",
 		//"WideIndexLookup",
 
 		// TiFlash Plans
 		"TiFlashScan",
 		"TiFlashAgg",
-		//"MPPScan",
-		//"MPPTiDBAgg",
-		//"MPP2PhaseAgg",
-		//"MPPHJ",
-		//"MPPBCJ",
+		"MPPScan",
+		"MPPTiDBAgg",
+		"MPP2PhaseAgg",
+		"MPPHJ",
+		"MPPBCJ",
 	}
 	rs = filterCaliRecordsByLabel(rs, whiteList, nil)
 
@@ -88,7 +88,7 @@ func CostCalibration() {
 	recalculateAndDraw(rs,
 		&CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7, 10}, // for TiDB Plans
 		&CostFactors{2, 2, 4, 100, 150, 0, 1.2 * 1e7, 4},    // for TiFlash Plans
-		&CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7, 10}) // for MPP Plans
+		&CostFactors{2, 2, 1, 100, 150, 0, 1.2 * 1e7, 4}) // for MPP Plans
 	//recalculateAndDraw(rs, nil)
 
 	// ====== Automatic Regression ======
@@ -103,7 +103,7 @@ func recalculateAndDraw(rs Records, fs4TiDB, fs4TiFlash, fs4MPP *CostFactors) {
 		fs := fs4TiDB
 		if strings.Contains(rs[i].Label, "TiFlash") {
 			fs = fs4TiFlash
-		} else if strings.Contains(rs[i].Label, "TiFlash") {
+		} else if strings.Contains(rs[i].Label, "MPP") {
 			fs = fs4MPP
 		}
 		if fs != nil {
