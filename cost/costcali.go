@@ -57,14 +57,14 @@ func CostCalibration() {
 
 	whiteList := []string{
 		// TiKV Plans
-		//"TableScan",
+		"TableScan",
 		//"IndexScan",
 		//"WideTableScan",
 		//"WideIndexScan",
 		//"DescTableScan",
 		//"DescIndexScan",
-		//"StreamAgg",
-		//"HashAgg",
+		"StreamAgg",
+		"HashAgg",
 		//"Sort",
 		//"HashJoin",
 		//"MergeJoin",
@@ -87,7 +87,7 @@ func CostCalibration() {
 	// (30,	30,		4,		100,	150,		0,		1.2*1e7, 	10)
 	recalculateAndDraw(rs,
 		&CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7, 10}, // for TiDB Plans
-		&CostFactors{1, 1, 4, 100, 150, 0, 1.2 * 1e7, 10},   // for TiFlash Plans
+		&CostFactors{2, 2, 4, 100, 150, 0, 1.2 * 1e7, 4},    // for TiFlash Plans
 		&CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7, 10}) // for MPP Plans
 	//recalculateAndDraw(rs, nil)
 
