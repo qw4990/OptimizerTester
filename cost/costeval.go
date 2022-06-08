@@ -38,7 +38,6 @@ func CostEval() {
 	}
 
 	for _, opt := range opts {
-		//fmt.Println("--->>>> ", opt)
 		evalOnDataset(ins, opt)
 	}
 	//drawSummary(opts)
@@ -54,27 +53,17 @@ type evalOpt struct {
 	processTimeLimitMS int
 }
 
-func (opt *evalOpt) Factors() *CostFactors {
-	if opt.mode == "calibrated" {
-		//(CPU,	CopCPU,	Net,	Scan,	DescScan,	Mem,	Seek, 		TiFlashScan)
-		//(30,	30,		4,		100,	150,		0,		1.2*1e7, 	10)
-		factors := &CostFactors{30, 30, 4, 100, 150, 0, 1.2 * 1e7, 15}
-		return factors
-	}
-	return nil
-}
-
 func (opt *evalOpt) InitSQLs() []string {
 	initSQLs := []string{
-		`set @@tidb_distsql_scan_concurrency=1`,
-		`set @@tidb_executor_concurrency=1`,
-		`set @@tidb_opt_tiflash_concurrency_factor=1`,
+		//`set @@tidb_distsql_scan_concurrency=1`,
+		//`set @@tidb_executor_concurrency=1`,
+		//`set @@tidb_opt_tiflash_concurrency_factor=1`,
 	}
 	switch strings.ToLower(opt.mode) {
 	case "calibrated", "calibrating":
-		initSQLs = append(initSQLs, `set @@tidb_cost_variant=1`)
+		initSQLs = append(initSQLs, `set @@tidb_cost_model_version=2`)
 	case "original":
-		initSQLs = append(initSQLs, `set @@tidb_cost_variant=0`)
+		initSQLs = append(initSQLs, `set @@tidb_cost_model_version=1`)
 	}
 	return initSQLs
 }
@@ -112,7 +101,7 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 	recordFile := filepath.Join(dataDir, fmt.Sprintf("%v-%v-records.json", opt.db, opt.mode))
 	if err := readFrom(recordFile, &rs); err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
-		rs = runCostEvalQueries(ins, opt.db, qs, opt.InitSQLs(), opt.Factors(), opt.processRepeat, opt.processTimeLimitMS)
+		rs = runCostEvalQueries(ins, opt.db, qs, opt.InitSQLs(), nil, opt.processRepeat, opt.processTimeLimitMS)
 		saveTo(recordFile, rs)
 	} else {
 		fmt.Println("[cost-eval] read records from file successfully")
@@ -124,9 +113,9 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 
 	tmp := make(Records, 0, len(rs))
 	for _, r := range rs {
-		if r.Label == "IndexLookup" {
-			continue
-		}
+		//if r.Label == "IndexLookup" {
+		//	continue
+		//}
 		//if strings.Contains(r.Label, "Wide") || strings.Contains(r.Label, "Desc") {
 		//	continue
 		//}
@@ -223,13 +212,11 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 			ins.MustExec(sql)
 		}
 
-		trueCardQuery, tle := injectTrueCardinality(ins, q.SQL, processTimeLimitMS)
+		query := `explain analyze format='true_card_cost' ` + q.SQL
 		var label string
 		var planCost, timeMS float64
 		var cw CostWeights
-		if !tle {
-			label, planCost, timeMS, tle, cw = extractCostTimeFromQuery(ins, trueCardQuery, processRepeat, processTimeLimitMS, true, getPlanChecker(q.Label))
-		}
+		label, planCost, timeMS, tle, cw := extractCostTimeFromQuery(ins, query, processRepeat, processTimeLimitMS, true, getPlanChecker(q.Label))
 		if tle { // skip all queries with the same TypeID
 			fmt.Println("[cost-eval] skip TLE queries")
 			tid := q.TypeID
@@ -246,52 +233,11 @@ func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []str
 			Cost:        planCost,
 			TimeMS:      timeMS,
 			Label:       label,
-			SQL:         trueCardQuery,
+			SQL:         query,
 			CostWeights: cw,
 		})
 		i++
 	}
 
 	return records
-}
-
-func injectTrueCardinality(ins tidb.Instance, query string, timeLimitMS int) (string, bool) {
-	query = "explain analyze " + injectHint(query, "display_cost(), trace_cost()")
-	cardinality := make(map[string]float64)
-
-	// we need to run and inject cardinality multiple times since the plan may change after changing the cardinality
-	i := 0
-	for {
-		// inject current true cardinality into this query
-		var cardHints []string
-		for op, rows := range cardinality {
-			cardHints = append(cardHints, fmt.Sprintf("true_cardinality(%v=%v)", op, int(rows)))
-		}
-		injectedQuery := query
-		if len(cardHints) > 0 {
-			sort.Strings(cardHints)
-			injectedQuery = injectHint(query, strings.Join(cardHints, ", "))
-		}
-
-		// run this query and check whether estRows are equal to actRows
-		rs := ins.MustQuery(injectedQuery)
-		explainResult := ParseExplainAnalyzeResultsWithRows(rs)
-		if timeLimitMS > 0 && int(explainResult.TimeMS) > timeLimitMS {
-			return "", true
-		}
-		if i > 0 && explainResult.UseTrueCardinality() {
-			return injectedQuery, false
-		}
-
-		fmt.Println("### ", injectedQuery)
-		i++
-		if i > 5 {
-			panic("cannot get a stable plan")
-		}
-
-		// add current actRows into the true cardinality hints next time
-		for op, act := range explainResult.OperatorActRows {
-			cardinality[op] = act
-		}
-	}
 }

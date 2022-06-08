@@ -75,7 +75,7 @@ func readFrom(f string, r interface{}) error {
 var costFactorVars = []string{"tidb_opt_cpu_factor",
 	"tidb_opt_copcpu_factor", "tidb_opt_network_factor",
 	"tidb_opt_scan_factor", "tidb_opt_desc_factor",
-	"tidb_opt_memory_factor", "tidb_opt_seek_factor", 
+	"tidb_opt_memory_factor", "tidb_opt_seek_factor",
 	"tidb_opt_tiflash_scan_factor"}
 
 func setCostFactors(ins tidb.Instance, factors CostFactors) {
@@ -122,9 +122,6 @@ func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string,
 		if i == 0 {
 			continue // ignore the first processing
 		}
-		if checkRowCount && !explainResult.UseTrueCardinality() {
-			panic(fmt.Sprintf(`not true-CE for query=%v`, explainAnalyzeQuery))
-		}
 		if timeLimitMS > 0 && int(explainResult.TimeMS) > timeLimitMS {
 			return "", 0, 0, true, cw
 		}
@@ -153,12 +150,6 @@ func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string,
 	return rootOperator, totalPlanCost / float64(repeat), totalTimeMS / float64(repeat), false, cw
 }
 
-//+------------------------+----------+-------------------------------------------------------------------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
-//| id                     | estRows  | estCost                                                           | actRows | task      | access object | execution info                                                                                                                                                                                                                                              | operator info                                   | memory  | disk |
-//	+------------------------+----------+-------------------------------------------------------------------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
-//| TableReader_6          | 10000.00 | 52418.00:[0.00,0.00,81250.00,470000.00,0.00,0.00,1.00]:786270.00  | 10000   | root      |               | time:9.93ms, loops:11, cop_task: {num: 1, max: 9.75ms, proc_keys: 10000, tot_proc: 5ms, tot_wait: 2ms, rpc_num: 1, rpc_time: 9.7ms, copr_cache: disabled}                                                                                                   | data:TableRangeScan_5                           | 78.5 KB | N/A  |
-//| └─TableRangeScan_5     | 10000.00 | 705020.00:[0.00,0.00,81250.00,470000.00,0.00,0.00,1.00]:786270.00 | 10000   | cop[tikv] | table:t       | tikv_task:{time:5ms, loops:14}, scan_detail: {total_process_keys: 10000, total_process_keys_size: 270000, total_keys: 10500, rocksdb: {delete_skipped_count: 0, key_skipped_count: 10499, block: {cache_hit_count: 33, read_count: 0, read_byte: 0 Bytes}}} | range:[1,10000], keep order:false, stats:pseudo | N/A     | N/A  |
-//+------------------------+----------+-------------------------------------------------------------------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
 type ExplainAnalyzeResult struct {
 	RootOperator    string
 	PlanCost        float64
@@ -170,22 +161,13 @@ type ExplainAnalyzeResult struct {
 	RawPlan         []string
 }
 
-func (r ExplainAnalyzeResult) UseTrueCardinality() bool {
-	for op, act := range r.OperatorActRows {
-		if r.OperatorEstRows[op] != act {
-			return false
-		}
-	}
-	return true
-}
-
 func ParseExplainAnalyzeResultsWithRows(rs *sql.Rows) *ExplainAnalyzeResult {
-	//+------------------------+----------+-------------------------------------------------------------------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
-	//| id                     | estRows  | estCost                                                           | actRows | task      | access object | execution info                                                                                                                                                                                                                                              | operator info                                   | memory  | disk |
-	//	+------------------------+----------+-------------------------------------------------------------------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
-	//| TableReader_6          | 10000.00 | 52418.00:[0.00,0.00,81250.00,470000.00,0.00,0.00,1.00]:786270.00  | 10000   | root      |               | time:9.93ms, loops:11, cop_task: {num: 1, max: 9.75ms, proc_keys: 10000, tot_proc: 5ms, tot_wait: 2ms, rpc_num: 1, rpc_time: 9.7ms, copr_cache: disabled}                                                                                                   | data:TableRangeScan_5                           | 78.5 KB | N/A  |
-	//| └─TableRangeScan_5     | 10000.00 | 705020.00:[0.00,0.00,81250.00,470000.00,0.00,0.00,1.00]:786270.00 | 10000   | cop[tikv] | table:t       | tikv_task:{time:5ms, loops:14}, scan_detail: {total_process_keys: 10000, total_process_keys_size: 270000, total_keys: 10500, rocksdb: {delete_skipped_count: 0, key_skipped_count: 10499, block: {cache_hit_count: 33, read_count: 0, read_byte: 0 Bytes}}} | range:[1,10000], keep order:false, stats:pseudo | N/A     | N/A  |
-	//+------------------------+----------+-------------------------------------------------------------------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
+	//+------------------------+----------+-----------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
+	//| id                     | estRows  | estCost   | actRows | task      | access object | execution info                                                                                                                                                                                                                                              | operator info                                   | memory  | disk |
+	//+------------------------+----------+-----------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
+	//| TableReader_6          | 10000.00 | 52418.00  | 10000   | root      |               | time:9.93ms, loops:11, cop_task: {num: 1, max: 9.75ms, proc_keys: 10000, tot_proc: 5ms, tot_wait: 2ms, rpc_num: 1, rpc_time: 9.7ms, copr_cache: disabled}                                                                                                   | data:TableRangeScan_5                           | 78.5 KB | N/A  |
+	//| └─TableRangeScan_5     | 10000.00 | 705020.00 | 10000   | cop[tikv] | table:t       | tikv_task:{time:5ms, loops:14}, scan_detail: {total_process_keys: 10000, total_process_keys_size: 270000, total_keys: 10500, rocksdb: {delete_skipped_count: 0, key_skipped_count: 10499, block: {cache_hit_count: 33, read_count: 0, read_byte: 0 Bytes}}} | range:[1,10000], keep order:false, stats:pseudo | N/A     | N/A  |
+	//+------------------------+----------+-----------+---------+-----------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------+---------+------+
 	var id, estRows, actRows, estCost, task, access, execInfo, opInfo, mem, disk string
 	r := &ExplainAnalyzeResult{OperatorActRows: make(map[string]float64), OperatorEstRows: make(map[string]float64)}
 
@@ -199,15 +181,7 @@ func ParseExplainAnalyzeResultsWithRows(rs *sql.Rows) *ExplainAnalyzeResult {
 		if r.RootOperator == "" {
 			r.RootOperator = operator
 			r.TimeMS = parseTimeFromExecInfo(execInfo)
-			tmp := strings.Split(estCost, ":")
-			r.PlanCost = mustStr2Float(tmp[0])
-			r.TraceCost = mustStr2Float(tmp[2])
-
-			tmp[1] = strings.Trim(tmp[1], " []")
-			weightStrs := strings.Split(tmp[1], ",")
-			for i := 0; i < NumFactors; i++ {
-				r.TraceWeights[i] = mustStr2Float(weightStrs[i])
-			}
+			r.PlanCost = mustStr2Float(estCost)
 		}
 		r.RawPlan = append(r.RawPlan, strings.Join([]string{id, estRows, actRows, estCost, task, access, execInfo, opInfo, mem, disk}, "\t"))
 	}

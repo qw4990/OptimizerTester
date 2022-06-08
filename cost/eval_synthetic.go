@@ -10,7 +10,7 @@ import (
 )
 
 //create table t (
-//	a int, 
+//	a int,
 //	b int,
 //	c varchar(128), -- always space(128)
 //	d int,
@@ -70,20 +70,20 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	qs = append(qs, genSyntheticEvalWideIndexScan(ins, getSyntheticScale("WideIndexScan"), n)...)
 	qs = append(qs, genSyntheticEvalSort(ins, getSyntheticScale("Sort"), n)...)
 	qs = append(qs, genSyntheticEvalStreamAgg(ins, getSyntheticScale("StreamAgg"), n)...)
-	qs = append(qs, genSyntheticEvalHashAgg(ins, getSyntheticScale("HashAgg"), n)...)
-	qs = append(qs, genSyntheticEvalHashJoin(ins, getSyntheticScale("HashJoin"), n)...)
-	qs = append(qs, genSyntheticEvalMergeJoin(ins, getSyntheticScale("MergeJoin"), n)...)
+	//qs = append(qs, genSyntheticEvalHashAgg(ins, getSyntheticScale("HashAgg"), n)...)
+	//qs = append(qs, genSyntheticEvalHashJoin(ins, getSyntheticScale("HashJoin"), n)...)
+	//qs = append(qs, genSyntheticEvalMergeJoin(ins, getSyntheticScale("MergeJoin"), n)...)
 	//qs = append(qs, genSyntheticEvalIndexLookup(ins, n)...)
 	//qs = append(qs, genSyntheticEvalIndexJoin(ins, n)...)
 
 	// TiFlash & MPP Plans
-	qs = append(qs, genSyntheticEvalTiFlashScan(ins, getSyntheticScale("TiFlashScan"), n)...)
-	qs = append(qs, genSyntheticEvalTiFlashAgg(ins, getSyntheticScale("TiFlashAgg"), n)...)
-	qs = append(qs, genSyntheticEvalMPPScan(ins, getSyntheticScale("MPPScan"), n)...)
-	qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, getSyntheticScale("MPPTiDBAgg"), n)...)
-	qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, getSyntheticScale("MPP2PhaseAgg"), n)...)
-	qs = append(qs, genSyntheticEvalMPPHJ(ins, getSyntheticScale("MPPHJ"), n)...)
-	qs = append(qs, genSyntheticEvalMPPBCJ(ins, getSyntheticScale("MPPBCJ"), n)...)
+	//qs = append(qs, genSyntheticEvalTiFlashScan(ins, getSyntheticScale("TiFlashScan"), n)...)
+	//qs = append(qs, genSyntheticEvalTiFlashAgg(ins, getSyntheticScale("TiFlashAgg"), n)...)
+	//qs = append(qs, genSyntheticEvalMPPScan(ins, getSyntheticScale("MPPScan"), n)...)
+	//qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, getSyntheticScale("MPPTiDBAgg"), n)...)
+	//qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, getSyntheticScale("MPP2PhaseAgg"), n)...)
+	//qs = append(qs, genSyntheticEvalMPPHJ(ins, getSyntheticScale("MPPHJ"), n)...)
+	//qs = append(qs, genSyntheticEvalMPPBCJ(ins, getSyntheticScale("MPPBCJ"), n)...)
 	return qs
 }
 
