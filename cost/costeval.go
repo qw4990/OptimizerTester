@@ -101,7 +101,7 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 	recordFile := filepath.Join(dataDir, fmt.Sprintf("%v-%v-records.json", opt.db, opt.mode))
 	if err := readFrom(recordFile, &rs); err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
-		rs = runCostEvalQueries(ins, opt.db, qs, opt.InitSQLs(), nil, opt.processRepeat, opt.processTimeLimitMS)
+		rs = runCostEvalQueries(ins, opt.db, qs, opt.InitSQLs(), opt.processRepeat, opt.processTimeLimitMS)
 		saveTo(recordFile, rs)
 	} else {
 		fmt.Println("[cost-eval] read records from file successfully")

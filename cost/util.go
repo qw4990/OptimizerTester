@@ -1,6 +1,7 @@
 package cost
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -51,14 +52,19 @@ func randRange(minVal, maxVal, iter, totalRepeat int) (int, int) {
 	return l, r
 }
 
-func saveTo(f string, r interface{}) {
-	data, err := json.MarshalIndent(r, "", "    ")
+func noerr(err error) {
 	if err != nil {
 		panic(err)
 	}
-	if err := ioutil.WriteFile(f, data, 0666); err != nil {
-		panic(err)
-	}
+}
+
+func saveTo(f string, r interface{}) {
+	bf := bytes.NewBuffer([]byte{})
+	jsonEncoder := json.NewEncoder(bf)
+	jsonEncoder.SetIndent("", "  ")
+	jsonEncoder.SetEscapeHTML(false)
+	noerr(jsonEncoder.Encode(r))
+	noerr(ioutil.WriteFile(f, bf.Bytes(), 0666))
 }
 
 func readFrom(f string, r interface{}) error {
