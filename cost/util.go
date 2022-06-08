@@ -134,18 +134,6 @@ func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string,
 		totalPlanCost += explainResult.PlanCost
 		totalTimeMS += explainResult.TimeMS
 		rootOperator = explainResult.RootOperator
-
-		// cost trace
-		if cw.IsZero() {
-			cw = explainResult.TraceWeights
-		} else {
-			if !cw.EqualTo(explainResult.TraceWeights) {
-				panic(fmt.Sprintf("cost weights changed from %v to %v for q=%v", cw, explainResult.TraceWeights, explainAnalyzeQuery))
-			}
-		}
-		if math.Abs(explainResult.TraceCost-explainResult.PlanCost)/explainResult.PlanCost > 0.10 {
-			panic(fmt.Sprintf("wrong calCost %v:%v for q=%v", explainResult.TraceCost, explainResult.PlanCost, explainAnalyzeQuery))
-		}
 	}
 	return rootOperator, totalPlanCost / float64(repeat), totalTimeMS / float64(repeat), false, cw
 }
@@ -153,8 +141,6 @@ func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string,
 type ExplainAnalyzeResult struct {
 	RootOperator    string
 	PlanCost        float64
-	TraceCost       float64
-	TraceWeights    CostWeights
 	TimeMS          float64
 	OperatorActRows map[string]float64
 	OperatorEstRows map[string]float64
