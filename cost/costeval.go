@@ -186,20 +186,12 @@ type Record struct {
 
 type Records []Record
 
-func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []string, factors *CostFactors, processRepeat, processTimeLimitMS int) Records {
+func runCostEvalQueries(ins tidb.Instance, db string, qs Queries, initSQLs []string, processRepeat, processTimeLimitMS int) Records {
 	beginAt := time.Now()
 	ins.MustExec(fmt.Sprintf(`use %v`, db))
 	for _, q := range initSQLs {
 		fmt.Printf("[cost-eval] init SQL %v;\n", q)
 		ins.MustExec(q)
-	}
-
-	if factors != nil {
-		setCostFactors(ins, *factors)
-		check := readCostFactors(ins)
-		if check != *factors {
-			panic("set factor failed")
-		}
 	}
 
 	records := make([]Record, 0, len(qs))

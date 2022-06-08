@@ -72,45 +72,6 @@ func readFrom(f string, r interface{}) error {
 	return nil
 }
 
-var costFactorVars = []string{"tidb_opt_cpu_factor",
-	"tidb_opt_copcpu_factor", "tidb_opt_network_factor",
-	"tidb_opt_scan_factor", "tidb_opt_desc_factor",
-	"tidb_opt_memory_factor", "tidb_opt_seek_factor",
-	"tidb_opt_tiflash_scan_factor"}
-
-func setCostFactors(ins tidb.Instance, factors CostFactors) {
-	fmt.Println("SET COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek, TiFlashScan):", factors)
-	for i := 0; i < NumFactors; i++ {
-		sql := fmt.Sprintf("set @@%v=%v;", costFactorVars[i], factors[i])
-		fmt.Println(sql)
-		ins.MustExec(sql)
-	}
-}
-
-func readCostFactors(ins tidb.Instance) (factors CostFactors) {
-	// (CPU, CopCPU, Net, Scan, DescScan, Mem, Seek)
-	for i := 0; i < NumFactors; i++ {
-		ret := ins.MustQuery(fmt.Sprintf("select @@%v", costFactorVars[i]))
-		ret.Next()
-		if err := ret.Scan(&factors[i]); err != nil {
-			panic(err)
-		}
-		if err := ret.Close(); err != nil {
-			panic(err)
-		}
-	}
-	fmt.Println("READ COST FACTORS(CPU, CopCPU, Net, Scan, DescScan, Mem, Seek, TiFlashScan):", factors)
-	return
-}
-
-func calculateCost(weights CostWeights, factors CostFactors) float64 {
-	var cost float64
-	for i := range factors {
-		cost += weights[i] * factors[i]
-	}
-	return cost
-}
-
 func extractCostTimeFromQuery(ins tidb.Instance, explainAnalyzeQuery string,
 	repeat, timeLimitMS int, checkRowCount bool,
 	planChecker PlanChecker) (rootOperator string, avgPlanCost, avgTimeMS float64, tle bool, cw CostWeights) {
