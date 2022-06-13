@@ -68,12 +68,12 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	qs = append(qs, genSyntheticEvalIndexScan(ins, getSyntheticScale("IndexScan"), n)...)
 	qs = append(qs, genSyntheticEvalDescIndexScan(ins, getSyntheticScale("DescIndexScan"), n)...)
 	qs = append(qs, genSyntheticEvalWideIndexScan(ins, getSyntheticScale("WideIndexScan"), n)...)
-	//qs = append(qs, genSyntheticEvalSort(ins, getSyntheticScale("Sort"), n)...)
-	//qs = append(qs, genSyntheticEvalStreamAgg(ins, getSyntheticScale("StreamAgg"), n)...)
-	//qs = append(qs, genSyntheticEvalHashAgg(ins, getSyntheticScale("HashAgg"), n)...)
-	//qs = append(qs, genSyntheticEvalHashJoin(ins, getSyntheticScale("HashJoin"), n)...)
-	//qs = append(qs, genSyntheticEvalMergeJoin(ins, getSyntheticScale("MergeJoin"), n)...)
-	//qs = append(qs, genSyntheticEvalIndexLookup(ins, n)...)
+	qs = append(qs, genSyntheticEvalSort(ins, getSyntheticScale("Sort"), n)...)
+	qs = append(qs, genSyntheticEvalStreamAgg(ins, getSyntheticScale("StreamAgg"), n)...)
+	qs = append(qs, genSyntheticEvalHashAgg(ins, getSyntheticScale("HashAgg"), n)...)
+	qs = append(qs, genSyntheticEvalHashJoin(ins, getSyntheticScale("HashJoin"), n)...)
+	qs = append(qs, genSyntheticEvalMergeJoin(ins, getSyntheticScale("MergeJoin"), n)...)
+	qs = append(qs, genSyntheticEvalIndexLookup(ins, n)...)
 	//qs = append(qs, genSyntheticEvalIndexJoin(ins, n)...)
 
 	// TiFlash & MPP Plans
