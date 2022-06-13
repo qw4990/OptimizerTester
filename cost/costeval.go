@@ -63,7 +63,7 @@ func (opt *evalOpt) InitSQLs() []string {
 	case "calibrated", "calibrating":
 		initSQLs = append(initSQLs, `set @@tidb_enable_new_cost_interface=1`, `set @@tidb_cost_model_version=2`)
 	case "original":
-		initSQLs = append(initSQLs, `set @@tidb_cost_model_version=1`)
+		initSQLs = append(initSQLs, `set @@tidb_enable_new_cost_interface=1`, `set @@tidb_cost_model_version=1`)
 	}
 	return initSQLs
 }
