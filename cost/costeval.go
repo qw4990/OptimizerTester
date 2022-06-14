@@ -58,14 +58,6 @@ func (opt *evalOpt) InitSQLs() []string {
 		`set @@tidb_distsql_scan_concurrency=1`,
 		`set @@tidb_executor_concurrency=1`,
 		`set @@tidb_opt_tiflash_concurrency_factor=1`,
-		`set @@tidb_opt_cpu_factor_v2=30`,
-		`set @@tidb_opt_copcpu_factor_v2=30`,
-		`set @@tidb_opt_tiflash_cpu_factor_v2=1`,
-		`set @@tidb_opt_network_factor_v2=8`,
-		`set @@tidb_opt_scan_factor_v2=100`,
-		`set @@tidb_opt_desc_factor_v2=150`,
-		`set @@tidb_opt_tiflash_scan_factor_v2=2`,
-		`set @@tidb_opt_seek_factor_v2=9500000`,
 	}
 	switch opt.costModelVer {
 	case 2:
@@ -104,6 +96,9 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 	}
 
 	//qs = filterQueriesByLabel(qs, []string{"TableScan", "IndexScan", "MPPScan"})
+	for _, sql := range opt.InitSQLs() {
+		fmt.Println(sql + ";")
+	}
 
 	var rs Records
 	recordFile := filepath.Join(dataDir, fmt.Sprintf("%v-%v-records.json", opt.db, opt.costModelVer))
