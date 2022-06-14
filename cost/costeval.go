@@ -33,7 +33,7 @@ func CostEval() {
 		//{"tpch1g", "tpch", "original", 2, 1, 2000},
 		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
 		//{"synthetic", "synthetic", "original", 20, 2, 300},
-		{"synthetic", "synthetic", "calibrated", 10, 1, 2000},
+		{"synthetic", "synthetic", 2, 10, 1, 2000},
 		//{"synthetic", "synthetic", "calibrating", 30, 3, 200},
 	}
 
@@ -47,7 +47,7 @@ func CostEval() {
 type evalOpt struct {
 	db                 string
 	dataset            string
-	mode               string
+	costModelVer       int
 	queryScale         int
 	processRepeat      int
 	processTimeLimitMS int
@@ -59,10 +59,10 @@ func (opt *evalOpt) InitSQLs() []string {
 		//`set @@tidb_executor_concurrency=1`,
 		//`set @@tidb_opt_tiflash_concurrency_factor=1`,
 	}
-	switch strings.ToLower(opt.mode) {
-	case "calibrated", "calibrating":
+	switch opt.costModelVer {
+	case 2:
 		initSQLs = append(initSQLs, `set @@tidb_enable_new_cost_interface=1`, `set @@tidb_cost_model_version=2`)
-	case "original":
+	case 1:
 		initSQLs = append(initSQLs, `set @@tidb_enable_new_cost_interface=1`, `set @@tidb_cost_model_version=1`)
 	}
 	return initSQLs
@@ -82,7 +82,7 @@ func (opt *evalOpt) GenQueries(ins tidb.Instance) Queries {
 }
 
 func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
-	fmt.Println("[cost-eval] start cost model evaluation ", opt.db, opt.dataset, opt.mode)
+	fmt.Println("[cost-eval] start cost model evaluation ", opt.db, opt.dataset, opt.costModelVer)
 	var qs Queries
 	dataDir := "./cost-calibration-data"
 	queryFile := filepath.Join(dataDir, fmt.Sprintf("%v-queries.json", opt.db))
@@ -98,7 +98,7 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 	//qs = filterQueriesByLabel(qs, []string{"TableScan", "IndexScan", "MPPScan"})
 
 	var rs Records
-	recordFile := filepath.Join(dataDir, fmt.Sprintf("%v-%v-records.json", opt.db, opt.mode))
+	recordFile := filepath.Join(dataDir, fmt.Sprintf("%v-%v-records.json", opt.db, opt.costModelVer))
 	if err := readFrom(recordFile, &rs); err != nil {
 		fmt.Println("[cost-eval] read records file error: ", err)
 		rs = runCostEvalQueries(ins, opt.db, qs, opt.InitSQLs(), opt.processRepeat, opt.processTimeLimitMS)
@@ -120,20 +120,20 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 		tmp = append(tmp, r)
 	}
 
-	drawCostRecordsTo(tmp, fmt.Sprintf("%v-%v-scatter.png", opt.db, opt.mode))
+	drawCostRecordsTo(tmp, fmt.Sprintf("%v-%v-scatter.png", opt.db, opt.costModelVer))
 	corr := KendallCorrelationByRecords(tmp)
-	fmt.Printf("[cost-eval] KendallCorrelation %v-%v=%v \n", opt.db, opt.mode, corr)
+	fmt.Printf("[cost-eval] KendallCorrelation %v-%v=%v \n", opt.db, opt.costModelVer, corr)
 }
 
 func drawSummary(opts []*evalOpt) {
-	for _, mode := range []string{"calibrated", "original"} {
+	for _, ver := range []int{1, 2} {
 		rs := make(Records, 0, 1024)
 		for _, opt := range opts {
-			if strings.ToLower(opt.mode) != mode {
+			if opt.costModelVer != ver {
 				continue
 			}
 
-			recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-%v-records.json", opt.db, opt.mode))
+			recordFile := filepath.Join("/tmp/cost-calibration", fmt.Sprintf("%v-%v-records.json", opt.db, opt.costModelVer))
 			var records Records
 			if err := readFrom(recordFile, &records); err != nil {
 				panic(fmt.Sprintf("read records from %v error: %v", recordFile, err))
@@ -153,9 +153,9 @@ func drawSummary(opts []*evalOpt) {
 
 			rs = append(rs, tmp...)
 		}
-		drawCostRecordsTo(rs, fmt.Sprintf("%v-%v-scatter.png", "summary", mode))
+		drawCostRecordsTo(rs, fmt.Sprintf("%v-%v-scatter.png", "summary", ver))
 		corr := KendallCorrelationByRecords(rs)
-		fmt.Printf("[cost-eval] KendallCorrelation summary-%v=%v \n", mode, corr)
+		fmt.Printf("[cost-eval] KendallCorrelation summary-%v=%v \n", ver, corr)
 	}
 }
 
