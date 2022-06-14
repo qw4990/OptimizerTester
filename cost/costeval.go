@@ -113,20 +113,7 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 
 	tmp := make(Records, 0, len(rs))
 	for _, r := range rs {
-		if r.Label != "TableScan" && r.Label != "StreamAgg" {
-			continue
-		}
-		if r.Label == "StreamAgg" && !strings.Contains(r.SQL, "agg_not_to_cop") {
-			continue
-		}
-
-		//if r.Label == "HashJoin" || r.Label == "MergeJoin" {
-		//	continue
-		//}
-		//if strings.Contains(r.Label, "Wide") || strings.Contains(r.Label, "Desc") {
-		//	continue
-		//}
-		//if opt.dataset == "synthetic" && r.TimeMS > 200 {
+		//if r.Label != "HashJoin" && r.Label != "MergeJoin" && r.Label != "TableScan" {
 		//	continue
 		//}
 		fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
