@@ -63,8 +63,8 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 
 	// TiKV Plans
 	qs = append(qs, genSyntheticEvalTableScan(ins, getSyntheticScale("TableScan"), n)...)
-	//qs = append(qs, genSyntheticEvalDescTableScan(ins, getSyntheticScale("DescTableScan"), n)...)
-	//qs = append(qs, genSyntheticEvalWideTableScan(ins, getSyntheticScale("WideTableScan"), n)...)
+	qs = append(qs, genSyntheticEvalDescTableScan(ins, getSyntheticScale("DescTableScan"), n)...)
+	qs = append(qs, genSyntheticEvalWideTableScan(ins, getSyntheticScale("WideTableScan"), n)...)
 	qs = append(qs, genSyntheticEvalIndexScan(ins, getSyntheticScale("IndexScan"), n)...)
 	//qs = append(qs, genSyntheticEvalDescIndexScan(ins, getSyntheticScale("DescIndexScan"), n)...)
 	//qs = append(qs, genSyntheticEvalWideIndexScan(ins, getSyntheticScale("WideIndexScan"), n)...)
@@ -79,7 +79,7 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	// TiFlash & MPP Plans
 	qs = append(qs, genSyntheticEvalTiFlashScan(ins, getSyntheticScale("TiFlashScan"), n)...)
 	qs = append(qs, genSyntheticEvalMPPScan(ins, getSyntheticScale("MPPScan"), n)...)
-	//qs = append(qs, genSyntheticEvalTiFlashAgg(ins, getSyntheticScale("TiFlashAgg"), n)...)
+	qs = append(qs, genSyntheticEvalTiFlashAgg(ins, getSyntheticScale("TiFlashAgg"), n)...)
 	//qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, getSyntheticScale("MPPTiDBAgg"), n)...)
 	//qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, getSyntheticScale("MPP2PhaseAgg"), n)...)
 	//qs = append(qs, genSyntheticEvalMPPHJ(ins, getSyntheticScale("MPPHJ"), n)...)
@@ -342,7 +342,7 @@ func genSyntheticEvalMPPTiDBAgg(ins tidb.Instance, scale float64, n int) (qs Que
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
 			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
-			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(*) FROM t WHERE b>=%v and b<=%v`, l, r),
+			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(b) FROM t WHERE b>=%v and b<=%v`, l, r),
 			Label:   "MPPTiDBAgg",
 			TypeID:  tid,
 		})
