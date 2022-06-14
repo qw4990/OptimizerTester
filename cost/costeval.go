@@ -55,9 +55,9 @@ type evalOpt struct {
 
 func (opt *evalOpt) InitSQLs() []string {
 	initSQLs := []string{
-		//`set @@tidb_distsql_scan_concurrency=1`,
-		//`set @@tidb_executor_concurrency=1`,
-		//`set @@tidb_opt_tiflash_concurrency_factor=1`,
+		`set @@tidb_distsql_scan_concurrency=1`,
+		`set @@tidb_executor_concurrency=1`,
+		`set @@tidb_opt_tiflash_concurrency_factor=1`,
 	}
 	switch opt.costModelVer {
 	case 2:

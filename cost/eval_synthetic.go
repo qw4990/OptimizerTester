@@ -63,23 +63,23 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 
 	// TiKV Plans
 	qs = append(qs, genSyntheticEvalTableScan(ins, getSyntheticScale("TableScan"), n)...)
-	qs = append(qs, genSyntheticEvalDescTableScan(ins, getSyntheticScale("DescTableScan"), n)...)
-	qs = append(qs, genSyntheticEvalWideTableScan(ins, getSyntheticScale("WideTableScan"), n)...)
+	//qs = append(qs, genSyntheticEvalDescTableScan(ins, getSyntheticScale("DescTableScan"), n)...)
+	//qs = append(qs, genSyntheticEvalWideTableScan(ins, getSyntheticScale("WideTableScan"), n)...)
 	qs = append(qs, genSyntheticEvalIndexScan(ins, getSyntheticScale("IndexScan"), n)...)
-	qs = append(qs, genSyntheticEvalDescIndexScan(ins, getSyntheticScale("DescIndexScan"), n)...)
-	qs = append(qs, genSyntheticEvalWideIndexScan(ins, getSyntheticScale("WideIndexScan"), n)...)
-	qs = append(qs, genSyntheticEvalSort(ins, getSyntheticScale("Sort"), n)...)
-	qs = append(qs, genSyntheticEvalStreamAgg(ins, getSyntheticScale("StreamAgg"), n)...)
-	qs = append(qs, genSyntheticEvalHashAgg(ins, getSyntheticScale("HashAgg"), n)...)
-	qs = append(qs, genSyntheticEvalHashJoin(ins, getSyntheticScale("HashJoin"), n)...)
-	qs = append(qs, genSyntheticEvalMergeJoin(ins, getSyntheticScale("MergeJoin"), n)...)
-	qs = append(qs, genSyntheticEvalIndexLookup(ins, n)...)
+	//qs = append(qs, genSyntheticEvalDescIndexScan(ins, getSyntheticScale("DescIndexScan"), n)...)
+	//qs = append(qs, genSyntheticEvalWideIndexScan(ins, getSyntheticScale("WideIndexScan"), n)...)
+	//qs = append(qs, genSyntheticEvalSort(ins, getSyntheticScale("Sort"), n)...)
+	//qs = append(qs, genSyntheticEvalStreamAgg(ins, getSyntheticScale("StreamAgg"), n)...)
+	//qs = append(qs, genSyntheticEvalHashAgg(ins, getSyntheticScale("HashAgg"), n)...)
+	//qs = append(qs, genSyntheticEvalHashJoin(ins, getSyntheticScale("HashJoin"), n)...)
+	//qs = append(qs, genSyntheticEvalMergeJoin(ins, getSyntheticScale("MergeJoin"), n)...)
+	//qs = append(qs, genSyntheticEvalIndexLookup(ins, n)...)
 	//qs = append(qs, genSyntheticEvalIndexJoin(ins, n)...)
 
 	// TiFlash & MPP Plans
-	//qs = append(qs, genSyntheticEvalTiFlashScan(ins, getSyntheticScale("TiFlashScan"), n)...)
+	qs = append(qs, genSyntheticEvalTiFlashScan(ins, getSyntheticScale("TiFlashScan"), n)...)
+	qs = append(qs, genSyntheticEvalMPPScan(ins, getSyntheticScale("MPPScan"), n)...)
 	//qs = append(qs, genSyntheticEvalTiFlashAgg(ins, getSyntheticScale("TiFlashAgg"), n)...)
-	//qs = append(qs, genSyntheticEvalMPPScan(ins, getSyntheticScale("MPPScan"), n)...)
 	//qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, getSyntheticScale("MPPTiDBAgg"), n)...)
 	//qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, getSyntheticScale("MPP2PhaseAgg"), n)...)
 	//qs = append(qs, genSyntheticEvalMPPHJ(ins, getSyntheticScale("MPPHJ"), n)...)
@@ -299,23 +299,6 @@ func genSyntheticEvalTiFlashScan(ins tidb.Instance, scale float64, n int) (qs Qu
 	return
 }
 
-func genSyntheticEvalTiFlashAgg(ins tidb.Instance, scale float64, n int) (qs Queries) {
-	var minA, maxA int
-	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
-	maxA = int(float64(maxA) * scale)
-	tid := genTypeID()
-	for i := 0; i < n; i++ {
-		l, r := randRange(minA, maxA, i, n)
-		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=0`, `set @@session.tidb_allow_mpp=0`, "set @@session.tidb_enforce_mpp=0"},
-			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ count(*) FROM t WHERE a>=%v AND a<=%v`, l, r),
-			Label:   `TiFlashAgg`,
-			TypeID:  tid,
-		})
-	}
-	return
-}
-
 func genSyntheticEvalMPPScan(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minA, maxA int
 	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
@@ -327,6 +310,23 @@ func genSyntheticEvalMPPScan(ins tidb.Instance, scale float64, n int) (qs Querie
 			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, "set @@session.tidb_enforce_mpp=1"}, // use MPPScan
 			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ a FROM t WHERE a>=%v AND a<=%v`, l, r),
 			Label:   "MPPScan",
+			TypeID:  tid,
+		})
+	}
+	return
+}
+
+func genSyntheticEvalTiFlashAgg(ins tidb.Instance, scale float64, n int) (qs Queries) {
+	var minA, maxA int
+	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
+	maxA = int(float64(maxA) * scale)
+	tid := genTypeID()
+	for i := 0; i < n; i++ {
+		l, r := randRange(minA, maxA, i, n)
+		qs = append(qs, Query{
+			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=0`, `set @@session.tidb_allow_mpp=0`, "set @@session.tidb_enforce_mpp=0"},
+			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ count(*) FROM t WHERE a>=%v AND a<=%v`, l, r),
+			Label:   `TiFlashAgg`,
 			TypeID:  tid,
 		})
 	}
