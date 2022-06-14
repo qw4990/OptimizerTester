@@ -113,7 +113,14 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 
 	tmp := make(Records, 0, len(rs))
 	for _, r := range rs {
-		//if r.Label == "IndexLookup" {
+		if r.Label != "TableScan" && r.Label != "StreamAgg" {
+			continue
+		}
+		if r.Label == "StreamAgg" && !strings.Contains(r.SQL, "agg_not_to_cop") {
+			continue
+		}
+
+		//if r.Label == "HashJoin" || r.Label == "MergeJoin" {
 		//	continue
 		//}
 		//if strings.Contains(r.Label, "Wide") || strings.Contains(r.Label, "Desc") {
@@ -147,7 +154,7 @@ func drawSummary(opts []*evalOpt) {
 
 			var tmp Records
 			for _, r := range records {
-				if r.Label == "IndexLookup" {
+				if r.Label == "IndexLookup" || r.Label == "HashJoin" || r.Label == "MergeJoin" {
 					continue
 				}
 				//if opt.dataset == "synthetic" && r.TimeMS > 200 {

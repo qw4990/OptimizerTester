@@ -96,7 +96,7 @@ func genSyntheticEvalIndexLookup(ins tidb.Instance, n int) (qs Queries) {
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("select /*+ use_index(t, b) */ b, d from t where b>=%v and b<=%v", l, r),
+			SQL:    fmt.Sprintf("select /*+ use_index(t, b), read_from_storage(tikv[t]) */ b, d from t where b>=%v and b<=%v", l, r),
 			Label:  "IndexLookup",
 			TypeID: tid,
 		})
@@ -112,7 +112,7 @@ func genSyntheticEvalTableScan(ins tidb.Instance, scale float64, n int) (qs Quer
 	for i := 0; i < n; i++ {
 		l, r := randRange(minA, maxA, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("select /*+ use_index(t, primary) */ a from t where a>=%v and a<=%v", l, r),
+			SQL:    fmt.Sprintf("select /*+ use_index(t, primary), read_from_storage(tikv[t]) */ a from t where a>=%v and a<=%v", l, r),
 			Label:  "TableScan",
 			TypeID: tid,
 		})
@@ -128,7 +128,7 @@ func genSyntheticEvalDescTableScan(ins tidb.Instance, scale float64, n int) (qs 
 	for i := 0; i < n; i++ { // DescTableScan
 		l, r := randRange(minA, maxA, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf(`select /*+ use_index(t, primary), no_reorder() */ a from t where a>=%v and a<=%v order by a desc`, l, r),
+			SQL:    fmt.Sprintf(`select /*+ use_index(t, primary) */ a from t where a>=%v and a<=%v order by a desc`, l, r),
 			Label:  "DescTableScan",
 			TypeID: tid,
 		})
@@ -144,7 +144,7 @@ func genSyntheticEvalWideTableScan(ins tidb.Instance, scale float64, n int) (qs 
 	for i := 0; i < n; i++ { // WideTableScan
 		l, r := randRange(minA, maxA, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("select /*+ use_index(t, primary) */ a, c from t where a>=%v and a<=%v", l, r),
+			SQL:    fmt.Sprintf("select /*+ use_index(t, primary), read_from_storage(tikv[t]) */ a, c from t where a>=%v and a<=%v", l, r),
 			Label:  "WideTableScan",
 			TypeID: tid,
 		})
@@ -160,7 +160,7 @@ func genSyntheticEvalIndexScan(ins tidb.Instance, scale float64, n int) (qs Quer
 	for i := 0; i < n; i++ { // IndexScan
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("select /*+ use_index(t, b) */ b from t where b>=%v and b<=%v", l, r),
+			SQL:    fmt.Sprintf("select /*+ use_index(t, b), read_from_storage(tikv[t]) */ b from t where b>=%v and b<=%v", l, r),
 			Label:  "IndexScan",
 			TypeID: tid,
 		})
@@ -176,7 +176,7 @@ func genSyntheticEvalDescIndexScan(ins tidb.Instance, scale float64, n int) (qs 
 	for i := 0; i < n; i++ { // DescIndexScan
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf(`select /*+ use_index(t, b), no_reorder() */ b from t where b>=%v and b<=%v order by b desc`, l, r),
+			SQL:    fmt.Sprintf(`select /*+ use_index(t, b), read_from_storage(tikv[t]) */ b from t where b>=%v and b<=%v order by b desc`, l, r),
 			Label:  "DescIndexScan",
 			TypeID: tid,
 		})
@@ -192,7 +192,7 @@ func genSyntheticEvalWideIndexScan(ins tidb.Instance, scale float64, n int) (qs 
 	for i := 0; i < n; i++ { // WideIndexScan
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("select /*+ use_index(t, bc) */ b, c from t where b>=%v and b<=%v", l, r),
+			SQL:    fmt.Sprintf("select /*+ use_index(t, bc), read_from_storage(tikv[t]) */ b, c from t where b>=%v and b<=%v", l, r),
 			Label:  "WideIndexScan",
 			TypeID: tid,
 		})
@@ -208,7 +208,7 @@ func genSyntheticEvalSort(ins tidb.Instance, scale float64, n int) (qs Queries) 
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf(`select /*+ use_index(t, b), must_reorder() */ b from t where b>=%v and b<=%v order by b`, l, r),
+			SQL:    fmt.Sprintf(`select /*+ use_index(t, bc), read_from_storage(tikv[t]) */ b from t where b>=%v and b<=%v order by c`, l, r),
 			Label:  "Sort",
 			TypeID: tid,
 		})
@@ -220,20 +220,11 @@ func genSyntheticEvalStreamAgg(ins tidb.Instance, scale float64, n int) (qs Quer
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 	maxB = int(float64(maxB) * scale)
-	tid := genTypeID() // pushed down
+	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf(`select /*+ use_index(t, b), stream_agg(), agg_to_cop() */ count(1) from t where b>=%v and b<=%v`, l, r),
-			Label:  "StreamAgg",
-			TypeID: tid,
-		})
-	}
-	tid = genTypeID() // not pushed down
-	for i := 0; i < n; i++ {
-		l, r := randRange(minB, maxB, i, n)
-		qs = append(qs, Query{
-			SQL:    fmt.Sprintf(`select /*+ use_index(t, b), stream_agg(), agg_not_to_cop() */ count(1) from t where b>=%v and b<=%v`, l, r),
+			SQL:    fmt.Sprintf(`select /*+ use_index(t, b), stream_agg(), agg_to_cop(), read_from_storage(tikv[t]) */ count(1) from t where b>=%v and b<=%v`, l, r),
 			Label:  "StreamAgg",
 			TypeID: tid,
 		})
@@ -249,7 +240,7 @@ func genSyntheticEvalHashAgg(ins tidb.Instance, scale float64, n int) (qs Querie
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf(`select /*+ use_index(t, b), hash_agg() */ count(1) from t where b>=%v and b<=%v`, l, r),
+			SQL:    fmt.Sprintf(`select /*+ use_index(t, b), hash_agg(), read_from_storage(tikv[t]) */ count(1) from t where b>=%v and b<=%v`, l, r),
 			Label:  "HashAgg",
 			TypeID: tid,
 		})
@@ -266,7 +257,7 @@ func genSyntheticEvalHashJoin(ins tidb.Instance, scale float64, n int) (qs Queri
 		l1, r1 := randRange(minB, maxB, i, n)
 		l2, r2 := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("select /*+ use_index(t1, b), use_index(t2, b), tidb_hj(t1, t2) */ t1.b, t2.b from t t1, t t2 where t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v", l1, r1, l2, r2),
+			SQL:    fmt.Sprintf("select /*+ use_index(t1, b), use_index(t2, b), tidb_hj(t1, t2), read_from_storage(tikv[t1, t2]) */ t1.b, t2.b from t t1, t t2 where t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v", l1, r1, l2, r2),
 			Label:  "HashJoin",
 			TypeID: tid,
 		})
@@ -283,7 +274,7 @@ func genSyntheticEvalMergeJoin(ins tidb.Instance, scale float64, n int) (qs Quer
 		l1, r1 := randRange(minB, maxB, i, n)
 		l2, r2 := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			SQL:    fmt.Sprintf("select /*+ use_index(t1, b), use_index(t2, b), tidb_smj(t1, t2) */ t1.b, t2.b from t t1, t t2 where t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v", l1, r1, l2, r2),
+			SQL:    fmt.Sprintf("select /*+ use_index(t1, b), use_index(t2, b), tidb_smj(t1, t2), read_from_storage(tikv[t1, t2]) */ t1.b, t2.b from t t1, t t2 where t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v", l1, r1, l2, r2),
 			Label:  "MergeJoin",
 			TypeID: tid,
 		})
