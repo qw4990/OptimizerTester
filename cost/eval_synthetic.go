@@ -81,7 +81,7 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	qs = append(qs, genSyntheticEvalMPPScan(ins, getSyntheticScale("MPPScan"), n)...)
 	qs = append(qs, genSyntheticEvalTiFlashAgg(ins, getSyntheticScale("TiFlashAgg"), n)...)
 	qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, getSyntheticScale("MPPTiDBAgg"), n)...)
-	qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, getSyntheticScale("MPP2PhaseAgg"), n)...)
+	//qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, getSyntheticScale("MPP2PhaseAgg"), n)...)
 	//qs = append(qs, genSyntheticEvalMPPHJ(ins, getSyntheticScale("MPPHJ"), n)...)
 	//qs = append(qs, genSyntheticEvalMPPBCJ(ins, getSyntheticScale("MPPBCJ"), n)...)
 	return qs
@@ -335,14 +335,14 @@ func genSyntheticEvalTiFlashAgg(ins tidb.Instance, scale float64, n int) (qs Que
 
 func genSyntheticEvalMPPTiDBAgg(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
-	mustReadOneLine(ins, `select min(a), max(a) from t`, &minB, &maxB)
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 	maxB = int(float64(maxB) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
 			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
-			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(a) FROM t WHERE a>=%v and a<=%v`, l, r),
+			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(b) FROM t WHERE b>=%v and b<=%v`, l, r),
 			Label:   "MPPTiDBAgg",
 			TypeID:  tid,
 		})
