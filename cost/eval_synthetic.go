@@ -91,6 +91,7 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 func genSyntheticEvalIndexLookup(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
 
 	// select /*+ use_index(t, b) */ b, d from t where b>=? and b<=?; -- IndexLookup
 	tid := genTypeID()
