@@ -28,6 +28,7 @@ var syntheticExecTimeRatio = map[string]float64{
 	"IndexScan":     1,
 	"DescIndexScan": 1,
 	"WideIndexScan": 0.3,
+	"IndexLookup":   0.1,
 	"Sort":          1,   // 1.3s
 	"StreamAgg":     1,   // 1.2s
 	"HashAgg":       1,   // 1.2s
@@ -73,7 +74,7 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	qs = append(qs, genSyntheticEvalHashAgg(ins, getSyntheticScale("HashAgg"), n)...)
 	qs = append(qs, genSyntheticEvalHashJoin(ins, getSyntheticScale("HashJoin"), n)...)
 	qs = append(qs, genSyntheticEvalMergeJoin(ins, getSyntheticScale("MergeJoin"), n)...)
-	qs = append(qs, genSyntheticEvalIndexLookup(ins, n)...)
+	qs = append(qs, genSyntheticEvalIndexLookup(ins, getSyntheticScale("IndexLookup"), n)...)
 	//qs = append(qs, genSyntheticEvalIndexJoin(ins, n)...)
 
 	// TiFlash & MPP Plans
@@ -87,7 +88,7 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	return qs
 }
 
-func genSyntheticEvalIndexLookup(ins tidb.Instance, n int) (qs Queries) {
+func genSyntheticEvalIndexLookup(ins tidb.Instance, scale float64, n int) (qs Queries) {
 	var minB, maxB int
 	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
 

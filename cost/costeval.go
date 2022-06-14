@@ -33,7 +33,7 @@ func CostEval() {
 		//{"tpch1g", "tpch", "original", 2, 1, 2000},
 		//{"tpch1g", "tpch", "calibrated", 30, 2, 2000},
 		//{"synthetic", "synthetic", "original", 20, 2, 300},
-		{"synthetic", "synthetic", 2, 10, 3, 2000},
+		{"synthetic", "synthetic", 1, 10, 3, 2000},
 		//{"synthetic", "synthetic", "calibrating", 30, 3, 200},
 	}
 
@@ -95,7 +95,6 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 		fmt.Println("[cost-eval] read queries from file successfully ")
 	}
 
-	//qs = filterQueriesByLabel(qs, []string{"TableScan", "IndexScan", "MPPScan"})
 	for _, sql := range opt.InitSQLs() {
 		fmt.Println(sql + ";")
 	}
@@ -119,6 +118,9 @@ func evalOnDataset(ins tidb.Instance, opt *evalOpt) {
 		if r.Label == "MPP2PhaseAgg" {
 			continue
 		}
+		//if r.TimeMS > 1250 {
+		//	continue
+		//}
 		fmt.Printf("[Record] %vms \t %.2f \t %v \t %v\n", r.TimeMS, r.Cost, r.Label, r.SQL)
 		tmp = append(tmp, r)
 	}
