@@ -34,7 +34,7 @@ var syntheticExecTimeRatio = map[string]float64{
 	"HashAgg":       1,   // 1.2s
 	"HashJoin":      0.2, // 5s
 	"MergeJoin":     0.2,
-	"IndexJoin":     0.05, // 44s
+	"IndexJoin":     0.1, // 44s
 
 	// TiFlash & MPP Plans
 	"TiFlashScan":  4,  // 250ms
