@@ -38,7 +38,7 @@ func drawCostRecordsTo(r Records, f string) {
 		maxX = math.Max(maxX, x)
 		maxY = math.Max(maxY, y)
 	}
-	p.X.Max = maxX * 1.2
+	p.X.Max = maxX * 1.5
 	p.Y.Max = maxY * 1.2
 
 	labledRecords := make(map[string]Records)
