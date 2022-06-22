@@ -395,10 +395,11 @@ func genSyntheticEvalMPPHJ(ins tidb.Instance, scale float64, n int) (qs Queries)
 		l1, r1 := randRange(minB, maxB, i, n)
 		l2, r2 := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`, `set @@session.tidb_opt_broadcast_join=0`},
-			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t1, t2]) */ t1.b, t2.b FROM t t1, t t2 WHERE t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v`, l1, r1, l2, r2),
-			Label:   "MPPHJ",
-			TypeID:  tid,
+			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`,
+				`set @@session.tidb_broadcast_join_threshold_size=0`, `set @@session.tidb_broadcast_join_threshold_count=0`},
+			SQL:    fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t1, t2]) */ t1.b, t2.b FROM t t1, t t2 WHERE t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v`, l1, r1, l2, r2),
+			Label:  "MPPHJ",
+			TypeID: tid,
 		})
 	}
 	return
@@ -413,10 +414,11 @@ func genSyntheticEvalMPPBCJ(ins tidb.Instance, scale float64, n int) (qs Queries
 		l1, r1 := randRange(minB, maxB, i, n)
 		l2, r2 := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
-			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_enforce_mpp=0`, `set @@session.tidb_opt_broadcast_join=1`},
-			SQL:     fmt.Sprintf(`SELECT /*+ broadcast_join(t1, t2), read_from_storage(tiflash[t1, t2]) */ t1.b, t2.b FROM t t1, t t2 WHERE t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v`, l1, r1, l2, r2),
-			Label:   "MPPBCJ",
-			TypeID:  tid,
+			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`,
+				`set @@session.tidb_broadcast_join_threshold_size=1e18`, `set @@session.tidb_broadcast_join_threshold_count=1e18`},
+			SQL:    fmt.Sprintf(`SELECT /*+ broadcast_join(t1, t2), read_from_storage(tiflash[t1, t2]) */ t1.b, t2.b FROM t t1, t t2 WHERE t1.b=t2.b and t1.b>=%v and t1.b<=%v and t2.b>=%v and t2.b<=%v`, l1, r1, l2, r2),
+			Label:  "MPPBCJ",
+			TypeID: tid,
 		})
 	}
 	return
