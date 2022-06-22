@@ -22,26 +22,26 @@ import (
 var syntheticExecTimeRatio = map[string]float64{
 	// for 2000000 rows
 	// TiDB Plans
-	"TableScan":     1,   // 1.2s
-	"DescTableScan": 1,   // 1.2s
-	"WideTableScan": 0.3, // 3s
-	"IndexScan":     1,
-	"DescIndexScan": 1,
-	"WideIndexScan": 0.3,
-	"IndexLookup":   0.1,
-	"Sort":          1,   // 1.3s
-	"StreamAgg":     1,   // 1.2s
-	"HashAgg":       1,   // 1.2s
-	"HashJoin":      0.2, // 5s
-	"MergeJoin":     0.2,
-	"IndexJoin":     0.1, // 44s
+	"TableScan":     2,   // 1.2s
+	"DescTableScan": 2,   // 1.2s
+	"WideTableScan": 0.6, // 3s
+	"IndexScan":     2,
+	"DescIndexScan": 2,
+	"WideIndexScan": 0.6,
+	"IndexLookup":   0.2,
+	"Sort":          2,   // 1.3s
+	"StreamAgg":     2,   // 1.2s
+	"HashAgg":       1.5, // 1.2s
+	"HashJoin":      0.3, // 5s
+	"MergeJoin":     0.3,
+	"IndexJoin":     0.2, // 44s
 
 	// TiFlash & MPP Plans
-	"TiFlashScan":  4,  // 250ms
-	"TiFlashAgg":   40, // 25ms
-	"MPPScan":      10, // 100ms
-	"MPPTiDBAgg":   4,  // 250ms
-	"MPP2PhaseAgg": 4,
+	"TiFlashScan":  8,  // 250ms
+	"TiFlashAgg":   80, // 25ms
+	"MPPScan":      20, // 100ms
+	"MPPTiDBAgg":   8,  // 250ms
+	"MPP2PhaseAgg": 8,
 	"MPPHJ":        0.5, // 1.5s
 	"MPPBCJ":       0.5,
 }
