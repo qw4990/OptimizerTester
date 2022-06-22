@@ -387,13 +387,13 @@ func genSyntheticEvalMPP2PhaseAgg(ins tidb.Instance, scale float64, n int) (qs Q
 }
 
 func genSyntheticEvalMPPHJ(ins tidb.Instance, scale float64, n int) (qs Queries) {
-	var minB, maxB int
-	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
-	maxB = int(float64(maxB) * scale)
+	var minA, maxA int
+	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
+	maxA = int(float64(maxA) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
-		l1, r1 := randRange(minB, maxB, i, n)
-		l2, r2 := randRange(minB, maxB, i, n)
+		l1, r1 := randRange(minA, maxA, i, n)
+		l2, r2 := randRange(minA, maxA, i, n)
 		qs = append(qs, Query{
 			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`,
 				`set @@session.tidb_broadcast_join_threshold_size=0`, `set @@session.tidb_broadcast_join_threshold_count=0`},
@@ -406,13 +406,13 @@ func genSyntheticEvalMPPHJ(ins tidb.Instance, scale float64, n int) (qs Queries)
 }
 
 func genSyntheticEvalMPPBCJ(ins tidb.Instance, scale float64, n int) (qs Queries) {
-	var minB, maxB int
-	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
-	maxB = int(float64(maxB) * scale)
+	var minA, maxA int
+	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
+	maxA = int(float64(maxA) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
-		l1, r1 := randRange(minB, maxB, i, n)
-		l2, r2 := randRange(minB, maxB, i, n)
+		l1, r1 := randRange(minA, maxA, i, n)
+		l2, r2 := randRange(minA, maxA, i, n)
 		qs = append(qs, Query{
 			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`,
 				`set @@session.tidb_broadcast_join_threshold_size=1e18`, `set @@session.tidb_broadcast_join_threshold_count=1e18`},
