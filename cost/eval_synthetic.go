@@ -34,6 +34,7 @@ var syntheticExecTimeRatio = map[string]float64{
 	"HashAgg":       1,   // 1.2s
 	"HashJoin":      0.2, // 5s
 	"MergeJoin":     0.2,
+	"IndexJoin":     0.05, // 44s
 
 	// TiFlash & MPP Plans
 	"TiFlashScan":  4,  // 250ms
@@ -75,7 +76,7 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	qs = append(qs, genSyntheticEvalHashJoin(ins, getSyntheticScale("HashJoin"), n)...)
 	qs = append(qs, genSyntheticEvalMergeJoin(ins, getSyntheticScale("MergeJoin"), n)...)
 	qs = append(qs, genSyntheticEvalIndexLookup(ins, getSyntheticScale("IndexLookup"), n)...)
-	//qs = append(qs, genSyntheticEvalIndexJoin(ins, n)...)
+	qs = append(qs, genSyntheticEvalIndexJoin(ins, getSyntheticScale("IndexJoin"), n)...)
 
 	// TiFlash & MPP Plans
 	qs = append(qs, genSyntheticEvalTiFlashScan(ins, getSyntheticScale("TiFlashScan"), n)...)
@@ -100,6 +101,22 @@ func genSyntheticEvalIndexLookup(ins tidb.Instance, scale float64, n int) (qs Qu
 		qs = append(qs, Query{
 			SQL:    fmt.Sprintf("select /*+ use_index(t, b), read_from_storage(tikv[t]) */ b, d from t where b>=%v and b<=%v", l, r),
 			Label:  "IndexLookup",
+			TypeID: tid,
+		})
+	}
+	return
+}
+
+func genSyntheticEvalIndexJoin(ins tidb.Instance, scale float64, n int) (qs Queries) {
+	var minB, maxB int
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
+	tid := genTypeID()
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n)
+		qs = append(qs, Query{
+			SQL:    fmt.Sprintf("select /*+ TIDB_INLJ(t1, t2) */ t2.b from t t1, t t2 where t1.b = t2.b and t1.b>=%v and t1.b<=%v", l, r),
+			Label:  "IndexJoin",
 			TypeID: tid,
 		})
 	}
@@ -402,10 +419,6 @@ func genSyntheticEvalMPPBCJ(ins tidb.Instance, scale float64, n int) (qs Queries
 			TypeID:  tid,
 		})
 	}
-	return
-}
-
-func genSyntheticEvalIndexJoin(ins tidb.Instance, n int) (qs Queries) {
 	return
 }
 
