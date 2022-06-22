@@ -2,6 +2,7 @@ package cost
 
 import (
 	"gonum.org/v1/plot/vg/draw"
+	"math"
 	"math/rand"
 	"strings"
 
@@ -30,6 +31,15 @@ func drawCostRecordsTo(r Records, f string) {
 	p.X.Label.TextStyle.Font.Size = fontSize
 	p.Y.Label.TextStyle.Font.Size = fontSize
 	p.Y.Tick.Label.Font.Size = fontSize
+
+	var maxX, maxY float64
+	for i := 0; i < r.Len(); i++ {
+		x, y := r.XY(i)
+		maxX = math.Max(maxX, x)
+		maxY = math.Max(maxY, y)
+	}
+	p.X.Max = maxX * 1.2
+	p.Y.Max = maxY * 1.2
 
 	labledRecords := make(map[string]Records)
 	for _, record := range r {
