@@ -40,7 +40,9 @@ var syntheticExecTimeRatio = map[string]float64{
 	"TiFlashScan":  4,  // 250ms
 	"TiFlashAgg":   40, // 25ms
 	"MPPScan":      10, // 100ms
-	"MPPTiDBAgg":   4,  // 250ms
+	"MPPTiDBAgg1":  4,  // 250ms
+	"MPPTiDBAgg2":  4,
+	"MPP1PhaseAgg": 4,
 	"MPP2PhaseAgg": 4,
 	"MPPHJ":        0.5, // 1.5s
 	"MPPBCJ":       0.5,
@@ -82,8 +84,10 @@ func genSyntheticEvalQueries(ins tidb.Instance, db string, n int) Queries {
 	qs = append(qs, genSyntheticEvalTiFlashScan(ins, getSyntheticScale("TiFlashScan"), n)...)
 	qs = append(qs, genSyntheticEvalMPPScan(ins, getSyntheticScale("MPPScan"), n)...)
 	qs = append(qs, genSyntheticEvalTiFlashAgg(ins, getSyntheticScale("TiFlashAgg"), n)...)
-	qs = append(qs, genSyntheticEvalMPPTiDBAgg(ins, getSyntheticScale("MPPTiDBAgg"), n)...)
-	//qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, getSyntheticScale("MPP2PhaseAgg"), n)...)
+	qs = append(qs, genSyntheticEvalMPPTiDBAgg1(ins, getSyntheticScale("MPPTiDBAgg1"), n)...)
+	qs = append(qs, genSyntheticEvalMPPTiDBAgg1(ins, getSyntheticScale("MPPTiDBAgg2"), n)...)
+	qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, getSyntheticScale("MPP1PhaseAgg"), n)...)
+	qs = append(qs, genSyntheticEvalMPP2PhaseAgg(ins, getSyntheticScale("MPP2PhaseAgg"), n)...)
 	qs = append(qs, genSyntheticEvalMPPHJ(ins, getSyntheticScale("MPPHJ"), n)...)
 	qs = append(qs, genSyntheticEvalMPPBCJ(ins, getSyntheticScale("MPPBCJ"), n)...)
 	return qs
@@ -352,17 +356,51 @@ func genSyntheticEvalTiFlashAgg(ins tidb.Instance, scale float64, n int) (qs Que
 	return
 }
 
-func genSyntheticEvalMPPTiDBAgg(ins tidb.Instance, scale float64, n int) (qs Queries) {
-	var minA, maxA int
-	mustReadOneLine(ins, `select min(a), max(a) from t`, &minA, &maxA)
-	maxA = int(float64(maxA) * scale)
+func genSyntheticEvalMPPTiDBAgg1(ins tidb.Instance, scale float64, n int) (qs Queries) {
+	var minB, maxB int
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
 	tid := genTypeID()
 	for i := 0; i < n; i++ {
-		l, r := randRange(minA, maxA, i, n)
+		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
 			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
-			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(b) FROM t WHERE b>=%v and b<=%v`, l, r),
+			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(a) FROM t WHERE b>=%v and b<=%v`, l, r),
 			Label:   "MPPTiDBAgg",
+			TypeID:  tid,
+		})
+	}
+	return
+}
+
+func genSyntheticEvalMPPTiDBAgg2(ins tidb.Instance, scale float64, n int) (qs Queries) {
+	var minB, maxB int
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
+	tid := genTypeID()
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n)
+		qs = append(qs, Query{
+			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
+			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(a), b FROM t WHERE b>=%v and b<=%v group by b`, l, r),
+			Label:   "MPPTiDBAgg",
+			TypeID:  tid,
+		})
+	}
+	return
+}
+
+func genSyntheticEvalMPP1PhaseAgg(ins tidb.Instance, scale float64, n int) (qs Queries) {
+	var minB, maxB int
+	mustReadOneLine(ins, `select min(b), max(b) from t`, &minB, &maxB)
+	maxB = int(float64(maxB) * scale)
+	tid := genTypeID()
+	for i := 0; i < n; i++ {
+		l, r := randRange(minB, maxB, i, n)
+		qs = append(qs, Query{
+			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
+			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]), mpp_1phase_agg() */ COUNT(a), b FROM t WHERE b>=%v and b<=%v GROUP BY b`, l, r),
+			Label:   "MPP2PhaseAgg",
 			TypeID:  tid,
 		})
 	}
@@ -378,7 +416,7 @@ func genSyntheticEvalMPP2PhaseAgg(ins tidb.Instance, scale float64, n int) (qs Q
 		l, r := randRange(minB, maxB, i, n)
 		qs = append(qs, Query{
 			PreSQLs: []string{`set @@session.tidb_allow_batch_cop=1`, `set @@session.tidb_allow_mpp=1`, `set @@session.tidb_enforce_mpp=1`},
-			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]) */ COUNT(*), b FROM t WHERE b>=%v and b<=%v GROUP BY b`, l, r),
+			SQL:     fmt.Sprintf(`SELECT /*+ read_from_storage(tiflash[t]), mpp_2phase_agg() */ COUNT(a), b FROM t WHERE b>=%v and b<=%v GROUP BY b`, l, r),
 			Label:   "MPP2PhaseAgg",
 			TypeID:  tid,
 		})
